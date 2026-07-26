@@ -20,6 +20,8 @@ export interface Company {
     postcode?: string;
   };
   base_currency?: string;
+  is_vat_registered?: boolean;
+  vat_rate_pct?: number;
   subscription_plan?: string;
   subscription_status?: string;
   feature_access?: Record<string, boolean>;

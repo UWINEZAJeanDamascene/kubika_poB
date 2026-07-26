@@ -26,6 +26,8 @@ import {
   Ban,
   ChevronRight,
   ShieldCheck,
+  Copy,
+  Loader2,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -53,6 +55,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { EBMStatusBadge } from '@/app/components/EBMStatusBadge';
 import EBMFiscalReceiptBlock from '@/app/components/EBMFiscalReceiptBlock';
+import { toast } from 'sonner';
+import { formatRraErrorMessage } from '@/lib/ebmErrors';
 
 interface Invoice {
   _id: string;
@@ -120,8 +124,8 @@ interface Invoice {
     paidDate?: string;
     recordedBy?: {
       name: string;
-      email: string;
-    };
+      email?: string;
+    } | string;
     reference?: string;
     notes?: string;
   }>;
@@ -147,6 +151,7 @@ interface Invoice {
     ebmStatus?: string;
     retryCount?: number;
     lastError?: string | null;
+    lastErrorCode?: string | null;
     qrCode?: string | null;
     customerTinVerification?: { status?: string; taxpayerName?: string; verifiedAt?: string; resultMsg?: string } | null;
   };
@@ -196,6 +201,7 @@ export default function InvoiceDetailPage() {
   const [bankAccountId, setBankAccountId] = useState('');
   const [bankAccounts, setBankAccounts] = useState<Array<{_id: string; name: string; accountType: string}>>([]);
   const [verifyingTin, setVerifyingTin] = useState(false);
+  const [ebmSubmitting, setEbmSubmitting] = useState<"sale" | "proforma" | "copy" | null>(null);
 
   const fetchInvoice = useCallback(async () => {
     if (!id) return;
@@ -247,6 +253,25 @@ export default function InvoiceDetailPage() {
       setVerifyingTin(false);
     }
   };
+
+  const handleSubmitEbm = async (variant: "sale" | "proforma" | "copy") => {
+    if (!id) return;
+    setEbmSubmitting(variant);
+    try {
+      const response = await invoicesApi.submitEbm(id, { variant, branchId: "00" });
+      if (response.success && response.data) {
+        setInvoice(response.data as Invoice);
+        toast.success(response.message || `Invoice submitted to RRA as ${variant}`);
+      }
+    } catch (error: any) {
+      const code = error?.resultCd || error?.code || null;
+      toast.error(formatRraErrorMessage(code, error?.message || "RRA submission failed"));
+      if (error?.data) setInvoice(error.data as Invoice);
+    } finally {
+      setEbmSubmitting(null);
+    }
+  };
+
   const handleConfirm = async () => {
     if (!id) return;
     setActionLoading(true);
@@ -277,7 +302,12 @@ export default function InvoiceDetailPage() {
   };
 
   const handleRecordPayment = () => {
-    setPaymentAmount(invoice?.balance?.toString() || invoice?.amountOutstanding?.toString() || '');
+    const outstanding = Number(invoice?.balance ?? invoice?.amountOutstanding ?? 0) || 0;
+    if (outstanding <= 0) {
+      toast.info('Invoice is already fully paid');
+      return;
+    }
+    setPaymentAmount(outstanding.toFixed(2));
     setPaymentReference('');
     setPaymentMethod('cash');
     setBankAccountId('');
@@ -286,10 +316,20 @@ export default function InvoiceDetailPage() {
 
   const handlePaymentSubmit = async () => {
     if (!paymentAmount || !id) return;
+    const outstanding = Number(invoice?.balance ?? invoice?.amountOutstanding ?? 0) || 0;
+    const payAmount = parseFloat(paymentAmount);
+    if (!Number.isFinite(payAmount) || payAmount <= 0) {
+      toast.error('Enter a valid payment amount');
+      return;
+    }
+    if (payAmount > outstanding + 0.009) {
+      toast.error(`Amount exceeds outstanding balance (${outstanding.toFixed(2)})`);
+      return;
+    }
     setActionLoading(true);
     try {
       const data: { amount: number; paymentMethod: any; reference?: string; bankAccountId?: string } = {
-        amount: parseFloat(paymentAmount),
+        amount: payAmount,
         paymentMethod: paymentMethod as any,
         reference: paymentReference || undefined
       };
@@ -300,11 +340,13 @@ export default function InvoiceDetailPage() {
         data.bankAccountId = bankAccountId;
       }
       await invoicesApi.recordPayment(id, data);
+      toast.success('Payment recorded successfully');
       setShowPaymentDialog(false);
       setBankAccountId('');
       fetchInvoice();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to record payment:', error);
+      toast.error(error?.message || 'Failed to record payment');
     } finally {
       setActionLoading(false);
     }
@@ -338,7 +380,9 @@ export default function InvoiceDetailPage() {
 
   const getStatusStep = (status: string) => {
     if (status === 'cancelled') return -1;
-    const stepIndex = STATUS_FLOW.findIndex(s => s.status === status);
+    const normalized =
+      status === 'paid' ? 'fully_paid' : status === 'partial' ? 'partially_paid' : status;
+    const stepIndex = STATUS_FLOW.findIndex(s => s.status === normalized);
     return stepIndex;
   };
 
@@ -346,6 +390,11 @@ export default function InvoiceDetailPage() {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString();
+  };
+
+  const money = (value: unknown) => {
+    const n = typeof value === 'number' ? value : parseFloat(String(value ?? '0'));
+    return Number.isFinite(n) ? n : 0;
   };
 
   if (loading) {
@@ -388,6 +437,11 @@ export default function InvoiceDetailPage() {
   }
 
   const currentStatusStep = getStatusStep(invoice.status);
+  const outstandingAmount = money(invoice.balance ?? invoice.amountOutstanding);
+  const paidAmount = money(invoice.amountPaid);
+  const canRecordPayment =
+    outstandingAmount > 0 &&
+    ['confirmed', 'partially_paid', 'partial'].includes(invoice.status);
 
   const getStatusStyle = (status: string) => {
     const map: Record<string, string> = {
@@ -558,7 +612,7 @@ export default function InvoiceDetailPage() {
                     </Button>
                   </>
                 )}
-                {(invoice.status === 'confirmed' || invoice.status === 'partially_paid' || invoice.status === 'partial') && (
+                {(invoice.status === 'confirmed' || invoice.status === 'partially_paid' || invoice.status === 'partial') && canRecordPayment && (
                   <Button size="sm" onClick={handleRecordPayment} disabled={actionLoading} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
                     <DollarSign className="h-4 w-4" />
                     Record Payment
@@ -630,18 +684,18 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Paid</p>
-                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.amountPaid)}</p>
+                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(paidAmount)}</p>
                 </div>
               </CardContent>
             </Card>
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="flex items-center gap-3 p-4">
-                <div className={`rounded-lg p-2.5 ${(invoice.balance || invoice.amountOutstanding || 0) > 0 ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
+                <div className={`rounded-lg p-2.5 ${outstandingAmount > 0 ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
                   <AlertTriangle className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Outstanding</p>
-                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.balance || invoice.amountOutstanding || 0)}</p>
+                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(outstandingAmount)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -742,7 +796,7 @@ export default function InvoiceDetailPage() {
                       </div>
                       <div className="flex justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
                         <span className="font-semibold text-slate-900 dark:text-white">Outstanding</span>
-                        <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.balance || invoice.amountOutstanding || 0)}</span>
+                        <span className="font-bold text-slate-900 dark:text-white">{formatCurrency(outstandingAmount)}</span>
                       </div>
                     </div>
                   </div>
@@ -776,26 +830,32 @@ export default function InvoiceDetailPage() {
                 <CardContent className="p-0">
                   {invoice.payments && invoice.payments.length > 0 ? (
                     <div className="overflow-x-auto">
-                      <Table>
+                      <Table className="table-fixed">
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
-                            <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Date</TableHead>
-                            <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Method</TableHead>
-                            <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Reference</TableHead>
-                            <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Recorded By</TableHead>
-                            <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Amount</TableHead>
+                            <TableHead className="w-[18%] text-xs font-semibold text-slate-500 dark:text-slate-400">Date</TableHead>
+                            <TableHead className="w-[18%] text-xs font-semibold text-slate-500 dark:text-slate-400">Method</TableHead>
+                            <TableHead className="w-[22%] text-xs font-semibold text-slate-500 dark:text-slate-400">Reference</TableHead>
+                            <TableHead className="w-[24%] text-xs font-semibold text-slate-500 dark:text-slate-400">Recorded By</TableHead>
+                            <TableHead className="w-[18%] text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Amount</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {invoice.payments.map((payment) => (
-                            <TableRow key={payment._id} className="border-b-slate-100 transition-colors hover:bg-slate-50 dark:border-b-slate-800/60 dark:hover:bg-slate-800/50">
-                              <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(payment.paidDate || payment.recordedAt || '')}</TableCell>
-                              <TableCell className="capitalize text-slate-700 dark:text-slate-300">{payment.paymentMethod?.replace('_', ' ')}</TableCell>
-                              <TableCell className="text-slate-700 dark:text-slate-300">{payment.reference || '-'}</TableCell>
-                              <TableCell className="text-slate-700 dark:text-slate-300">{payment.recordedBy?.name ?? '-'}</TableCell>
-                              <TableCell className="text-right font-semibold text-slate-900 dark:text-white">{formatCurrency(payment.amount)}</TableCell>
-                            </TableRow>
-                          ))}
+                          {invoice.payments.map((payment, idx) => {
+                            const recordedByName =
+                              typeof payment.recordedBy === 'object' && payment.recordedBy
+                                ? payment.recordedBy.name
+                                : null;
+                            return (
+                              <TableRow key={payment._id || `pay-${idx}`} className="border-b-slate-100 transition-colors hover:bg-slate-50 dark:border-b-slate-800/60 dark:hover:bg-slate-800/50">
+                                <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(payment.paidDate || payment.recordedAt || '')}</TableCell>
+                                <TableCell className="capitalize text-slate-700 dark:text-slate-300">{payment.paymentMethod?.replace('_', ' ') || '-'}</TableCell>
+                                <TableCell className="text-slate-700 dark:text-slate-300">{payment.reference || '-'}</TableCell>
+                                <TableCell className="text-slate-700 dark:text-slate-300">{recordedByName || '-'}</TableCell>
+                                <TableCell className="text-right font-semibold text-slate-900 dark:text-white">{formatCurrency(money(payment.amount))}</TableCell>
+                              </TableRow>
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </div>
@@ -822,6 +882,47 @@ export default function InvoiceDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <EBMFiscalReceiptBlock receipt={invoice.ebm} documentLabel="Invoice" />
+                  {invoice.status !== "draft" && invoice.status !== "cancelled" && (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleSubmitEbm("sale")}
+                        disabled={!!ebmSubmitting || invoice.ebm?.ebmStatus === "submitted"}
+                        className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+                      >
+                        {ebmSubmitting === "sale" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
+                        Submit fiscal sale
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSubmitEbm("proforma")}
+                        disabled={!!ebmSubmitting}
+                        className="gap-1.5 dark:border-slate-700 dark:text-slate-200"
+                      >
+                        {ebmSubmitting === "proforma" ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                        Proforma
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleSubmitEbm("copy")}
+                        disabled={!!ebmSubmitting || invoice.ebm?.ebmStatus !== "submitted"}
+                        className="gap-1.5 dark:border-slate-700 dark:text-slate-200"
+                      >
+                        {ebmSubmitting === "copy" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Copy className="h-4 w-4" />}
+                        Copy receipt
+                      </Button>
+                    </div>
+                  )}
+                  {(invoice.ebm?.lastError || invoice.ebm?.lastErrorCode) && (
+                    <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
+                      <p className="font-semibold">Last RRA error</p>
+                      <p className="mt-1 break-words">
+                        {formatRraErrorMessage(invoice.ebm?.lastErrorCode, invoice.ebm?.lastError)}
+                      </p>
+                    </div>
+                  )}
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-md border border-slate-200 p-3 dark:border-slate-800">
                       <p className="text-xs font-semibold uppercase text-slate-500">Submitted at</p>

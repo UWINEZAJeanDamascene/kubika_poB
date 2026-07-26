@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { purchaseOrdersApi, suppliersApi, warehousesApi, productsApi, budgetsApi, chartOfAccountsApi, type BudgetLine } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
+import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
 import {
   ArrowLeft,
   Save,
@@ -95,12 +96,11 @@ interface PurchaseOrderFormData {
   orderDate: string;
   expectedDeliveryDate: string;
   currencyCode: string;
+  exchangeRate: number;
   notes: string;
   lines: POLine[];
   freight: FreightData;
 }
-
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'RWF', 'KES', 'UGX', 'TZS'];
 
 export default function PurchaseOrderFormPage() {
   const { t } = useTranslation();
@@ -124,6 +124,7 @@ export default function PurchaseOrderFormPage() {
     orderDate: new Date().toISOString().split('T')[0],
     expectedDeliveryDate: '',
     currencyCode: 'RWF',
+    exchangeRate: 1,
     notes: '',
     lines: [],
     freight: {
@@ -235,6 +236,7 @@ export default function PurchaseOrderFormPage() {
           orderDate: po.orderDate ? new Date(po.orderDate).toISOString().split('T')[0] : '',
           expectedDeliveryDate: po.expectedDeliveryDate ? new Date(po.expectedDeliveryDate).toISOString().split('T')[0] : '',
           currencyCode: po.currencyCode || 'RWF',
+          exchangeRate: Number(po.exchangeRate) || 1,
           notes: po.notes || '',
           lines: po.lines?.map((line: any) => ({
             _id: line._id,
@@ -438,14 +440,20 @@ export default function PurchaseOrderFormPage() {
         };
       });
 
+      const summaryTotals = calculateSummary();
       const payload = {
         supplier: formData.supplier,
         warehouse: formData.warehouse,
         orderDate: formData.orderDate,
         expectedDeliveryDate: formData.expectedDeliveryDate || undefined,
         currencyCode: formData.currencyCode,
+        exchangeRate: formData.exchangeRate || 1,
         notes: formData.notes || undefined,
         lines: linesWithTotals,
+        subtotal: summaryTotals.subtotal,
+        taxAmount: summaryTotals.tax,
+        totalAmount: summaryTotals.total,
+        balance: summaryTotals.total,
         freight: {
           carrier: formData.freight.carrier || undefined,
           amount: Number(formData.freight.amount) || 0,
@@ -526,7 +534,7 @@ export default function PurchaseOrderFormPage() {
   return (
     <Layout>
       <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1600px] 2xl:max-w-[2200px] space-y-6">
+        <div className="mx-auto max-w-7xl space-y-6">
           {/* Hero Header */}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
             <div className="grid gap-5 p-5 xl:grid-cols-[1fr_380px] xl:items-stretch">
@@ -671,21 +679,13 @@ export default function PurchaseOrderFormPage() {
                       <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         {t('purchase.form.currency', 'Currency')}
                       </Label>
-                      <Select
+                      <DocumentCurrencySelect
                         value={formData.currencyCode || 'RWF'}
-                        onValueChange={(value) => setFormData({ ...formData, currencyCode: value })}
-                      >
-                        <SelectTrigger className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-                          {CURRENCIES.map((currency) => (
-                            <SelectItem key={currency} value={currency} className="dark:text-slate-200">
-                              {currency}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        date={formData.orderDate}
+                        onChange={(currency, rateToBase) =>
+                          setFormData((prev) => ({ ...prev, currencyCode: currency, exchangeRate: rateToBase ?? 1 }))
+                        }
+                      />
                     </div>
                   </div>
                   <div>
@@ -901,11 +901,9 @@ export default function PurchaseOrderFormPage() {
                   )}
                 </CardContent>
               </Card>
-            </div>
 
             {/* Additional Costs / Freight */}
-            <div className="lg:col-span-2">
-              <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+            <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
                   <PanelTitle icon={<Truck className="h-4 w-4" />} title={t('purchase.form.additionalCosts', 'Additional Costs')} />
                 </CardHeader>

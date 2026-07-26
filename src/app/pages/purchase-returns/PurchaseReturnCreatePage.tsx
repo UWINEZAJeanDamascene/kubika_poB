@@ -90,6 +90,8 @@ export default function PurchaseReturnCreatePage() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
+  const [loadingGrns, setLoadingGrns] = useState(true);
+  const [grnFetchError, setGrnFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [grns, setGrns] = useState<GRN[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -107,13 +109,30 @@ export default function PurchaseReturnCreatePage() {
 
   /* ── Data fetching ── */
   const fetchGRNs = useCallback(async () => {
+    setLoadingGrns(true);
+    setGrnFetchError(null);
     try {
       const response = await grnApi.getAll({ status: "confirmed", limit: 100 });
       if (response.success && response.data) {
-        setGrns((Array.isArray(response.data) ? response.data : (response.data as unknown[])) as GRN[]);
+        const list = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray((response.data as any)?.data)
+            ? (response.data as any).data
+            : [];
+        setGrns(list as GRN[]);
+        if (list.length === 0) {
+          setGrnFetchError("No confirmed GRNs found. Confirm a GRN before creating a return.");
+        }
+      } else {
+        setGrns([]);
+        setGrnFetchError("Could not load confirmed GRNs.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[PurchaseReturnCreatePage] Failed to fetch GRNs:", error);
+      setGrns([]);
+      setGrnFetchError(error?.message || "Failed to fetch confirmed GRNs");
+    } finally {
+      setLoadingGrns(false);
     }
   }, []);
 
@@ -147,17 +166,27 @@ export default function PurchaseReturnCreatePage() {
       if (response.success) {
         const grn = response.data as GRN;
         setSelectedGRN(grn);
-        setWarehouseId(grn.warehouse?._id || "");
-        const returnLines: ReturnLine[] = grn.lines.map((line: any) => ({
-          grnLine: line._id,
-          product: line.product._id,
-          productName: line.product.name,
-          productSku: line.product.sku,
-          qtyReceived: line.qtyReceived,
-          qtyPreviouslyReturned: 0,
-          qtyToReturn: 0,
-          unitCost: line.unitCost,
-        }));
+        const whId =
+          typeof grn.warehouse === "object"
+            ? grn.warehouse?._id
+            : (grn.warehouse as unknown as string) || "";
+        setWarehouseId(whId || "");
+        const returnLines: ReturnLine[] = (grn.lines || []).map((line: any) => {
+          const productId =
+            typeof line.product === "object"
+              ? line.product?._id || line.product?.id
+              : line.product;
+          return {
+            grnLine: line._id,
+            product: productId,
+            productName: typeof line.product === "object" ? line.product?.name : undefined,
+            productSku: typeof line.product === "object" ? line.product?.sku : undefined,
+            qtyReceived: Number(line.qtyReceived) || 0,
+            qtyPreviouslyReturned: 0,
+            qtyToReturn: 0,
+            unitCost: Number(line.unitCost) || 0,
+          };
+        });
         setLines(returnLines);
       }
     } catch (error) {
@@ -263,8 +292,13 @@ export default function PurchaseReturnCreatePage() {
                     {t("purchaseReturn.selectGRN", "Select GRN")}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  {loading ? (
+                <CardContent className="space-y-3">
+                  {loadingGrns ? (
+                    <div className="flex items-center gap-2 py-2 text-sm text-slate-500">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Loading confirmed GRNs...
+                    </div>
+                  ) : loading ? (
                     <div className="flex items-center gap-2 py-2 text-sm text-slate-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Loading GRN details...
@@ -275,13 +309,20 @@ export default function PurchaseReturnCreatePage() {
                         <SelectValue placeholder={t("purchaseReturn.selectGRNPlaceholder", "Select a confirmed GRN...")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {grns.map((grn) => (
-                          <SelectItem key={grn._id} value={grn._id}>
-                            {grn.referenceNo} - {grn.supplier?.name}
-                          </SelectItem>
-                        ))}
+                        {grns.length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-slate-500">No confirmed GRNs available</div>
+                        ) : (
+                          grns.map((grn) => (
+                            <SelectItem key={grn._id} value={String(grn._id)}>
+                              {grn.referenceNo} - {typeof grn.supplier === "object" ? grn.supplier?.name : "Supplier"}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
+                  )}
+                  {grnFetchError && (
+                    <p className="text-sm text-amber-600 dark:text-amber-400">{grnFetchError}</p>
                   )}
                 </CardContent>
               </Card>

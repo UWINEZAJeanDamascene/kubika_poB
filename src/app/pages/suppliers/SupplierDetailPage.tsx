@@ -413,7 +413,13 @@ export default function SupplierDetailPage() {
             />
             <MetricTile
               title={t('suppliers.leadTime', 'Lead Time')}
-              value={supplier.leadTime && supplier.leadTime > 0 ? `${supplier.leadTime} days` : t('common.nA', 'N/A')}
+              value={
+                supplier.leadTime != null && Number(supplier.leadTime) >= 0
+                  ? t('suppliers.leadTimeDaysValue', '{{count}} days', {
+                      count: Number(supplier.leadTime),
+                    })
+                  : t('suppliers.leadTimeNotSet', 'Not set')
+              }
               icon={<CalendarDays className="h-5 w-5" />}
               tone="amber"
               subtitle={t('suppliers.deliveryEstimate', 'Delivery estimate')}
@@ -550,13 +556,24 @@ export default function SupplierDetailPage() {
                       </span>
                     </div>
                   )}
-                  {supplier.leadTime != null && supplier.leadTime > 0 && (
+                  {supplier.leadTime != null ? (
                     <div className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
                       <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
                         {t('suppliers.leadTime', 'Lead Time')}
                       </span>
                       <span className="text-sm font-semibold text-slate-950 dark:text-white">
-                        {supplier.leadTime} days
+                        {t('suppliers.leadTimeDaysValue', '{{count}} days', {
+                          count: Number(supplier.leadTime),
+                        })}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
+                      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                        {t('suppliers.leadTime', 'Lead Time')}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                        {t('suppliers.leadTimeNotSet', 'Not set')}
                       </span>
                     </div>
                   )}
@@ -607,8 +624,16 @@ export default function SupplierDetailPage() {
               <CardContent className="p-5">
                 <PanelTitle
                   icon={<Boxes className="h-4 w-4" />}
-                  title={t('suppliers.productsSupplied', 'Products Supplied')}
-                  subtitle={supplier.name}
+                  title={t('suppliers.productsSupplied', 'Products Supplied by {{name}}', {
+                    name: supplier.name,
+                  })}
+                  subtitle={
+                    (supplier.productsSupplied?.length || 0) > 0
+                      ? t('suppliers.activeCatalog', '{{count}} catalog items', {
+                          count: supplier.productsSupplied!.length,
+                        })
+                      : t('suppliers.noProductsLinked', 'No products linked to this supplier')
+                  }
                 />
                 {supplier.productsSupplied && supplier.productsSupplied.length > 0 ? (
                   <div className="space-y-2">

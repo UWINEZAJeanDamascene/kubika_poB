@@ -291,10 +291,10 @@ export default function TransfersListPage() {
 
           <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(250px,1fr))] gap-4">
             {[
-              { label: 'Transfers in View', value: pagination.total || transfers.length, detail: `${totalLines} item lines`, color: '#3b82f6' },
-              { label: 'Pending Confirmation', value: statusCounts.draft || 0, detail: 'Draft transfers awaiting action', color: '#f59e0b' },
-              { label: 'In Movement', value: statusCounts.confirmed || 0, detail: 'Confirmed but not completed', color: '#8b5cf6' },
-              { label: 'Posted Journals', value: linkedJournals, detail: 'Transfers linked to accounting', color: '#10b981' },
+              { label: t('transfers.transfersInView'), value: pagination.total || transfers.length, detail: t('transfers.itemLines', { count: totalLines }), color: '#3b82f6' },
+              { label: t('transfers.pendingConfirmation'), value: statusCounts.draft || 0, detail: t('transfers.pendingConfirmationDetail'), color: '#f59e0b' },
+              { label: t('transfers.inMovement'), value: statusCounts.confirmed || 0, detail: t('transfers.inMovementDetail'), color: '#8b5cf6' },
+              { label: t('transfers.postedJournals'), value: linkedJournals, detail: t('transfers.postedJournalsDetail'), color: '#10b981' },
             ].map((metric) => (
               <Paper
                 key={metric.label}
@@ -524,7 +524,7 @@ export default function TransfersListPage() {
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('transfers.linesCount', 'Lines')}</p>
                           <p className="mt-1 text-xl font-black text-slate-950 dark:text-white">{lineCount}</p>
                           <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                            {firstItem ? `${firstItem.product?.name || '-'}${lineCount > 1 ? ` +${lineCount - 1} more` : ''}` : 'No item lines'}
+                            {firstItem ? `${firstItem.product?.name || '-'}${lineCount > 1 ? ` ${t('transfers.moreItems', { count: lineCount - 1 })}` : ''}` : t('transfers.noItemLines')}
                           </p>
                         </div>
                         <div className="rounded-md bg-slate-50 p-3 text-right dark:bg-slate-900">

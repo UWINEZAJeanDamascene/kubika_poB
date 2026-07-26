@@ -27,7 +27,7 @@ import {
 import { Button } from '@/app/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { LanguageSelector } from '@/app/components/LanguageSelector';
 
 const workflowSteps = [
   {
@@ -89,7 +89,6 @@ export default function OperationsLandingPage() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { language, toggleLanguage } = useLanguage();
   const { isAuthenticated, user } = useAuth();
   const isDark = theme === 'dark';
   const systemHref = user?.role === 'platform_admin' ? '/platform-admin' : '/dashboard';
@@ -161,9 +160,7 @@ export default function OperationsLandingPage() {
           </nav>
 
           <div className="hidden items-center gap-2 lg:flex">
-            <Button variant="ghost" size="sm" onClick={toggleLanguage} className="gap-2 text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10">
-              {language === 'en' ? 'FR' : 'EN'}
-            </Button>
+            <LanguageSelector variant="landing" />
             <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10">
               {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -214,9 +211,7 @@ export default function OperationsLandingPage() {
                 )
               )}
               <div className="mt-2 grid grid-cols-2 gap-2">
-                <Button variant="outline" onClick={toggleLanguage} className="gap-2">
-                  {language === 'en' ? 'FR' : 'EN'}
-                </Button>
+                <LanguageSelector variant="landing" className="justify-center rounded-md border border-input bg-background px-3 py-2" />
                 {isAuthenticated ? (
                   <Link to={systemHref} onClick={() => setMobileOpen(false)} className="col-span-2">
                     <Button className="w-full bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950">Back to Dashboard</Button>

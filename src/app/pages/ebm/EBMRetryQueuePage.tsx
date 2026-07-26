@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Copy, Eye, FileJson, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { ebmApi } from "@/lib/api";
+import { formatRraErrorMessage } from "@/lib/ebmErrors";
 import { Layout } from "@/app/layout/Layout";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
@@ -305,7 +306,11 @@ export function EBMRetryQueueContent() {
                       <td className="px-4 py-3"><Badge className={statusClass(item.ebmStatus)}>{item.ebmStatus}</Badge></td>
                       <td className="px-4 py-3">{item.retryCount} / {item.maxRetries}</td>
                       <td className="px-4 py-3">{formatDate(item.nextRetryAt)}</td>
-                      <td className="truncate px-4 py-3 text-slate-600 dark:text-slate-300">{item.lastError?.message || "-"}</td>
+                      <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
+                        <span className="line-clamp-2">
+                          {formatRraErrorMessage(item.lastError?.code, item.lastError?.message)}
+                        </span>
+                      </td>
                       <td className="px-4 py-3">{formatDate(item.createdAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">

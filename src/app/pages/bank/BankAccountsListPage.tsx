@@ -4,6 +4,8 @@ import { bankAccountsApi, interestApi, type CashPosition } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Layout } from "../../layout/Layout";
+import DocumentCurrencySelect from "@/app/components/DocumentCurrencySelect";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import {
   Plus,
   Eye,
@@ -76,6 +78,7 @@ import { BankToCashTransferDialog } from "@/app/components/BankToCashTransferDia
 
 export default function BankAccountsListPage() {
   const { t } = useTranslation();
+  const { baseCurrency } = useCurrency();
   const navigate = useNavigate();
   const location = useLocation();
   const isCreateMode = location.pathname === "/bank-accounts/new";
@@ -95,7 +98,7 @@ export default function BankAccountsListPage() {
     accountNumber: "",
     bankName: "",
     accountType: "bk_bank",
-    currencyCode: "USD",
+    currencyCode: "RWF",
     openingBalance: "0",
     interestRate: "",
     isDefault: false,
@@ -242,7 +245,7 @@ export default function BankAccountsListPage() {
               accountNumber: account.accountNumber || "",
               bankName: account.bankName || "",
               accountType: account.accountType || "bk_bank",
-              currencyCode: account.currencyCode || "USD",
+              currencyCode: account.currencyCode || baseCurrency,
               openingBalance: String(account.openingBalance || "0"),
               interestRate: account.interestRate ? String(account.interestRate) : "",
               isDefault: account.isDefault || false,
@@ -274,7 +277,7 @@ export default function BankAccountsListPage() {
     loading,
   );
 
-  const formatCurrency = (amount: any, currency: string = "USD") => {
+  const formatCurrency = (amount: any, currency: string = baseCurrency) => {
     if (amount === null || amount === undefined || amount === "") return "-";
     // Handle MongoDB Decimal128 or regular numbers/strings
     let num: number;
@@ -298,14 +301,7 @@ export default function BankAccountsListPage() {
       num = amount;
     }
     if (isNaN(num)) return "-";
-    // Map currency codes to valid ISO 4217 codes
-    const currencyMap: Record<string, string> = {
-      RWF: "RWF",
-      USD: "USD",
-      EUR: "EUR",
-      GBP: "GBP",
-    };
-    const validCurrency = currencyMap[currency] || "USD";
+    const validCurrency = /^[A-Z]{3}$/.test(currency) ? currency : baseCurrency;
     try {
       return new Intl.NumberFormat("en-US", {
         style: "currency",
@@ -626,24 +622,13 @@ export default function BankAccountsListPage() {
                           >
                             {t("bankAccounts.currentBalance", "Currency")}
                           </Label>
-                          <Select
+                          <DocumentCurrencySelect
                             value={formData.currencyCode}
-                            onValueChange={(v) =>
-                              setFormData({ ...formData, currencyCode: v })
+                            showRate={false}
+                            onChange={(currency) =>
+                              setFormData((prev) => ({ ...prev, currencyCode: currency }))
                             }
-                          >
-                            <SelectTrigger
-                              id="currency"
-                              className="dark:bg-slate-900 dark:text-white dark:border-slate-700"
-                            >
-                              <SelectValue placeholder="Select currency" />
-                            </SelectTrigger>
-                            <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
-                              <SelectItem value="USD">USD - US Dollar</SelectItem>
-                              <SelectItem value="EUR">EUR - Euro</SelectItem>
-                              <SelectItem value="RWF">RWF - Rwandan Franc</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          />
                         </div>
                         <div className="space-y-2">
                           <Label
@@ -1012,7 +997,7 @@ export default function BankAccountsListPage() {
                         Total Cash Position
                       </p>
                       <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                        {formatCurrency(totalCash, "USD")}
+                        {formatCurrency(totalCash)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
@@ -1032,7 +1017,7 @@ export default function BankAccountsListPage() {
                         Bank Accounts
                       </p>
                       <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                        {formatCurrency(bankAccountsTotal, "USD")}
+                        {formatCurrency(bankAccountsTotal)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-blue-50 p-2.5 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60">
@@ -1052,7 +1037,7 @@ export default function BankAccountsListPage() {
                         Mobile Money
                       </p>
                       <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                        {formatCurrency(mobileMoneyTotal, "USD")}
+                        {formatCurrency(mobileMoneyTotal)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-amber-50 p-2.5 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60">
@@ -1072,7 +1057,7 @@ export default function BankAccountsListPage() {
                         Cash on Hand
                       </p>
                       <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                        {formatCurrency(cashTotal, "USD")}
+                        {formatCurrency(cashTotal)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
@@ -1123,7 +1108,7 @@ export default function BankAccountsListPage() {
                         <div>
                           <p className="text-xs text-slate-500 dark:text-slate-400">{item.label}</p>
                           <p className="font-semibold text-slate-950 dark:text-white">
-                            {formatCurrency(item.value, "USD")}
+                            {formatCurrency(item.value)}
                           </p>
                         </div>
                       </div>
@@ -1290,10 +1275,10 @@ export default function BankAccountsListPage() {
                             Current Balance
                           </p>
                           <p className="mt-1 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                            {formatCurrency(balance, account.currencyCode || "USD")}
+                            {formatCurrency(balance, account.currencyCode || baseCurrency)}
                           </p>
                           <Badge variant="outline" className="mt-1.5 text-xs dark:border-slate-700 dark:text-slate-400">
-                            {account.currencyCode || "USD"}
+                            {account.currencyCode || baseCurrency}
                           </Badge>
                         </div>
 
@@ -1410,7 +1395,7 @@ export default function BankAccountsListPage() {
                             {account.bankName || "-"}
                           </TableCell>
                           <TableCell className="text-slate-600 dark:text-slate-400">
-                            {account.currencyCode || "USD"}
+                            {account.currencyCode || baseCurrency}
                           </TableCell>
                           <TableCell className="text-slate-600 dark:text-slate-400">
                             {getAccountTypeLabel(account.accountType)}
@@ -1418,7 +1403,7 @@ export default function BankAccountsListPage() {
                           <TableCell className="font-mono font-semibold text-slate-950 dark:text-white">
                             {formatCurrency(
                               account.cachedBalance ?? account.openingBalance ?? 0,
-                              account.currencyCode || "USD",
+                              account.currencyCode || baseCurrency,
                             )}
                           </TableCell>
                           <TableCell>
@@ -1729,7 +1714,7 @@ export default function BankAccountsListPage() {
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
                     {accounts.filter((a) => a.isActive !== false).map((a) => (
-                      <SelectItem key={a._id} value={a._id}>{a.name} ({a.currencyCode || "USD"})</SelectItem>
+                      <SelectItem key={a._id} value={a._id}>{a.name} ({a.currencyCode || baseCurrency})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

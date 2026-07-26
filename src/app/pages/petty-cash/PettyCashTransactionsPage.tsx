@@ -373,7 +373,7 @@ export default function PettyCashTransactionsPage() {
                             {formatDate(tx.transactionDate)}
                           </TableCell>
                           <TableCell className="font-mono text-sm text-slate-700 dark:text-slate-300">
-                            {tx.referenceNo}
+                            {tx.referenceNo || <span className="text-slate-400 dark:text-slate-600">-</span>}
                           </TableCell>
                           <TableCell className="font-mono text-sm">
                             {tx.voucherNumber ? (

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { pickPackApi } from '@/lib/api';
 import { EmptyState } from '@/app/components/EmptyState';
 import { Layout } from '../../layout/Layout';
@@ -100,16 +101,6 @@ interface PickPack {
   createdAt: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Status' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'picking', label: 'Picking' },
-  { value: 'picked', label: 'Picked' },
-  { value: 'packed', label: 'Packing' },
-  { value: 'ready_for_delivery', label: 'Ready for Delivery' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
   picking: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300',
@@ -145,7 +136,18 @@ const PROGRESS_COLORS: Record<string, string> = {
 };
 
 export default function PickPacksListPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const STATUS_OPTIONS = [
+    { value: 'all', label: t('pickPack.status_options.all', 'All Status') },
+    { value: 'draft', label: t('pickPack.status_options.draft', 'Draft') },
+    { value: 'picking', label: t('pickPack.status_options.picking', 'Picking') },
+    { value: 'picked', label: t('pickPack.status_options.picked', 'Picked') },
+    { value: 'packed', label: t('pickPack.status_options.packed', 'Packing') },
+    { value: 'ready_for_delivery', label: t('pickPack.status_options.ready_for_delivery', 'Ready for Delivery') },
+    { value: 'cancelled', label: t('pickPack.status_options.cancelled', 'Cancelled') },
+  ];
 
   const [loading, setLoading] = useState(true);
   const [pickPacks, setPickPacks] = useState<PickPack[]>([]);
@@ -182,7 +184,7 @@ export default function PickPacksListPage() {
       }
     } catch (error) {
       console.error('Error fetching pick packs:', error);
-      toast.error('Failed to fetch pick packs');
+      toast.error(t('pickPack.fetchFailed', 'Failed to fetch pick packs'));
     } finally {
       setLoading(false);
     }
@@ -196,11 +198,11 @@ export default function PickPacksListPage() {
     try {
       const response = await pickPackApi.startPicking(id);
       if (response.success) {
-        toast.success('Picking started');
+        toast.success(t('pickPack.pickingStarted', 'Picking started'));
         fetchPickPacks();
       }
     } catch (error) {
-      toast.error('Failed to start picking');
+      toast.error(t('pickPack.startPickingFailed', 'Failed to start picking'));
     }
   };
 
@@ -208,25 +210,25 @@ export default function PickPacksListPage() {
     try {
       const response = await pickPackApi.startPacking(id);
       if (response.success) {
-        toast.success('Packing started');
+        toast.success(t('pickPack.packingStarted', 'Packing started'));
         fetchPickPacks();
       }
     } catch (error) {
-      toast.error('Failed to start packing');
+      toast.error(t('pickPack.startPackingFailed', 'Failed to start packing'));
     }
   };
 
   const handleCancel = async (id: string) => {
-    if (!confirm('Are you sure you want to cancel this pick pack task?')) return;
+    if (!confirm(t('pickPack.cancelConfirm', 'Are you sure you want to cancel this pick pack task?'))) return;
     
     try {
       const response = await pickPackApi.cancel(id, 'Cancelled by user');
       if (response.success) {
-        toast.success('Pick pack cancelled');
+        toast.success(t('pickPack.cancelled', 'Pick pack cancelled'));
         fetchPickPacks();
       }
     } catch (error) {
-      toast.error('Failed to cancel pick pack');
+      toast.error(t('pickPack.cancelFailed', 'Failed to cancel pick pack'));
     }
   };
 
@@ -236,9 +238,9 @@ export default function PickPacksListPage() {
     const packed = task.lines.reduce((sum, line) => sum + toNumber(line.qtyPacked), 0);
     
     if (task.status === 'ready_for_delivery' || task.status === 'packed') {
-      return { text: `${packed}/${total} packed`, percent: total > 0 ? (packed / total) * 100 : 0 };
+      return { text: `${packed}/${total} ${t('pickPack.packed', 'packed')}`, percent: total > 0 ? (packed / total) * 100 : 0 };
     }
-    return { text: `${picked}/${total} picked`, percent: total > 0 ? (picked / total) * 100 : 0 };
+    return { text: `${picked}/${total} ${t('pickPack.picked', 'picked')}`, percent: total > 0 ? (picked / total) * 100 : 0 };
   };
 
   return (
@@ -254,11 +256,11 @@ export default function PickPacksListPage() {
                     <Package className="h-5 w-5" />
                   </div>
                   <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
-                    Pick & Pack
+                    {t('pickPack.title', 'Pick & Pack')}
                   </h1>
                 </div>
                 <p className="mt-2 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
-                  Manage picking and packing tasks across warehouses
+                  {t('pickPack.subtitle', 'Manage picking and packing tasks across warehouses')}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Button
@@ -267,7 +269,7 @@ export default function PickPacksListPage() {
                     className="h-10 gap-2 bg-blue-600 hover:bg-blue-700"
                   >
                     <Plus className="h-4 w-4" />
-                    Create Pick & Pack
+                    {t('pickPack.createPickPack', 'Create Pick & Pack')}
                   </Button>
                   <Button
                     variant="outline"
@@ -277,7 +279,7 @@ export default function PickPacksListPage() {
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    Refresh
+                    {t('common.refresh', 'Refresh')}
                   </Button>
                 </div>
               </div>
@@ -305,7 +307,7 @@ export default function PickPacksListPage() {
                     <Package className="h-4 w-4" />
                   </div>
                   <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{pagination.total}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total Tasks</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('pickPack.totalTasks', 'Total Tasks')}</p>
                 </CardContent>
               </Card>
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -316,7 +318,7 @@ export default function PickPacksListPage() {
                   <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                     {pickPacks.filter((t) => t.status === 'picking').length}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Picking</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('pickPack.picking', 'Picking')}</p>
                 </CardContent>
               </Card>
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -327,7 +329,7 @@ export default function PickPacksListPage() {
                   <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                     {pickPacks.filter((t) => t.status === 'picked' || t.status === 'packed').length}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Packing</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('pickPack.packing', 'Packing')}</p>
                 </CardContent>
               </Card>
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -338,7 +340,7 @@ export default function PickPacksListPage() {
                   <p className="mt-2 text-2xl font-bold text-slate-900 dark:text-white">
                     {pickPacks.filter((t) => t.status === 'ready_for_delivery').length}
                   </p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Ready</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('pickPack.ready', 'Ready')}</p>
                 </CardContent>
               </Card>
             </div>
@@ -351,7 +353,7 @@ export default function PickPacksListPage() {
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                   <Input
-                    placeholder="Search by reference or sales order..."
+                    placeholder={t('pickPack.searchPlaceholder', 'Search by reference or sales order...')}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="bg-white pl-10 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
@@ -360,7 +362,7 @@ export default function PickPacksListPage() {
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-full bg-white sm:w-[200px] dark:border-slate-800 dark:bg-slate-900 dark:text-white">
                     <Filter className="mr-2 h-4 w-4 text-slate-500" />
-                    <SelectValue placeholder="Filter by status" />
+                    <SelectValue placeholder={t('pickPack.filterByStatus', 'Filter by status')} />
                   </SelectTrigger>
                   <SelectContent>
                     {STATUS_OPTIONS.map((option) => (
@@ -382,7 +384,16 @@ export default function PickPacksListPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b border-slate-200 bg-slate-50/50 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
-                      {['Reference', 'Sales Order', 'Client', 'Warehouse', 'Status', 'Priority', 'Progress', 'Actions'].map((h) => (
+                      {[
+                        t('pickPack.reference', 'Reference'),
+                        t('pickPack.salesOrder', 'Sales Order'),
+                        t('pickPack.client', 'Client'),
+                        t('pickPack.warehouse', 'Warehouse'),
+                        t('pickPack.status', 'Status'),
+                        t('pickPack.priority', 'Priority'),
+                        t('pickPack.progress', 'Progress'),
+                        t('pickPack.actions', 'Actions'),
+                      ].map((h) => (
                         <TableHead
                           key={h}
                           className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400"
@@ -413,8 +424,8 @@ export default function PickPacksListPage() {
                           <EmptyState
                             compact
                             icon={Package}
-                            title="No pick pack tasks yet"
-                            description="Pick pack tasks will appear here once sales orders are ready for fulfilment."
+                            title={t('pickPack.noTasks', 'No pick pack tasks yet')}
+                            description={t('pickPack.noTasksDescription', 'Pick pack tasks will appear here once sales orders are ready for fulfilment.')}
                           />
                         </TableCell>
                       </TableRow>
@@ -473,7 +484,7 @@ export default function PickPacksListPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => navigate(`/pick-packs/${task._id}`)}
-                                  title="View Details"
+                                  title={t('pickPack.viewDetails', 'View Details')}
                                   className="h-8 w-8 p-0"
                                 >
                                   <Eye className="h-4 w-4" />
@@ -483,7 +494,7 @@ export default function PickPacksListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleStartPicking(task._id)}
-                                    title="Start Picking"
+                                    title={t('pickPack.startPicking', 'Start Picking')}
                                     className="h-8 w-8 p-0 text-amber-600"
                                   >
                                     <Play className="h-4 w-4" />
@@ -494,7 +505,7 @@ export default function PickPacksListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => navigate(`/pick-packs/${task._id}/pick`)}
-                                    title="Pick Items"
+                                    title={t('pickPack.pickItems', 'Pick Items')}
                                     className="h-8 w-8 p-0 text-blue-600"
                                   >
                                     <Box className="h-4 w-4" />
@@ -505,7 +516,7 @@ export default function PickPacksListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleStartPacking(task._id)}
-                                    title="Start Packing"
+                                    title={t('pickPack.startPacking', 'Start Packing')}
                                     className="h-8 w-8 p-0 text-violet-600"
                                   >
                                     <Play className="h-4 w-4" />
@@ -516,7 +527,7 @@ export default function PickPacksListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => navigate(`/pick-packs/${task._id}/pack`)}
-                                    title="Pack Items"
+                                    title={t('pickPack.packItems', 'Pack Items')}
                                     className="h-8 w-8 p-0 text-orange-600"
                                   >
                                     <Box className="h-4 w-4" />
@@ -527,7 +538,7 @@ export default function PickPacksListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleCancel(task._id)}
-                                    title="Cancel"
+                                    title={t('pickPack.cancel', 'Cancel')}
                                     className="h-8 w-8 p-0 text-red-600"
                                   >
                                     <XCircle className="h-4 w-4" />
@@ -562,8 +573,8 @@ export default function PickPacksListPage() {
                 <EmptyState
                   compact
                   icon={Package}
-                  title="No pick pack tasks yet"
-                  description="Pick pack tasks will appear here once sales orders are ready for fulfilment."
+                  title={t('pickPack.noTasks', 'No pick pack tasks yet')}
+                  description={t('pickPack.noTasksDescription', 'Pick pack tasks will appear here once sales orders are ready for fulfilment.')}
                   className="m-4"
                 />
               ) : (
@@ -688,7 +699,7 @@ export default function PickPacksListPage() {
           {!loading && pickPacks.length > 0 && (
             <div className="flex items-center justify-between">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Showing {pickPacks.length} of {pagination.total} tasks
+                {t('pickPack.showingOf', 'Showing {{shown}} of {{total}} tasks', { shown: pickPacks.length, total: pagination.total })}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -698,7 +709,7 @@ export default function PickPacksListPage() {
                   disabled={pagination.page === 1}
                   className="dark:border-slate-700 dark:text-slate-200"
                 >
-                  Previous
+                  {t('pickPack.previous', 'Previous')}
                 </Button>
                 <div className="flex items-center px-3 text-sm font-medium text-slate-600 dark:text-slate-400">
                   {pagination.page} / {pagination.pages}
@@ -710,7 +721,7 @@ export default function PickPacksListPage() {
                   disabled={pagination.page >= pagination.pages}
                   className="dark:border-slate-700 dark:text-slate-200"
                 >
-                  Next
+                  {t('pickPack.next', 'Next')}
                 </Button>
               </div>
             </div>

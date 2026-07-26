@@ -5,13 +5,15 @@ import { useIsMobile } from '@/app/components/ui/use-mobile';
 import { Menu, Sun, Moon, Home, Sparkles, Search } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import NotificationBell from '@/app/components/NotificationBell';
 import { GlobalSearch, GlobalSearchTrigger, useGlobalSearchShortcut } from '@/app/components/GlobalSearch';
 import { Breadcrumbs } from '@/app/components/Breadcrumbs';
 import { QuickCreateMenu } from '@/app/components/QuickCreateMenu';
+import { DashboardCommandNav } from '@/app/components/dashboard/DashboardCommandNav';
 import { useChatPanelStore } from '@/store/chatPanelStore';
 import { useCompanyStore } from '@/store/companyStore';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface LayoutProps {
   children: ReactNode;
@@ -31,8 +33,12 @@ export function Layout({ children }: LayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isDashboardRoute =
+    location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/');
   const { open: chatOpen, width: chatWidth, toggle: toggleChat, setOpen: setChatOpen } = useChatPanelStore();
   const company = useCompanyStore((state) => state.company);
+  const { displayCurrency, rates } = useCurrency();
   const [isLg, setIsLg] = useState(false);
   const hasEnterpriseAI = Boolean(company?.subscription_plan === 'enterprise' || company?.feature_access?.ai_assistant);
   const effectiveChatOpen = chatOpen && hasEnterpriseAI;
@@ -208,8 +214,19 @@ export function Layout({ children }: LayoutProps) {
           <Breadcrumbs />
         </div>
 
-        {/* Page Content */}
-        <div className="flex-1 overflow-auto px-3 py-3 pb-24 sm:px-4 md:px-5 md:py-5 md:pb-8 xl:px-6">
+        {isDashboardRoute && (
+          <div className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4 md:px-5">
+            <DashboardCommandNav />
+          </div>
+        )}
+
+        {/* Page Content — keyed by display currency so all monetary values
+            (including ones rendered through non-hook formatters) refresh
+            immediately when the sidebar currency selector changes. */}
+        <div
+          key={`${displayCurrency}:${rates ? 'r' : 'n'}`}
+          className="flex-1 overflow-auto px-3 py-3 pb-24 sm:px-4 md:px-5 md:py-5 md:pb-8 xl:px-6"
+        >
           {children}
         </div>
       </main>

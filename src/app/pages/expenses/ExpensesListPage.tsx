@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { expensesApi, budgetsApi, departmentsApi, rraTaxCategories, supportedCurrencies, CurrencyCode, RRATaxCategory, type BudgetLine } from '@/lib/api';
+import { expensesApi, budgetsApi, departmentsApi, rraTaxCategories, CurrencyCode, RRATaxCategory, type BudgetLine } from '@/lib/api';
+import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { Layout } from '../../layout/Layout';
 import {
   Plus,
@@ -122,6 +124,8 @@ interface Expense {
 export default function ExpensesListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  // Formats a base-currency (RWF) amount in the display currency picked in the sidebar.
+  const { formatCurrency: formatDisplayCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -566,7 +570,7 @@ export default function ExpensesListPage() {
                   </div>
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Expenses</p>
-                    <p className="text-xl font-bold text-slate-900 dark:text-white">{formatRWF(totalExpenses)}</p>
+                    <p className="text-xl font-bold text-slate-900 dark:text-white">{formatDisplayCurrency(totalExpenses)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -911,43 +915,18 @@ export default function ExpensesListPage() {
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Currency *</Label>
-              <Select
+              <DocumentCurrencySelect
                 value={newExpenseForm.currencyCode}
-                onValueChange={(value) => {
-                  const currency = value as CurrencyCode;
-                  const isRWF = currency === 'RWF';
-                  setNewExpenseForm({
-                    ...newExpenseForm,
-                    currencyCode: currency,
-                    exchangeRate: isRWF ? 1 : newExpenseForm.exchangeRate,
-                  });
-                }}
-              >
-                <SelectTrigger className="border-slate-200 bg-slate-50 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                  <SelectValue placeholder="Select currency" />
-                </SelectTrigger>
-                <SelectContent className="dark:bg-slate-800">
-                  {supportedCurrencies.map((currency) => (
-                    <SelectItem key={currency.code} value={currency.code} className="dark:text-slate-200">
-                      {currency.code} - {currency.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                date={newExpenseForm.expenseDate}
+                onChange={(currency, rateToBase) =>
+                  setNewExpenseForm((prev) => ({
+                    ...prev,
+                    currencyCode: currency as CurrencyCode,
+                    exchangeRate: rateToBase ?? 1,
+                  }))
+                }
+              />
             </div>
-            {newExpenseForm.currencyCode !== 'RWF' && (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Exchange Rate (to RWF)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  placeholder="1.00"
-                  value={newExpenseForm.exchangeRate || ''}
-                  onChange={(e) => setNewExpenseForm({ ...newExpenseForm, exchangeRate: parseFloat(e.target.value) || 1 })}
-                  className="border-slate-200 bg-slate-50 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                />
-              </div>
-            )}
             <div className="space-y-2">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Amount (Net) *</Label>
               <Input

@@ -118,25 +118,28 @@ export default function PickPackPackPage() {
     try {
       setSubmitting(true);
 
-      // Pack each line
+      const incomplete = pickPack!.lines.filter((line) => {
+        const qty = packingLines[line._id] || 0;
+        return qty < toNumber(line.qtyPicked || line.qtyToPick);
+      });
+      if (incomplete.length > 0) {
+        toast.error('Pack all quantities before completing');
+        return;
+      }
+
       for (const line of pickPack!.lines) {
         const qtyToRecord = packingLines[line._id] || 0;
         const currentPacked = toNumber(line.qtyPacked);
-        
+
         if (qtyToRecord > currentPacked) {
-          // Call API for each line individually
-          await fetch(`${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api'}/pick-packs/${id}/pack-items`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-              lineId: line._id,
-              qtyPacked: qtyToRecord,
-              notes: ''
-            })
-          }).then(res => res.json());
+          const packRes = await pickPackApi.packItems(id!, {
+            lineId: line._id,
+            qtyPacked: qtyToRecord,
+            notes: '',
+          });
+          if (!packRes.success) {
+            throw new Error(packRes.message || 'Failed to record packed items');
+          }
         }
       }
 

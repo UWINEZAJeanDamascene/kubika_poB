@@ -24,7 +24,7 @@ export default function WeeklyPayrollPreviewReportPage() {
   ] : data ? [{ label: "Employees", value: data.employeeCount, caption: "Estimated population", icon: Users, tone: "violet" }, { label: "Estimated Gross", value: fmt(data.estimatedGrossPay || 0), caption: "No active payroll run", icon: Banknote, tone: "amber" }] : [];
 
   return (
-    <WeeklyReportScaffold title="Payroll Preview" shortTitle="Payroll" subtitle="Expected gross pay, PAYE, RSSB contributions, deductions, and net pay." icon={Users} tone="violet" loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <WeeklyReportScaffold title="Payroll Preview" shortTitle="Payroll" subtitle="Expected gross pay, PAYE, RSSB contributions, deductions, and net pay." icon={Users} tone="violet" loading={isLoading} downloading={downloading} onBack={() => navigate(weeklyReportsApi.getListPath())} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (!data.payrollInProgress ? (
         <Card className={weeklyReportCardClass}><CardContent className="py-12 text-center"><AlertCircle className="mx-auto mb-4 h-12 w-12 text-amber-500" /><h3 className="text-lg font-semibold text-amber-800 dark:text-amber-300">No Payroll in Progress</h3><p className="mt-2 text-sm text-slate-500">{data.message}</p><p className="mt-4 text-sm text-slate-500">Estimated gross pay for {data.employeeCount} employees: {fmt(data.estimatedGrossPay || 0)}</p></CardContent></Card>
       ) : (

@@ -145,7 +145,7 @@ export default function CategoriesPage() {
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      toast.error(t('pages.categories.categoryName') + ' is required');
+      toast.error(t('pages.categories.nameRequired'));
       return;
     }
 

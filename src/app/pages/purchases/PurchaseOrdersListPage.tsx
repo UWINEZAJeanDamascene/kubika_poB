@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { purchaseOrdersApi, suppliersApi, freightAnalysisApi } from '@/lib/api';
+import { FreightBillsContent } from '@/app/pages/freight/FreightBillsListPage';
 import { Layout } from '../../layout/Layout';
 import {
   Plus,
@@ -94,9 +95,23 @@ interface PaginationInfo {
   limit: number;
 }
 
+type PurchaseOrdersTab = 'orders' | 'freight-bills' | 'freight-analysis';
+
+function parsePurchaseOrdersTab(value: string | null): PurchaseOrdersTab {
+  if (value === 'freight-bills' || value === 'freight-analysis' || value === 'freight') {
+    return value === 'freight' ? 'freight-analysis' : value;
+  }
+  return 'orders';
+}
+
 export default function PurchaseOrdersListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = parsePurchaseOrdersTab(searchParams.get('tab'));
+  const setActiveTab = (tab: PurchaseOrdersTab) => {
+    setSearchParams(tab === 'orders' ? {} : { tab }, { replace: true });
+  };
   const { hasPermission } = useAuth();
   const canCreatePurchaseOrder = hasPermission('purchase_orders:create');
   const canUpdatePurchaseOrder = hasPermission('purchase_orders:update');
@@ -117,9 +132,6 @@ export default function PurchaseOrdersListPage() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
-
-  // Tabs
-  const [activeTab, setActiveTab] = useState<'orders' | 'freight'>('orders');
 
   // Freight Analysis state
   const [freightLoading, setFreightLoading] = useState(false);
@@ -145,7 +157,7 @@ export default function PurchaseOrdersListPage() {
   }, [freightDateFrom, freightDateTo]);
 
   useEffect(() => {
-    if (activeTab === 'freight') {
+    if (activeTab === 'freight-analysis') {
       fetchFreightAnalysis();
     }
   }, [activeTab, fetchFreightAnalysis]);
@@ -352,9 +364,9 @@ export default function PurchaseOrdersListPage() {
   }
 
 
-  const formatCurrency = (amount: number | string, currency: string = 'USD') => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return formatDocumentCurrency(num || 0, currency);
+  const formatCurrency = (amount: number | string, currency: string = 'RWF') => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
+    return formatDocumentCurrency(Number.isFinite(num) ? num : 0, currency || 'RWF');
   };
 
   const formatDate = (dateStr: string) => {
@@ -495,9 +507,19 @@ export default function PurchaseOrdersListPage() {
               Purchase Orders ({pagination?.total || poList.length})
             </button>
             <button
-              onClick={() => setActiveTab('freight')}
+              onClick={() => setActiveTab('freight-bills')}
               className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === 'freight'
+                activeTab === 'freight-bills'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
+                  : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'
+              }`}
+            >
+              {t('freight.title', 'Freight Bills')}
+            </button>
+            <button
+              onClick={() => setActiveTab('freight-analysis')}
+              className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+                activeTab === 'freight-analysis'
                   ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
                   : 'text-slate-600 hover:bg-slate-50 dark:text-slate-400 dark:hover:bg-slate-800'
               }`}
@@ -505,6 +527,10 @@ export default function PurchaseOrdersListPage() {
               Freight Cost Analysis
             </button>
           </div>
+
+          {activeTab === 'freight-bills' && (
+            <FreightBillsContent />
+          )}
 
           {activeTab === 'orders' && (
             <>
@@ -807,7 +833,7 @@ export default function PurchaseOrdersListPage() {
           </>
           )}
 
-          {activeTab === 'freight' && (
+          {activeTab === 'freight-analysis' && (
             <div className="space-y-6">
               {/* Filters */}
               <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">

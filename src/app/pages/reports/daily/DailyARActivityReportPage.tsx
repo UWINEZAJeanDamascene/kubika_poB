@@ -30,7 +30,7 @@ export default function DailyARActivityReportPage() {
   ] : [];
 
   return (
-    <DailyReportScaffold title="Daily AR Activity" shortTitle="AR Activity" subtitle="New invoices, customer payments, credit notes, and net receivables movement." icon={Users} tone="indigo" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <DailyReportScaffold title="Daily AR Activity" shortTitle="AR Activity" subtitle="New invoices, customer payments, credit notes, and net receivables movement." icon={Users} tone="indigo" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(dailyReportsApi.getListPath(date))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className={reportCardClass}>

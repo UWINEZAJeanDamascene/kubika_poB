@@ -170,7 +170,7 @@ export default function GRNListPage() {
     const total = grnList.length;
     const draft = grnList.filter((g) => g.status === "draft").length;
     const confirmed = grnList.filter((g) => g.status === "confirmed").length;
-    const totalValue = grnList.reduce((sum, g) => sum + (g.totalAmount || 0), 0);
+    const totalValue = grnList.reduce((sum, g) => sum + (Number(g.totalAmount) || 0), 0);
     return { total, draft, confirmed, totalValue };
   }, [grnList]);
 
@@ -228,8 +228,9 @@ export default function GRNListPage() {
     try {
       await grnApi.confirm(id);
       fetchGRNs();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to confirm GRN:", error);
+      alert(error?.message || "Failed to confirm GRN");
     }
   };
 
@@ -398,7 +399,7 @@ export default function GRNListPage() {
                           <StatusBadge status={grn.status} />
                         </TableCell>
                         <TableCell><EBMStatusBadge ebmStatus={grn.ebm?.stockStatus || grn.ebm?.ebmStatus} /></TableCell>
-                        <TableCell className="font-mono font-medium text-slate-900 dark:text-white">{formatCurrency(grn.totalAmount)}</TableCell>
+                        <TableCell className="font-mono font-medium text-slate-900 dark:text-white">{formatCurrency(Number(grn.totalAmount) || 0)}</TableCell>
                         <TableCell>
                           <PaymentStatusBadge status={grn.paymentStatus} />
                         </TableCell>

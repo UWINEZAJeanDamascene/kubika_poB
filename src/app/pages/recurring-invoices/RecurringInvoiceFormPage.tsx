@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { recurringInvoicesApi, clientsApi, productsApi, warehousesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
+import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
 import {
   ArrowLeft,
   Save,
@@ -129,7 +130,7 @@ export default function RecurringInvoiceFormPage() {
   const [autoConfirm, setAutoConfirm] = useState(false);
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<LineItem[]>([]);
-  const [currencyCode, setCurrencyCode] = useState('USD');
+  const [currencyCode, setCurrencyCode] = useState('RWF');
 
   const fetchData = useCallback(async () => {
     try {
@@ -169,7 +170,7 @@ export default function RecurringInvoiceFormPage() {
         setEndDate(ri.endDate ? new Date(ri.endDate).toISOString().split('T')[0] : '');
         setAutoConfirm(ri.autoConfirm || false);
         setNotes(ri.notes || '');
-        setCurrencyCode(ri.currencyCode || 'USD');
+        setCurrencyCode(ri.currencyCode || 'RWF');
         
         // Transform lines
         if (ri.lines && ri.lines.length > 0) {
@@ -443,16 +444,12 @@ export default function RecurringInvoiceFormPage() {
                     </div>
                     <div>
                       <Label className="text-sm text-slate-700 dark:text-slate-300">{t('recurringInvoices.currency', 'Currency')}</Label>
-                      <Select value={currencyCode} onValueChange={setCurrencyCode}>
-                        <SelectTrigger className="mt-1 bg-slate-50 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 dark:text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
-                          <SelectItem value="USD" className="dark:text-white">USD</SelectItem>
-                          <SelectItem value="EUR" className="dark:text-white">EUR</SelectItem>
-                          <SelectItem value="GBP" className="dark:text-white">GBP</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <DocumentCurrencySelect
+                        className="mt-1"
+                        value={currencyCode}
+                        showRate={false}
+                        onChange={(currency) => setCurrencyCode(currency)}
+                      />
                     </div>
                   </div>
 

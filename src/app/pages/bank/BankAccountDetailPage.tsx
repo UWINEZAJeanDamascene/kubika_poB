@@ -134,6 +134,29 @@ const getAccountTypeColor = (type: string) => {
   return colors[type] || colors.bk_bank;
 };
 
+const BANK_INFLOW_TYPES = new Set(["deposit", "transfer_in", "opening", "debit"]);
+const isLikelyObjectId = (value: string) => /^[a-f0-9]{24}$/i.test(value);
+
+const isBankInflow = (type: string) => BANK_INFLOW_TYPES.has(type);
+
+const getTransactionReference = (tx: any) =>
+  tx.referenceNumber ||
+  tx.sourceReference ||
+  tx.journalEntryNumber ||
+  (tx.reference && !isLikelyObjectId(tx.reference) ? tx.reference : null) ||
+  "-";
+
+const getDisplayType = (tx: any) => {
+  if (tx.type === "debit") return "deposit";
+  if (tx.type === "credit") return "withdrawal";
+  if (
+    String(tx.description || "").toLowerCase().includes("opening balance")
+  ) {
+    return "opening";
+  }
+  return tx.type;
+};
+
 export default function BankAccountDetailPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -236,27 +259,54 @@ export default function BankAccountDetailPage() {
         const response = await bankAccountsApi.getTransactions(id, params);
         if (response.success) {
           const txs = (response.data as any[]) || [];
-          // Calculate running balance for each transaction
-          // Sort by date ascending to calculate, then restore original order
-          const sortedTxs = [...txs].sort((a, b) => 
-            new Date(a.date).getTime() - new Date(b.date).getTime()
+          const sortedTxs = [...txs].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
           );
-          // Start with opening balance, then apply transaction movements
-          let runningBalance = parseFloat(account?.openingBalance?.$numberDecimal || account?.openingBalance || 0);
+
+          const openingBalance = Number(
+            account?.openingBalance?.$numberDecimal ??
+              account?.openingBalance ??
+              0,
+          );
+
+          let runningBalance = 0;
           const txsWithBalance = sortedTxs.map((tx) => {
-            if (tx.type === "deposit" || tx.type === "transfer_in" || tx.type === "opening") {
-              runningBalance += tx.amount || 0;
-            } else if (tx.type === "withdrawal" || tx.type === "transfer_out") {
-              runningBalance -= tx.amount || 0;
-            } else if (tx.type === "adjustment") {
-              runningBalance += tx.amount || 0; // adjustment can be positive or negative
+            const displayType = getDisplayType(tx);
+            const storedBalance = tx.balance ?? tx.balanceAfter;
+            if (storedBalance != null && !Number.isNaN(Number(storedBalance))) {
+              runningBalance = Number(storedBalance);
+              return { ...tx, type: displayType, runningBalance };
             }
-            return { ...tx, runningBalance };
+
+            if (isBankInflow(tx.type) || displayType === "opening") {
+              runningBalance += Number(tx.amount || 0);
+            } else if (
+              tx.type === "withdrawal" ||
+              tx.type === "transfer_out" ||
+              tx.type === "credit"
+            ) {
+              runningBalance -= Number(tx.amount || 0);
+            } else if (tx.type === "adjustment") {
+              runningBalance += Number(tx.amount || 0);
+            }
+
+            return { ...tx, type: displayType, runningBalance };
           });
-          // Restore original sort order (newest first)
-          setTransactions(txsWithBalance.sort((a, b) => 
-            new Date(b.date).getTime() - new Date(a.date).getTime()
-          ));
+
+          if (
+            txsWithBalance.length === 1 &&
+            getDisplayType(txsWithBalance[0]) === "opening" &&
+            openingBalance > 0 &&
+            txsWithBalance[0].runningBalance === 0
+          ) {
+            txsWithBalance[0].runningBalance = openingBalance;
+          }
+
+          setTransactions(
+            txsWithBalance.sort(
+              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+            ),
+          );
         }
       } catch (error) {
         console.error(
@@ -265,7 +315,7 @@ export default function BankAccountDetailPage() {
         );
       }
     },
-    [id],
+    [id, account?.openingBalance],
   );
 
   useEffect(() => {
@@ -956,7 +1006,9 @@ export default function BankAccountDetailPage() {
                             </TableCell>
                           </TableRow>
                         ) : (
-                          transactions.map((tx) => (
+                          transactions.map((tx) => {
+                            const inflow = isBankInflow(tx.type);
+                            return (
                             <TableRow
                               key={tx._id}
                               className="dark:border-slate-800 dark:hover:bg-slate-900/50"
@@ -968,13 +1020,13 @@ export default function BankAccountDetailPage() {
                                 {tx.description || "-"}
                               </TableCell>
                               <TableCell className="font-mono text-xs text-slate-600 dark:text-slate-400">
-                                {tx.reference || tx.referenceNumber || tx.journalEntryNumber || tx.sourceReference || (tx.journalEntryId ? tx.journalEntryId.slice(-8) : tx._id ? tx._id.slice(-8) : "-")}
+                                {getTransactionReference(tx)}
                               </TableCell>
                               <TableCell>
                                 <Badge
                                   variant="outline"
                                   className={
-                                    tx.type === "deposit" || tx.type === "transfer_in" || tx.type === "opening"
+                                    inflow
                                       ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400"
                                       : "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-400"
                                   }
@@ -985,12 +1037,12 @@ export default function BankAccountDetailPage() {
                               <TableCell className="text-sm font-medium">
                                 <span
                                   className={
-                                    tx.type === "deposit" || tx.type === "transfer_in" || tx.type === "opening"
+                                    inflow
                                       ? "text-emerald-600 dark:text-emerald-400"
                                       : "text-red-600 dark:text-red-400"
                                   }
                                 >
-                                  {tx.type === "deposit" || tx.type === "transfer_in" || tx.type === "opening" ? "+" : "-"}
+                                  {inflow ? "+" : "-"}
                                   {formatCurrency(tx.amount, currencyCode)}
                                 </span>
                               </TableCell>
@@ -998,7 +1050,8 @@ export default function BankAccountDetailPage() {
                                 {formatCurrency(tx.runningBalance, currencyCode)}
                               </TableCell>
                             </TableRow>
-                          ))
+                            );
+                          })
                         )}
                       </TableBody>
                     </Table>

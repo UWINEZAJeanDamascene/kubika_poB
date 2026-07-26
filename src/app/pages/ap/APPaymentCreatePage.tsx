@@ -7,6 +7,7 @@ import {
   grnApi,
 } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
+import DocumentCurrencySelect from "@/app/components/DocumentCurrencySelect";
 import {
   ArrowLeft,
   Save,
@@ -89,8 +90,6 @@ const PAYMENT_METHODS = [
   { value: "other", label: "Other" },
 ];
 
-const CURRENCIES = ["USD", "EUR", "GBP", "RWF", "KES", "UGX", "TZS"];
-
 export default function APPaymentCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -110,7 +109,7 @@ export default function APPaymentCreatePage() {
     paymentMethod: "bank_transfer",
     bankAccountId: "",
     amountPaid: 0,
-    currencyCode: "USD",
+    currencyCode: "RWF",
     reference: "",
     notes: "",
   });
@@ -172,7 +171,7 @@ export default function APPaymentCreatePage() {
             paymentMethod: payment.paymentMethod || "bank_transfer",
             bankAccountId: payment.bankAccount?._id || "",
             amountPaid: parseFloat(payment.amountPaid) || 0,
-            currencyCode: payment.currencyCode || "USD",
+            currencyCode: payment.currencyCode || "RWF",
             reference: payment.reference || "",
             notes: payment.notes || "",
           });
@@ -459,23 +458,13 @@ export default function APPaymentCreatePage() {
 
                     <div>
                       <Label>{t("apPayment.currency", "Currency")}</Label>
-                      <Select
+                      <DocumentCurrencySelect
                         value={formData.currencyCode}
-                        onValueChange={(value) =>
-                          handleInputChange("currencyCode", value)
+                        date={formData.paymentDate}
+                        onChange={(currency) =>
+                          handleInputChange("currencyCode", currency)
                         }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CURRENCIES.map((currency) => (
-                            <SelectItem key={currency} value={currency}>
-                              {currency}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
 
                     <div className="md:col-span-2">

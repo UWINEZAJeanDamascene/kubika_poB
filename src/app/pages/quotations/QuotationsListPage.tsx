@@ -11,7 +11,6 @@ import {
   CheckCircle,
   XCircle,
   FileText,
-  Loader2,
   ChevronLeft,
   ChevronRight,
   ArrowRight,
@@ -178,8 +177,18 @@ export default function QuotationsListPage() {
 
   const handleSend = async (id: string) => {
     try {
-      await quotationsApi.send(id, sendEmail, recipientEmail || undefined);
-      toast.success(t('quotation.sentSuccess', 'Quotation sent'));
+      const response = await quotationsApi.send(id, sendEmail, recipientEmail || undefined);
+      const sentData = response.data as { status?: string } | undefined;
+      if (sentData?.status === 'pending_approval') {
+        toast.success(t('quotation.pendingApproval', 'Quotation submitted for approval'));
+      } else if (sendEmail && response.emailSent === false) {
+        toast.warning(
+          response.message
+            || t('quotation.emailFailed', 'Quotation sent, but the email could not be delivered.'),
+        );
+      } else {
+        toast.success(t('quotation.sentSuccess', 'Quotation sent'));
+      }
       fetchQuotations();
     } catch (error) {
       console.error('Failed to send quotation:', error);
@@ -281,15 +290,15 @@ export default function QuotationsListPage() {
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <BarChart3 className="mr-1 h-3 w-3" />
-                    {pagination?.total || quotations.length} total
+                    {t('quotation.totalCount', '{{count}} total', { count: pagination?.total || quotations.length })}
                   </Badge>
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <TrendingUp className="mr-1 h-3 w-3" />
-                    {acceptedCount} accepted
+                    {t('quotation.acceptedCount', '{{count}} accepted', { count: acceptedCount })}
                   </Badge>
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <CalendarDays className="mr-1 h-3 w-3" />
-                    {sentCount} sent
+                    {t('quotation.sentCount', '{{count}} sent', { count: sentCount })}
                   </Badge>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
@@ -307,25 +316,25 @@ export default function QuotationsListPage() {
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    Refresh
+                    {t('common.refresh', 'Refresh')}
                   </Button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total Quotes</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('quotation.totalQuotes', 'Total Quotes')}</p>
                   <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{quotations.length}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total Value</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('quotation.totalValue', 'Total Value')}</p>
                   <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(totalValue)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Draft</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('quotation.status.draft', 'Draft')}</p>
                   <p className="mt-1 text-lg font-bold text-amber-600 dark:text-amber-400">{draftCount}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Accepted</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('quotation.status.accepted', 'Accepted')}</p>
                   <p className="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">{acceptedCount}</p>
                 </div>
               </div>
@@ -382,7 +391,7 @@ export default function QuotationsListPage() {
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Quotes</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('quotation.totalQuotes', 'Total Quotes')}</p>
                         <p className="mt-3 text-2xl font-bold text-slate-950 dark:text-white">{quotations.length}</p>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-2.5 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60">
@@ -396,42 +405,42 @@ export default function QuotationsListPage() {
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Value</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('quotation.totalValue', 'Total Value')}</p>
                         <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">{formatCurrency(totalValue)}</p>
                       </div>
                       <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
                         <TrendingUp className="h-5 w-5" />
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Combined quotation value</p>
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('quotation.combinedValue', 'Combined quotation value')}</p>
                   </CardContent>
                 </Card>
                 <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Sent</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('quotation.status.sent', 'Sent')}</p>
                         <p className="mt-3 text-2xl font-bold text-blue-600 dark:text-blue-400">{sentCount}</p>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-2.5 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60">
                         <Send className="h-5 w-5" />
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Awaiting client response</p>
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('quotation.awaitingResponse', 'Awaiting client response')}</p>
                   </CardContent>
                 </Card>
                 <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Draft</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('quotation.status.draft', 'Draft')}</p>
                         <p className="mt-3 text-2xl font-bold text-amber-600 dark:text-amber-400">{draftCount}</p>
                       </div>
                       <div className="rounded-lg bg-amber-50 p-2.5 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60">
                         <FileText className="h-5 w-5" />
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Pending send to client</p>
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('quotation.pendingSend', 'Pending send to client')}</p>
                   </CardContent>
                 </Card>
               </>
@@ -574,7 +583,7 @@ export default function QuotationsListPage() {
                               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60">
                                 <FileText className="h-4 w-4" />
                               </div>
-                              <span className="font-semibold text-slate-950 dark:text-white">{quotation.referenceNo || 'N/A'}</span>
+                              <span className="font-semibold text-slate-950 dark:text-white">{quotation.referenceNo || t('common.notAvailable', 'N/A')}</span>
                             </div>
                           </TableCell>
                           <TableCell className="text-sm text-slate-700 dark:text-slate-300">{quotation.client?.name || '-'}</TableCell>
@@ -597,7 +606,7 @@ export default function QuotationsListPage() {
                                 onClick={() => navigate(`/invoices/${quotation.convertedToInvoice}`)}
                               >
                                 <FileText className="mr-1 h-3 w-3" />
-                                View Invoice
+                                {t('quotation.viewInvoice', 'View Invoice')}
                               </Button>
                             ) : (
                               <span className="text-sm text-slate-400 dark:text-slate-500">—</span>
@@ -684,7 +693,7 @@ export default function QuotationsListPage() {
           {pagination && pagination.totalPages > 1 && (
             <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Showing {quotations.length} of {pagination.total} quotations
+                {t('quotation.showingOf', 'Showing {{shown}} of {{total}} quotations', { shown: quotations.length, total: pagination.total })}
               </p>
               <div className="flex items-center gap-2">
                 <Button
@@ -725,7 +734,7 @@ export default function QuotationsListPage() {
       <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
         <DialogContent className="dark:bg-slate-900 dark:border-slate-800">
           <DialogHeader>
-            <DialogTitle className="dark:text-white">Send Email to Customer</DialogTitle>
+            <DialogTitle className="dark:text-white">{t('quotation.sendEmailTitle', 'Send Email to Customer')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-4">
             <div className="flex items-center gap-2">
@@ -737,7 +746,7 @@ export default function QuotationsListPage() {
                 className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600 dark:border-slate-700 dark:bg-slate-900"
               />
               <Label htmlFor="quotationSendEmail" className="cursor-pointer text-sm text-slate-600 dark:text-slate-300">
-                Send quotation details to customer via email
+                {t('quotation.sendEmailDescription', 'Send quotation details to customer via email')}
               </Label>
             </div>
             <Label className="flex flex-col gap-2 text-sm text-slate-700 dark:text-slate-300">
@@ -752,10 +761,10 @@ export default function QuotationsListPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEmailDialogOpen(false)} className="dark:border-slate-700 dark:text-slate-200">
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </Button>
             <Button onClick={executePendingAction} className="bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500">
-              Confirm
+              {t('common.confirm', 'Confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

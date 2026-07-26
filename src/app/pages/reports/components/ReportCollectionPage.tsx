@@ -125,6 +125,7 @@ export function ReportCollectionPage({
   infoBody,
   metrics,
   onBack,
+  backLabel = "Back to Reports",
   onView,
   onDownloadPDF,
   onDownloadExcel,
@@ -141,6 +142,7 @@ export function ReportCollectionPage({
   infoBody: string;
   metrics: ReportMetric[];
   onBack?: () => void;
+  backLabel?: string;
   onView: (reportId: string) => void;
   onDownloadPDF?: (reportId: string) => void;
   onDownloadExcel?: (reportId: string) => void;
@@ -155,15 +157,15 @@ export function ReportCollectionPage({
             <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
               <div className="flex min-w-0 flex-col justify-between gap-6">
                 <div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     {onBack && (
                       <Button
                         variant="outline"
-                        size="icon"
                         onClick={onBack}
                         className="border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100 dark:border-white/15 dark:bg-white/5 dark:text-white dark:hover:bg-white/10"
                       >
-                        <ArrowLeft className="h-4 w-4" />
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        {backLabel}
                       </Button>
                     )}
                     <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/10">

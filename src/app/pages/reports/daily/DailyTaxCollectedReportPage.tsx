@@ -30,7 +30,7 @@ export default function DailyTaxCollectedReportPage() {
   ] : [];
 
   return (
-    <DailyReportScaffold title="Daily Tax Collected" shortTitle="Tax" subtitle="Output VAT from sales and withholding tax breakdown for the selected date." icon={Receipt} tone="teal" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <DailyReportScaffold title="Daily Tax Collected" shortTitle="Tax" subtitle="Output VAT from sales and withholding tax breakdown for the selected date." icon={Receipt} tone="teal" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(dailyReportsApi.getListPath(date))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
           <Card className={reportCardClass}>

@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router';
 import { quotationsApi, clientsApi, productsApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
 import {
   ArrowLeft,
   Save,
@@ -64,6 +65,8 @@ interface Client {
   _id: string;
   name: string;
   code?: string;
+  contact?: { email?: string; phone?: string };
+  email?: string;
 }
 
 interface QuotationLine {
@@ -115,19 +118,9 @@ export default function QuotationFormPage() {
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
   const [sendEmail, setSendEmail] = useState(true);
   const [recipientEmail, setRecipientEmail] = useState('');
-
-  useEffect(() => {
-    console.log('[QuotationFormPage] Quotation loaded:', quotation);
-    console.log('[QuotationFormPage] Rejection fields:', {
-      status: quotation?.status,
-      rejectionReason: quotation?.rejectionReason,
-      clientRejectionReason: quotation?.clientRejectionReason,
-      rejectionDate: quotation?.rejectionDate,
-    });
-  }, [quotation]);
   const [clients, setClients] = useState<Client[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  
+
   const [formData, setFormData] = useState<QuotationFormData>({
     client: '',
     quotationDate: new Date().toISOString().split('T')[0],
@@ -137,6 +130,23 @@ export default function QuotationFormPage() {
     notes: '',
     lines: [{ ...emptyLine }]
   });
+
+  useEffect(() => {
+    if (!formData.client) {
+      setRecipientEmail('');
+      return;
+    }
+    const client = clients.find((c) => c._id === formData.client);
+    const email = client?.contact?.email || client?.email || '';
+    if (email) setRecipientEmail(email);
+  }, [formData.client, clients]);
+
+  const openSendDialog = () => {
+    const client = clients.find((c) => c._id === formData.client);
+    const email = client?.contact?.email || client?.email;
+    if (email) setRecipientEmail(email);
+    setSendDialogOpen(true);
+  };
 
   // Prefill from duplicate state
   useEffect(() => {
@@ -187,15 +197,23 @@ export default function QuotationFormPage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await productsApi.getAll({ limit: 100 });
+      const response = await productsApi.getAll({ limit: 100, forPicker: '1' });
       if (response.success && response.data) {
-        const productData = Array.isArray(response.data) 
-          ? response.data 
+        const productData = Array.isArray(response.data)
+          ? response.data
           : (response.data as unknown[]);
-        setProducts(productData as Product[]);
+        setProducts(
+          (productData as Product[]).map((p) => ({
+            ...p,
+            sellingPrice: p.sellingPrice != null ? Number(p.sellingPrice) : undefined,
+          })),
+        );
+      } else {
+        toast.error(t('quotation.productsLoadFailed', 'Failed to load products for line items'));
       }
     } catch (error) {
       console.error('Failed to fetch products:', error);
+      toast.error(t('quotation.productsLoadFailed', 'Failed to load products for line items'));
     }
   };
 
@@ -206,6 +224,8 @@ export default function QuotationFormPage() {
       if (response.success && response.data) {
         const quotation = response.data as any;
         setQuotation(quotation);
+        const clientEmail = quotation.client?.contact?.email || quotation.client?.email || '';
+        if (clientEmail) setRecipientEmail(clientEmail);
         setFormData({
           client: quotation.client?._id || '',
           quotationDate: quotation.quotationDate ? quotation.quotationDate.split('T')[0] : '',
@@ -360,9 +380,25 @@ export default function QuotationFormPage() {
       if (response.success && response.data) {
         const quotationId = (response.data as any)._id;
         if (sendImmediately && quotationId) {
-          await quotationsApi.send(quotationId, sendEmail, recipientEmail || undefined);
+          const sendResponse = await quotationsApi.send(quotationId, sendEmail, recipientEmail || undefined);
+          const sentData = sendResponse.data as { status?: string } | undefined;
+          if (sentData?.status === 'pending_approval') {
+            toast.success(t('quotation.pendingApproval', 'Quotation saved and submitted for approval'));
+          } else if (sendEmail && sendResponse.emailSent === false) {
+            toast.warning(
+              sendResponse.message
+                || t('quotation.emailFailed', 'Quotation sent, but the email could not be delivered. Check the client email and mail settings.'),
+            );
+          } else {
+            toast.success(
+              sendEmail
+                ? t('quotation.sentSuccess', 'Quotation saved & sent')
+                : t('quotation.sentNoEmail', 'Quotation saved & sent (no email)'),
+            );
+          }
+        } else {
+          toast.success(t('quotation.savedSuccess', 'Quotation saved'));
         }
-        toast.success(sendImmediately ? t('quotation.sentSuccess', 'Quotation saved & sent') : t('quotation.savedSuccess', 'Quotation saved'));
         navigate('/quotations');
       }
     } catch (error) {
@@ -550,7 +586,7 @@ export default function QuotationFormPage() {
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                         {t('quotation.saveDraft', 'Save Draft')}
                       </Button>
-                      <Button variant="default" onClick={() => setSendDialogOpen(true)} disabled={saving || !formData.client} className="h-10 gap-2">
+                      <Button variant="default" onClick={openSendDialog} disabled={saving || !formData.client} className="h-10 gap-2">
                         {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                         {t('quotation.sendToClient', 'Save & Send')}
                       </Button>
@@ -678,34 +714,21 @@ export default function QuotationFormPage() {
                       {isViewMode ? (
                         <div className="mt-1 rounded-md border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{formData.currency}</div>
                       ) : (
-                        <Select value={formData.currency} onValueChange={(value) => setFormData((prev) => ({ ...prev, currency: value }))}>
-                          <SelectTrigger className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700">
-                            <SelectItem value="RWF" className="dark:focus:bg-slate-800 dark:focus:text-white">RWF (FRw)</SelectItem>
-                            <SelectItem value="USD" className="dark:focus:bg-slate-800 dark:focus:text-white">USD ($)</SelectItem>
-                            <SelectItem value="EUR" className="dark:focus:bg-slate-800 dark:focus:text-white">EUR (€)</SelectItem>
-                            <SelectItem value="GBP" className="dark:focus:bg-slate-800 dark:focus:text-white">GBP (£)</SelectItem>
-                            <SelectItem value="LBP" className="dark:focus:bg-slate-800 dark:focus:text-white">LBP (ل.ل)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                    <div>
-                      <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('quotation.exchangeRate', 'Exchange Rate')}</Label>
-                      {isViewMode ? (
-                        <div className="mt-1 rounded-md border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{formData.exchangeRate}</div>
-                      ) : (
-                        <Input
-                          type="number"
-                          step="0.0001"
-                          value={formData.exchangeRate}
-                          onChange={(e) => setFormData((prev) => ({ ...prev, exchangeRate: parseFloat(e.target.value) || 0 }))}
-                          className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700"
+                        <DocumentCurrencySelect
+                          value={formData.currency}
+                          date={formData.quotationDate}
+                          onChange={(currency, rateToBase) =>
+                            setFormData((prev) => ({ ...prev, currency, exchangeRate: rateToBase ?? 1 }))
+                          }
                         />
                       )}
                     </div>
+                    {isViewMode && (
+                      <div>
+                        <Label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('quotation.exchangeRate', 'Exchange Rate')}</Label>
+                        <div className="mt-1 rounded-md border border-slate-200 bg-slate-50 p-2.5 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">{formData.exchangeRate}</div>
+                      </div>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                     <div>
@@ -775,7 +798,7 @@ export default function QuotationFormPage() {
                       <TableHeader>
                         <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
                           <TableHead className="text-slate-600 dark:text-slate-400">{t('quotation.product', 'Product')}</TableHead>
-                          <TableHead className="text-slate-600 dark:text-slate-400">{t('quotation.description', 'Description')}</TableHead>
+                          <TableHead className="text-slate-600 dark:text-slate-400">{t('quotation.lineDescription', 'Description')}</TableHead>
                           <TableHead className="text-right text-slate-600 dark:text-slate-400">{t('quotation.qty', 'Qty')}</TableHead>
                           <TableHead className="text-right text-slate-600 dark:text-slate-400">{t('quotation.unitPrice', 'Unit Price')}</TableHead>
                           <TableHead className="text-right text-slate-600 dark:text-slate-400">{t('quotation.discount', 'Disc %')}</TableHead>
@@ -791,16 +814,22 @@ export default function QuotationFormPage() {
                               {isViewMode ? (
                                 <span className="text-sm font-medium text-slate-950 dark:text-white">{line.productName || products.find((p) => p._id === line.product)?.name || '—'}</span>
                               ) : (
-                                <Select value={line.product} onValueChange={(value) => handleLineChange(index, 'product', value)}>
+                                <Select value={line.product || undefined} onValueChange={(value) => handleLineChange(index, 'product', value)}>
                                   <SelectTrigger className="h-9 bg-white text-sm text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700">
                                     <SelectValue placeholder={t('quotation.selectProduct')} />
                                   </SelectTrigger>
                                   <SelectContent className="dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700">
-                                    {products.map((product) => (
-                                      <SelectItem key={product._id} value={product._id} className="dark:focus:bg-slate-800 dark:focus:text-white">
-                                        {product.name} ({product.sku})
+                                    {products.length === 0 ? (
+                                      <SelectItem value="__no_products__" disabled className="dark:focus:bg-slate-800 dark:focus:text-white">
+                                        {t('quotation.noProductsAvailable', 'No products available')}
                                       </SelectItem>
-                                    ))}
+                                    ) : (
+                                      products.map((product) => (
+                                        <SelectItem key={product._id} value={product._id} className="dark:focus:bg-slate-800 dark:focus:text-white">
+                                          {product.name} ({product.sku})
+                                        </SelectItem>
+                                      ))
+                                    )}
                                   </SelectContent>
                                 </Select>
                               )}
@@ -992,7 +1021,7 @@ export default function QuotationFormPage() {
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     {t('quotation.saveDraft', 'Save Draft')}
                   </Button>
-                  <Button variant="default" onClick={() => setSendDialogOpen(true)} disabled={saving || !formData.client} className="h-10 gap-2">
+                  <Button variant="default" onClick={openSendDialog} disabled={saving || !formData.client} className="h-10 gap-2">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                     {t('quotation.sendToClient', 'Save & Send')}
                   </Button>

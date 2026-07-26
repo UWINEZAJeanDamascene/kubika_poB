@@ -3,8 +3,9 @@ import { Layout } from "../../../layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Skeleton } from "@/app/components/ui/skeleton";
-import { ArrowLeft, Users, Printer, FileSpreadsheet, Wallet, PiggyBank, HeartPulse, Baby, CreditCard } from "lucide-react";
+import { ArrowLeft, Users, Printer, FileSpreadsheet, Wallet, PiggyBank, HeartPulse, Baby, CreditCard, Download, Loader2 } from "lucide-react";
 import { useSemiAnnualPayrollHRCost } from "@/lib/hooks/useMonthlyReports";
+import { useSemiAnnualExports } from "@/lib/hooks/useSemiAnnualExports";
 import { useNavigate } from "react-router";
 
 const formatCurrency = (amount: number) => {
@@ -32,14 +33,8 @@ export default function SemiAnnualPayrollHRCostPage() {
   const endMonth = parseInt(searchParams.get('endMonth') || '6');
 
   const { data: report, isLoading, error } = useSemiAnnualPayrollHRCost(startYear, startMonth, endYear, endMonth);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownloadExcel = () => {
-    alert("Excel download coming soon");
-  };
+  const { downloading, downloadPDF, downloadExcel } = useSemiAnnualExports("payroll-hr", startYear, startMonth, endYear, endMonth);
+  const handlePrint = () => { window.print(); };
 
   if (isLoading) {
     return (
@@ -69,7 +64,7 @@ export default function SemiAnnualPayrollHRCostPage() {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => navigate('/reports/monthly')}
+                onClick={() => navigate('/reports/semi-annual')}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Reports
@@ -92,7 +87,7 @@ export default function SemiAnnualPayrollHRCostPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button variant="outline" size="icon" onClick={() => navigate('/reports/monthly')}>
+            <Button variant="outline" size="icon" onClick={() => navigate('/reports/semi-annual')}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
@@ -104,8 +99,12 @@ export default function SemiAnnualPayrollHRCostPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadExcel}>
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={downloadPDF} disabled={downloading === "pdf"}>
+              {downloading === "pdf" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadExcel} disabled={downloading === "excel"}>
+              {downloading === "excel" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
               <span className="hidden sm:inline">Excel</span>
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>

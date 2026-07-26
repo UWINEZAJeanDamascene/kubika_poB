@@ -30,7 +30,7 @@ export default function DailyCashPositionReportPage() {
   ] : [];
 
   return (
-    <DailyReportScaffold title="Daily Cash Position" shortTitle="Cash" subtitle="Opening balance, receipts, payments, and closing balance by cash or bank account." icon={Wallet} tone="amber" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <DailyReportScaffold title="Daily Cash Position" shortTitle="Cash" subtitle="Opening balance, receipts, payments, and closing balance by cash or bank account." icon={Wallet} tone="amber" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(dailyReportsApi.getListPath(date))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <Card className={reportCardClass}>
           <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Building2 className="h-4 w-4 text-amber-600" />Account Breakdown</CardTitle></CardHeader>

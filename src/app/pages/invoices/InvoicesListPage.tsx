@@ -7,15 +7,12 @@ import {
   Plus,
   Search,
   Download,
-  Loader2,
   FileText,
   Eye,
   Edit,
   CheckCircle,
   Receipt,
-  DollarSign,
   AlertTriangle,
-  X,
   Calendar,
   RotateCcw,
   TrendingUp,
@@ -28,7 +25,6 @@ import { Input } from '@/app/components/ui/input';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { EmptyState } from '@/app/components/EmptyState';
-import { Badge } from '@/app/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -77,28 +73,41 @@ interface Client {
   name: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Status' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'partially_paid', label: 'Partially Paid' },
-  { value: 'fully_paid', label: 'Fully Paid' },
-  { value: 'paid', label: 'Paid' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
+const toAmount = (value: unknown): number => {
+  const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? ''));
+  return Number.isFinite(parsed) ? parsed : 0;
+};
 
-const EBM_STATUS_OPTIONS = [
-  { value: 'all', label: 'All RRA Status' },
-  { value: 'not_submitted', label: 'Not Submitted' },
-  { value: 'pending', label: 'Pending RRA' },
-  { value: 'submitted', label: 'Certified' },
-  { value: 'failed', label: 'Failed' },
-];
+/** The API sends money as fixed-decimal strings, which the summary totals add up. */
+const normalizeInvoice = (invoice: any): Invoice => ({
+  ...invoice,
+  grandTotal: toAmount(invoice.grandTotal ?? invoice.totalAmount),
+  amountPaid: toAmount(invoice.amountPaid),
+  balance: toAmount(invoice.balance ?? invoice.amountOutstanding),
+});
 
 export default function InvoicesListPage() {
   const { t } = useTranslation();
   const { formatCurrency } = useCurrency();
   const navigate = useNavigate();
+
+  const STATUS_OPTIONS = [
+    { value: 'all', label: t('invoice.status_options.all', 'All Status') },
+    { value: 'draft', label: t('invoice.status.draft', 'Draft') },
+    { value: 'confirmed', label: t('invoice.status.confirmed', 'Confirmed') },
+    { value: 'partially_paid', label: t('invoice.status.partially_paid', 'Partially Paid') },
+    { value: 'fully_paid', label: t('invoice.status.fully_paid', 'Fully Paid') },
+    { value: 'paid', label: t('invoice.status.paid', 'Paid') },
+    { value: 'cancelled', label: t('invoice.status.cancelled', 'Cancelled') },
+  ];
+
+  const EBM_STATUS_OPTIONS = [
+    { value: 'all', label: t('invoice.ebmStatus.all', 'All RRA Status') },
+    { value: 'not_submitted', label: t('invoice.ebmStatus.not_submitted', 'Not Submitted') },
+    { value: 'pending', label: t('invoice.ebmStatus.pending', 'Pending RRA') },
+    { value: 'submitted', label: t('invoice.ebmStatus.submitted', 'Certified') },
+    { value: 'failed', label: t('invoice.ebmStatus.failed', 'Failed') },
+  ];
 
   const [loading, setLoading] = useState(true);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -142,7 +151,7 @@ export default function InvoicesListPage() {
         console.log('Extracted invoices:', invoicesData);
         console.log('Invoices count:', invoicesData?.length || 0);
         if (Array.isArray(invoicesData)) {
-          setInvoices(invoicesData);
+          setInvoices(invoicesData.map(normalizeInvoice));
           setPagination(prev => ({ ...prev, total: data.total || invoicesData.length }));
         } else {
           setInvoices([]);
@@ -224,22 +233,6 @@ export default function InvoicesListPage() {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; label: string }> = {
-      draft: { variant: 'secondary', label: t('invoice.status.draft', 'Draft') },
-      confirmed: { variant: 'default', label: t('invoice.status.confirmed', 'Confirmed') },
-      partially_paid: { variant: 'outline', label: t('invoice.status.partially_paid', 'Partially Paid') },
-      partial: { variant: 'outline', label: t('invoice.status.partially_paid', 'Partially Paid') },
-      fully_paid: { variant: 'default', label: t('invoice.status.fully_paid', 'Fully Paid') },
-      paid: { variant: 'default', label: t('invoice.status.fully_paid', 'Paid') },
-      cancelled: { variant: 'destructive', label: t('invoice.status.cancelled', 'Cancelled') },
-    };
-    
-    const config = statusConfig[status] || { variant: 'outline', label: status };
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString();
@@ -279,13 +272,13 @@ export default function InvoicesListPage() {
 
   const getStatusLabel = (status: string) => {
     const map: Record<string, string> = {
-      draft: 'Draft',
-      confirmed: 'Confirmed',
-      partially_paid: 'Partially Paid',
-      partial: 'Partially Paid',
-      fully_paid: 'Fully Paid',
-      paid: 'Paid',
-      cancelled: 'Cancelled',
+      draft: t('invoice.status.draft', 'Draft'),
+      confirmed: t('invoice.status.confirmed', 'Confirmed'),
+      partially_paid: t('invoice.status.partially_paid', 'Partially Paid'),
+      partial: t('invoice.status.partially_paid', 'Partially Paid'),
+      fully_paid: t('invoice.status.fully_paid', 'Fully Paid'),
+      paid: t('invoice.status.paid', 'Paid'),
+      cancelled: t('invoice.status.cancelled', 'Cancelled'),
     };
     return map[status] || status;
   };
@@ -333,11 +326,11 @@ export default function InvoicesListPage() {
             <TabsList className="grid w-full grid-cols-2 bg-white p-1 shadow-sm dark:border dark:border-slate-800 dark:bg-slate-950 sm:w-auto sm:inline-flex">
               <TabsTrigger value="invoices" className="gap-1.5 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-950/40 dark:data-[state=active]:text-indigo-300">
                 <FileText className="h-4 w-4" />
-                Invoices
+                {t('invoice.title', 'Invoices')}
               </TabsTrigger>
               <TabsTrigger value="deferred" className="gap-1.5 data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 dark:data-[state=active]:bg-indigo-950/40 dark:data-[state=active]:text-indigo-300">
                 <ReceiptText className="h-4 w-4" />
-                Deferred Revenue
+                {t('invoice.deferredRevenue', 'Deferred Revenue')}
               </TabsTrigger>
             </TabsList>
 
@@ -351,7 +344,7 @@ export default function InvoicesListPage() {
                     <Receipt className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Total Invoices</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('invoice.totalInvoices', 'Total Invoices')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">{invoices.length}</p>
                   </div>
                 </CardContent>
@@ -362,7 +355,7 @@ export default function InvoicesListPage() {
                     <TrendingUp className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Total Amount</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('invoice.totalAmount', 'Total Amount')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</p>
                   </div>
                 </CardContent>
@@ -373,7 +366,7 @@ export default function InvoicesListPage() {
                     <Wallet className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Paid</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('invoice.paid', 'Paid')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totalPaid)}</p>
                   </div>
                 </CardContent>
@@ -384,7 +377,7 @@ export default function InvoicesListPage() {
                     <AlertTriangle className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Outstanding</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('invoice.amountOutstanding', 'Outstanding')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totalBalance)}</p>
                   </div>
                 </CardContent>
@@ -399,7 +392,7 @@ export default function InvoicesListPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
-                    placeholder="Search invoices..."
+                    placeholder={t('invoice.search', 'Search invoices...')}
                     value={search}
                     onChange={(e) => handleSearch(e.target.value)}
                     className="h-10 bg-white pl-9 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
@@ -407,7 +400,7 @@ export default function InvoicesListPage() {
                 </div>
                 <Select value={statusFilter} onValueChange={handleStatusFilter}>
                   <SelectTrigger className="h-10 bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                    <SelectValue placeholder="Status" />
+                    <SelectValue placeholder={t('invoice.filterStatus', 'Status')} />
                   </SelectTrigger>
                   <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
                     {STATUS_OPTIONS.map(option => (
@@ -417,7 +410,7 @@ export default function InvoicesListPage() {
                 </Select>
                 <Select value={ebmStatusFilter} onValueChange={handleEbmStatusFilter}>
                   <SelectTrigger className="h-10 bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                    <SelectValue placeholder="RRA Status" />
+                    <SelectValue placeholder={t('invoice.ebmStatusFilter', 'RRA Status')} />
                   </SelectTrigger>
                   <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
                     {EBM_STATUS_OPTIONS.map(option => (
@@ -427,10 +420,10 @@ export default function InvoicesListPage() {
                 </Select>
                 <Select value={clientFilter} onValueChange={handleClientFilter}>
                   <SelectTrigger className="h-10 bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                    <SelectValue placeholder="Client" />
+                    <SelectValue placeholder={t('invoice.filterClient', 'Client')} />
                   </SelectTrigger>
                   <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
-                    <SelectItem value="all" className="dark:text-slate-200">All Clients</SelectItem>
+                    <SelectItem value="all" className="dark:text-slate-200">{t('invoice.allClients', 'All Clients')}</SelectItem>
                     {clients.map(client => (
                       <SelectItem key={client._id} value={client._id} className="dark:text-slate-200">{client.name}</SelectItem>
                     ))}
@@ -445,7 +438,7 @@ export default function InvoicesListPage() {
                 <div className="mt-3 flex items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 gap-1 text-slate-500 dark:text-slate-400">
                     <RotateCcw className="h-3.5 w-3.5" />
-                    Clear Filters
+                    {t('invoice.clearFilters', 'Clear Filters')}
                   </Button>
                 </div>
               )}
@@ -472,12 +465,12 @@ export default function InvoicesListPage() {
                 <EmptyState
                   compact
                   icon={FileText}
-                  title="No invoices yet"
-                  description="Create your first invoice to bill clients and start tracking receivables."
+                  title={t('invoice.noInvoices', 'No invoices yet')}
+                  description={t('invoice.noInvoicesDescription', 'Create your first invoice to bill clients and start tracking receivables.')}
                   action={
                     <Button onClick={() => navigate('/invoices/new')} className="bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-md shadow-cyan-500/30 hover:brightness-110">
                       <Plus className="h-4 w-4 mr-2" />
-                      New invoice
+                      {t('invoice.newInvoice', 'New invoice')}
                     </Button>
                   }
                 />
@@ -488,15 +481,15 @@ export default function InvoicesListPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
-                          <TableHead className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">Invoice #</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Client</TableHead>
-                          <TableHead className="hidden text-xs font-semibold text-slate-500 dark:text-slate-400 lg:table-cell">Date</TableHead>
-                          <TableHead className="hidden text-xs font-semibold text-slate-500 dark:text-slate-400 lg:table-cell">Due Date</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Status</TableHead>
-                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">RRA Status</TableHead>
-                          <TableHead className="whitespace-nowrap text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Total</TableHead>
-                          <TableHead className="hidden whitespace-nowrap text-right text-xs font-semibold text-slate-500 dark:text-slate-400 sm:table-cell">Balance</TableHead>
-                          <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Actions</TableHead>
+                          <TableHead className="whitespace-nowrap text-xs font-semibold text-slate-500 dark:text-slate-400">{t('invoice.invoiceNumber', 'Invoice #')}</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('invoice.client', 'Client')}</TableHead>
+                          <TableHead className="hidden text-xs font-semibold text-slate-500 dark:text-slate-400 lg:table-cell">{t('common.date', 'Date')}</TableHead>
+                          <TableHead className="hidden text-xs font-semibold text-slate-500 dark:text-slate-400 lg:table-cell">{t('invoice.dueDate', 'Due Date')}</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('invoice.statusLabel', 'Status')}</TableHead>
+                          <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('invoice.ebmStatusFilter', 'RRA Status')}</TableHead>
+                          <TableHead className="whitespace-nowrap text-right text-xs font-semibold text-slate-500 dark:text-slate-400">{t('invoice.invoiceTotal', 'Total')}</TableHead>
+                          <TableHead className="hidden whitespace-nowrap text-right text-xs font-semibold text-slate-500 dark:text-slate-400 sm:table-cell">{t('invoice.balance', 'Balance')}</TableHead>
+                          <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">{t('common.actions', 'Actions')}</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -534,16 +527,16 @@ export default function InvoicesListPage() {
                             <TableCell className="hidden whitespace-nowrap text-right text-slate-600 dark:text-slate-400 sm:table-cell">{formatCurrency(invoice.balance || invoice.grandTotal - invoice.amountPaid)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => navigate(`/invoices/${invoice._id}`)} className="h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-950/30" title="View">
+                                <Button variant="ghost" size="sm" onClick={() => navigate(`/invoices/${invoice._id}`)} className="h-8 w-8 p-0 hover:bg-blue-50 dark:hover:bg-blue-950/30" title={t('common.view', 'View')}>
                                   <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                 </Button>
                                 {invoice.status === 'draft' && (
-                                  <Button variant="ghost" size="sm" onClick={() => navigate(`/invoices/${invoice._id}/edit`)} className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-700" title="Edit">
+                                  <Button variant="ghost" size="sm" onClick={() => navigate(`/invoices/${invoice._id}/edit`)} className="h-8 w-8 p-0 hover:bg-slate-100 dark:hover:bg-slate-700" title={t('common.edit', 'Edit')}>
                                     <Edit className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                                   </Button>
                                 )}
                                 {invoice.status === 'draft' && (
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={async () => { try { await invoicesApi.confirm(invoice._id); fetchInvoices(); } catch (e) { console.error(e); } }} title="Confirm">
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={async () => { try { await invoicesApi.confirm(invoice._id); fetchInvoices(); } catch (e) { console.error(e); } }} title={t('invoice.confirm', 'Confirm')}>
                                     <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                   </Button>
                                 )}
@@ -574,12 +567,12 @@ export default function InvoicesListPage() {
                             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{invoice.client?.name || '-'}</p>
                             <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
                               <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatDate(invoice.invoiceDate)}</span>
-                              <span>Due {formatDate(invoice.dueDate)}</span>
+                              <span>{t('invoice.due', 'Due')} {formatDate(invoice.dueDate)}</span>
                             </div>
                           </div>
                           <div className="text-right">
                             <p className="text-sm font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.grandTotal)}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">Bal: {formatCurrency(invoice.balance || invoice.grandTotal - invoice.amountPaid)}</p>
+                            <p className="text-xs text-slate-500 dark:text-slate-400">{t('invoice.balance', 'Balance')}: {formatCurrency(invoice.balance || invoice.grandTotal - invoice.amountPaid)}</p>
                           </div>
                         </div>
                         <div className="mt-3 flex items-center justify-end gap-1 border-t border-slate-100 pt-3 dark:border-slate-800">

@@ -277,7 +277,7 @@ export default function SerialNumbersPage() {
                     {t('serialNumbers.title', 'Serial Numbers')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: dark ? '#94a3b8' : '#64748b' }}>
-                    Item-level traceability for serialized stock, custody, cost, and lifecycle status.
+                    {t('serialNumbers.subtitle')}
                   </Typography>
                 </div>
               </div>
@@ -303,10 +303,10 @@ export default function SerialNumbersPage() {
 
           <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
             {[
-              ['Serialized Units', total.toLocaleString(), `${serials.length.toLocaleString()} loaded`],
-              ['Available In Stock', inStockCount.toLocaleString(), 'Ready for allocation'],
-              ['Committed Units', committedCount.toLocaleString(), 'Reserved or dispatched'],
-              ['Serial Asset Value', formatCurrency(serialValue), `${exceptionCount} exceptions`],
+              [t('serialNumbers.serializedUnits'), total.toLocaleString(), t('serialNumbers.loadedCount', { count: serials.length })],
+              [t('serialNumbers.availableInStock'), inStockCount.toLocaleString(), t('serialNumbers.readyForAllocation')],
+              [t('serialNumbers.committedUnits'), committedCount.toLocaleString(), t('serialNumbers.reservedOrDispatched')],
+              [t('serialNumbers.serialAssetValue'), formatCurrency(serialValue), t('serialNumbers.exceptionsCount', { count: exceptionCount })],
             ].map(([label, value, sub]) => (
               <Paper key={label} sx={{ p: 2.75, backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none', borderRadius: 2 }}>
                 <Typography variant="caption" sx={{ color: dark ? '#94a3b8' : '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 800 }}>{label}</Typography>
@@ -371,7 +371,7 @@ export default function SerialNumbersPage() {
                   MenuProps={{ PaperProps: { className: 'dark:!bg-slate-800 dark:!border-slate-700' } }}
                 >
                   <MenuItem value="" className="dark:text-white">{t('common.all', 'All')}</MenuItem>
-                  {statusOptions.map(s => <MenuItem key={s} value={s} className="dark:text-white">{s.replace('_', ' ')}</MenuItem>)}
+                  {statusOptions.map(s => <MenuItem key={s} value={s} className="dark:text-white">{t(`serialNumbers.statuses.${s}`)}</MenuItem>)}
                 </Select>
               </FormControl>
             </Box>
@@ -379,7 +379,7 @@ export default function SerialNumbersPage() {
 
           <Paper sx={{ backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none', borderRadius: 2, overflow: 'hidden' }}>
             <Box sx={{ px: 3, py: 2.25, borderBottom: `1px solid ${dark ? '#334155' : '#e2e8f0'}` }}>
-              <Typography variant="subtitle1" sx={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 850 }}>Serial Register</Typography>
+              <Typography variant="subtitle1" sx={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 850 }}>{t('serialNumbers.serialRegister')}</Typography>
               <Typography variant="caption" sx={{ color: dark ? '#94a3b8' : '#64748b' }}>Unique unit records grouped by serial, product, warehouse, value, and custody status.</Typography>
             </Box>
             <Box sx={{ p: 2.5 }}>
@@ -419,7 +419,7 @@ export default function SerialNumbersPage() {
                         <p className="mt-1 font-mono text-sm font-bold text-slate-950 dark:text-white">
                           {formatCurrency(toNum(item.unitCost))}
                         </p>
-                        <Chip label={item.status.replace('_', ' ')} color={getStatusColor(item.status)} size="small" sx={{ mt: 1.25 }} />
+                        <Chip label={t(`serialNumbers.statuses.${item.status}`, item.status.replace('_', ' '))} color={getStatusColor(item.status)} size="small" sx={{ mt: 1.25 }} />
                       </div>
                       <div className="flex items-center justify-end gap-2">
                         <IconButton size="small" onClick={() => openEdit(item)} title={t('common.edit', 'Edit')} sx={{ border: `1px solid ${dark ? '#334155' : '#cbd5e1'}`, color: dark ? '#e2e8f0' : '#334155' }}>
@@ -510,7 +510,7 @@ export default function SerialNumbersPage() {
                 <Select value={editForm.status} label={t('serialNumbers.status', 'Status')} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                   sx={{ backgroundColor: dark ? '#0f172a' : 'white', color: dark ? '#e2e8f0' : '#0f172a', '.MuiOutlinedInput-notchedOutline': { borderColor: dark ? '#334155' : '#cbd5e1' }, '.MuiSvgIcon-root': { color: dark ? '#cbd5e1' : '#475569' } }}
                   MenuProps={{ PaperProps: { className: 'dark:!bg-slate-800 dark:!border-slate-700' } }}>
-                  {statusOptions.map(s => <MenuItem key={s} value={s} className="dark:text-white">{s.replace('_', ' ')}</MenuItem>)}
+                  {statusOptions.map(s => <MenuItem key={s} value={s} className="dark:text-white">{t(`serialNumbers.statuses.${s}`)}</MenuItem>)}
                 </Select>
               </FormControl>
               <TextField label={t('common.notes', 'Notes')} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} fullWidth multiline rows={2}

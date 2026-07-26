@@ -168,9 +168,9 @@ export default function APDashboardPage() {
     setLoadingTrans(true);
     try {
       const res: any = await apReconciliationApi.getTransactions({ page, limit: 20 });
-      if (res?.data) {
-        setTransactions(res.data.data || []);
-        setTransTotalPages(res.data.pages || 1);
+      if (res?.success !== false) {
+        setTransactions(Array.isArray(res.data) ? res.data : []);
+        setTransTotalPages(res.pagination?.pages || 1);
       }
     } catch (e) {
       console.error('Failed to load AP transactions', e);

@@ -41,7 +41,7 @@ export default function DailyJournalEntriesReportPage() {
   ] : [];
 
   return (
-    <DailyReportScaffold title="Daily Journal Entries" shortTitle="Journal" subtitle="Every journal entry posted for the selected day with debit, credit, account, narration, and user details." icon={FileText} tone="cyan" date={date} onDateChange={onDateChange} loading={loading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <DailyReportScaffold title="Daily Journal Entries" shortTitle="Journal" subtitle="Every journal entry posted for the selected day with debit, credit, account, narration, and user details." icon={FileText} tone="cyan" date={date} onDateChange={onDateChange} loading={loading} downloading={downloading} onBack={() => navigate(dailyReportsApi.getListPath(date))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && (
         <Card className={reportCardClass}>
           <CardHeader><CardTitle className="flex items-center gap-2 text-base"><BookOpen className="h-4 w-4 text-cyan-600" />Journal Entries</CardTitle></CardHeader>

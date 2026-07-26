@@ -247,9 +247,9 @@ export default function AuditsListPage() {
           <div className="mb-6 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
             {[
               { label: 'Audits in View', value: pagination.total || audits.length, detail: 'Current filtered register' },
-              { label: 'Counting', value: auditCounts.counting || 0, detail: 'Open counts awaiting posting' },
-              { label: 'Posted', value: auditCounts.posted || 0, detail: 'Completed audit records' },
-              { label: 'Variance Value', value: formatCurrency(String(totalVariance)), detail: 'Net variance in view' },
+              { label: t('common.stockAudits.statuses.counting'), value: auditCounts.counting || 0, detail: 'Open counts awaiting posting' },
+              { label: t('common.stockAudits.statuses.posted'), value: auditCounts.posted || 0, detail: 'Completed audit records' },
+              { label: t('common.stockAudits.totalVarianceValue'), value: formatCurrency(String(totalVariance)), detail: 'Net variance in view' },
             ].map((metric) => (
               <Paper key={metric.label} sx={{ p: 3, backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none' }}>
                 <Typography variant="caption" sx={{ color: dark ? '#94a3b8' : '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>{metric.label}</Typography>

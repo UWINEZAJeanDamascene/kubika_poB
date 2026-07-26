@@ -6,19 +6,22 @@
  */
 
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { formatBaseAmount } from './currencyDisplay';
 
 /**
- * Format currency amount with proper symbol
- * Uses the global displayCurrency from CurrencyContext
+ * Format currency amount with proper symbol.
+ * Amounts are treated as BASE-currency (RWF) values and shown in the
+ * sidebar display currency; pass `overrideCurrency` when the amount is
+ * denominated in a specific document currency instead.
  */
 export function useFormatCurrency() {
   try {
-    const { formatCurrency, displayCurrency } = useCurrency();
+    const { formatCurrency } = useCurrency();
 
     return (amount: number | any, overrideCurrency?: string): string => {
       const num = typeof amount === 'number' ? amount : Number(amount) || 0;
-      const currency = overrideCurrency || displayCurrency || 'RWF';
-      return formatCurrency(num, currency);
+      // No override: amount is in base currency, convert to display currency.
+      return overrideCurrency ? formatCurrency(num, overrideCurrency) : formatCurrency(num);
     };
   } catch (err) {
     // If there's no CurrencyProvider in the tree, provide a safe fallback
@@ -32,15 +35,20 @@ export function useFormatCurrency() {
 }
 
 /**
- * Standalone format currency function (for use outside React components)
- * Falls back to FRW if no currency provided
+ * Standalone format currency function (for use outside React components).
+ * Without an explicit currency the amount is treated as a base-currency
+ * value and shown in the sidebar display currency; with a currency it is
+ * formatted as-is in that currency (no conversion).
  */
 export function formatCurrency(
   amount: number | any,
-  currency: string = 'RWF'
+  currency?: string
 ): string {
   let num = typeof amount === 'number' ? amount : Number(amount) || 0;
   if (isNaN(num)) num = 0;
+  if (!currency) {
+    return formatBaseAmount(num);
+  }
   if (currency === 'RWF' || currency === 'FRW') {
     return `RWF ${new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 0,

@@ -324,5 +324,8 @@ export const weeklyReportsApi = {
     const monday = new Date(lastSunday);
     monday.setDate(lastSunday.getDate() - 6);
     return formatDate(monday);
-  }
+  },
+
+  getListPath: (weekStart?: string) =>
+    `/reports/weekly${weekStart ? `?weekStart=${encodeURIComponent(weekStart)}` : ""}`,
 };

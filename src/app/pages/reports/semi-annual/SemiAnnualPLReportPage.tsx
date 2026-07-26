@@ -3,8 +3,9 @@ import { Layout } from "../../../layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
 import { Button } from "@/app/components/ui/button";
 import { Skeleton } from "@/app/components/ui/skeleton";
-import { ArrowLeft, TrendingUp, Printer, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, TrendingUp, Printer, FileSpreadsheet, Download, Loader2 } from "lucide-react";
 import { useSemiAnnualProfitAndLoss } from "@/lib/hooks/useMonthlyReports";
+import { useSemiAnnualExports } from "@/lib/hooks/useSemiAnnualExports";
 import { useNavigate } from "react-router";
 
 const formatCurrency = (amount: number) => {
@@ -25,14 +26,16 @@ export default function SemiAnnualPLReportPage() {
   const endMonth = parseInt(searchParams.get('endMonth') || '6');
 
   const { data: report, isLoading, error } = useSemiAnnualProfitAndLoss(startYear, startMonth, endYear, endMonth);
+  const { downloading, downloadPDF, downloadExcel } = useSemiAnnualExports(
+    "profit-loss",
+    startYear,
+    startMonth,
+    endYear,
+    endMonth,
+  );
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleDownloadExcel = () => {
-    // TODO: Implement Excel download when backend PDF/Excel routes are added
-    alert("Excel download coming soon");
   };
 
   if (isLoading) {
@@ -63,7 +66,7 @@ export default function SemiAnnualPLReportPage() {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => navigate('/reports/monthly')}
+                onClick={() => navigate('/reports/semi-annual')}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Reports
@@ -83,7 +86,7 @@ export default function SemiAnnualPLReportPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button variant="outline" size="icon" onClick={() => navigate('/reports/monthly')}>
+            <Button variant="outline" size="icon" onClick={() => navigate('/reports/semi-annual')}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
@@ -95,8 +98,12 @@ export default function SemiAnnualPLReportPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadExcel}>
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={downloadPDF} disabled={downloading === "pdf"}>
+              {downloading === "pdf" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadExcel} disabled={downloading === "excel"}>
+              {downloading === "excel" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
               <span className="hidden sm:inline">Excel</span>
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>

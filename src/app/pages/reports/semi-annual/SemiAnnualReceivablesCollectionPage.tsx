@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app
 import { Button } from "@/app/components/ui/button";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Progress } from "@/app/components/ui/progress";
-import { ArrowLeft, Users, Printer, FileSpreadsheet, Clock, AlertCircle, TrendingUp } from "lucide-react";
+import { ArrowLeft, Users, Printer, FileSpreadsheet, Clock, AlertCircle, TrendingUp, Download, Loader2 } from "lucide-react";
 import { useSemiAnnualReceivablesCollection } from "@/lib/hooks/useMonthlyReports";
+import { useSemiAnnualExports } from "@/lib/hooks/useSemiAnnualExports";
 import { useNavigate } from "react-router";
 
 const formatCurrency = (amount: number) => {
@@ -33,14 +34,8 @@ export default function SemiAnnualReceivablesCollectionPage() {
   const endMonth = parseInt(searchParams.get('endMonth') || '6');
 
   const { data: report, isLoading, error } = useSemiAnnualReceivablesCollection(startYear, startMonth, endYear, endMonth);
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownloadExcel = () => {
-    alert("Excel download coming soon");
-  };
+  const { downloading, downloadPDF, downloadExcel } = useSemiAnnualExports("receivables-collection", startYear, startMonth, endYear, endMonth);
+  const handlePrint = () => { window.print(); };
 
   if (isLoading) {
     return (
@@ -70,7 +65,7 @@ export default function SemiAnnualReceivablesCollectionPage() {
               <Button
                 variant="outline"
                 className="mt-4"
-                onClick={() => navigate('/reports/monthly')}
+                onClick={() => navigate('/reports/semi-annual')}
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Reports
@@ -93,7 +88,7 @@ export default function SemiAnnualReceivablesCollectionPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
           <div className="flex items-center gap-2 sm:gap-3">
-            <Button variant="outline" size="icon" onClick={() => navigate('/reports/monthly')}>
+            <Button variant="outline" size="icon" onClick={() => navigate('/reports/semi-annual')}>
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
@@ -105,8 +100,12 @@ export default function SemiAnnualReceivablesCollectionPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadExcel}>
-              <FileSpreadsheet className="w-4 h-4 mr-2" />
+            <Button variant="outline" size="sm" onClick={downloadPDF} disabled={downloading === "pdf"}>
+              {downloading === "pdf" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
+              <span className="hidden sm:inline">PDF</span>
+            </Button>
+            <Button variant="outline" size="sm" onClick={downloadExcel} disabled={downloading === "excel"}>
+              {downloading === "excel" ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <FileSpreadsheet className="w-4 h-4 mr-2" />}
               <span className="hidden sm:inline">Excel</span>
             </Button>
             <Button variant="outline" size="sm" onClick={handlePrint}>

@@ -168,10 +168,10 @@ export default function ClientsListPage() {
         setDeleteTarget(null);
         fetchClients();
       } else {
-        alert(response.message || 'Failed to delete client');
+        alert(response.message || t('clients.deleteFailed', 'Failed to delete client'));
       }
     } catch (err: any) {
-      alert(err?.message || 'Failed to delete client');
+      alert(err?.message || t('clients.deleteFailed', 'Failed to delete client'));
     } finally {
       setDeleting(false);
     }
@@ -234,7 +234,7 @@ export default function ClientsListPage() {
                   >
                     <FileText className="h-4 w-4" />
                     <span className="hidden sm:inline">{t('clients.import', 'Import CSV')}</span>
-                    <span className="sm:hidden">Import</span>
+                    <span className="sm:hidden">{t('common.import', 'Import')}</span>
                   </Button>
                   <Button
                     size="sm"
@@ -243,7 +243,7 @@ export default function ClientsListPage() {
                   >
                     <Plus className="h-4 w-4" />
                     <span className="hidden sm:inline">{t('clients.addClient', 'Add Client')}</span>
-                    <span className="sm:hidden">Add</span>
+                    <span className="sm:hidden">{t('common.add', 'Add')}</span>
                   </Button>
                 </div>
               </div>
@@ -271,7 +271,7 @@ export default function ClientsListPage() {
                       <Users className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Clients</p>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('clients.totalClients', 'Total Clients')}</p>
                       <p className="text-xl font-bold text-slate-900 dark:text-white">{clients.length}</p>
                     </div>
                   </div>
@@ -284,7 +284,7 @@ export default function ClientsListPage() {
                       <UserCheck className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Active</p>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('common.active', 'Active')}</p>
                       <p className="text-xl font-bold text-slate-900 dark:text-white">
                         {clients.filter(c => c.isActive).length}
                       </p>
@@ -299,7 +299,7 @@ export default function ClientsListPage() {
                       <TrendingUp className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Outstanding</p>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('clients.outstanding', 'Outstanding')}</p>
                       <p className="text-xl font-bold text-slate-900 dark:text-white">
                         {formatCurrency(clients.reduce((s, c) => s + (c.totalOutstanding || c.outstandingBalance || 0), 0))}
                       </p>
@@ -314,7 +314,7 @@ export default function ClientsListPage() {
                       <AlertTriangle className="h-4 w-4" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Overdue</p>
+                      <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('clients.overdue', 'Overdue')}</p>
                       <p className="text-xl font-bold text-slate-900 dark:text-white">
                         {formatCurrency(clients.reduce((s, c) => s + (c.overdueAmount || 0), 0))}
                       </p>
@@ -371,12 +371,12 @@ export default function ClientsListPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b border-slate-200 bg-slate-50/50 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
-                        <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Client</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Contact</TableHead>
-                        <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Outstanding</TableHead>
-                        <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Overdue</TableHead>
-                        <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</TableHead>
-                        <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Actions</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('clients.client', 'Client')}</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('clients.contact', 'Contact')}</TableHead>
+                        <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('clients.outstanding', 'Outstanding')}</TableHead>
+                        <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('clients.overdue', 'Overdue')}</TableHead>
+                        <TableHead className="text-center text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('common.status', 'Status')}</TableHead>
+                        <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('common.actions', 'Actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -540,13 +540,13 @@ export default function ClientsListPage() {
 
                     <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-slate-50 p-2.5 dark:bg-slate-900/50">
                       <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Outstanding</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{t('clients.outstanding', 'Outstanding')}</div>
                         <div className="text-sm font-semibold text-slate-900 dark:text-white">
                           {formatCurrency(client.totalOutstanding || client.outstandingBalance)}
                         </div>
                       </div>
                       <div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">Overdue</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{t('clients.overdue', 'Overdue')}</div>
                         <div className="text-sm font-semibold text-rose-600 dark:text-rose-400">
                           {formatCurrency(client.overdueAmount || 0)}
                         </div>
@@ -555,10 +555,10 @@ export default function ClientsListPage() {
 
                     <div className="mt-3 flex gap-1">
                       <Button variant="outline" size="sm" onClick={() => navigate(`/clients/${client._id}`)} className="flex-1 gap-1 text-xs dark:border-slate-700">
-                        <Eye className="h-3.5 w-3.5" /> View
+                        <Eye className="h-3.5 w-3.5" /> {t('common.view', 'View')}
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => navigate(`/clients/${client._id}/edit`)} className="flex-1 gap-1 text-xs dark:border-slate-700">
-                        <Pencil className="h-3.5 w-3.5" /> Edit
+                        <Pencil className="h-3.5 w-3.5" /> {t('common.edit', 'Edit')}
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => handleToggleStatus(client._id)} className="h-8 w-8 p-0 dark:border-slate-700">
                         {client.isActive ? <UserX className="h-3.5 w-3.5 text-rose-500" /> : <UserCheck className="h-3.5 w-3.5 text-emerald-500" />}

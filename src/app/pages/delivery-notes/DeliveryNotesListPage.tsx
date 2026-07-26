@@ -80,6 +80,11 @@ interface DeliveryNote {
   currencyCode: string;
   itemsCount: number;
   createdAt: string;
+  invoice?: {
+    _id: string;
+    referenceNo?: string;
+    status?: string;
+  } | string;
 }
 
 interface Client {
@@ -87,17 +92,16 @@ interface Client {
   name: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Status' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'dispatched', label: 'Dispatched' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
 export default function DeliveryNotesListPage() {
   const { t } = useTranslation();
+  const STATUS_OPTIONS = [
+    { value: 'all', label: t('common.allStatus', 'All Status') },
+    { value: 'draft', label: t('deliveryNote.status.draft', 'Draft') },
+    { value: 'confirmed', label: t('deliveryNote.status.confirmed', 'Confirmed') },
+    { value: 'dispatched', label: t('deliveryNote.status.dispatched', 'Dispatched') },
+    { value: 'delivered', label: t('deliveryNote.status.delivered', 'Delivered') },
+    { value: 'cancelled', label: t('deliveryNote.status.cancelled', 'Cancelled') },
+  ];
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
@@ -225,7 +229,7 @@ export default function DeliveryNotesListPage() {
 
   const getStatusBadge = (status: string) => (
     <Badge variant="outline" className={`${STATUS_COLORS[status] || 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/40 dark:text-slate-300 dark:border-slate-700'} capitalize text-xs`}>
-      {status}
+      {t(`deliveryNote.status.${status}`, status)}
     </Badge>
   );
 
@@ -271,55 +275,61 @@ export default function DeliveryNotesListPage() {
     try {
       console.log('=== CONFIRM WORKFLOW START ===');
       console.log('Delivery Note ID:', id);
-      
-      // Step 1: Create invoice from delivery note first
-      toast.info('Creating invoice from delivery note...');
-      console.log('Step 1: Calling deliveryNotesApi.createInvoice...');
-      const createResponse = await deliveryNotesApi.createInvoice(id, {
-        confirmDelivery: true  // Also confirm the delivery note in one call
-      });
-      console.log('Step 1 - createInvoice response:', createResponse);
-      
-      if (!createResponse.success) {
-        console.error('Step 1 FAILED:', createResponse);
-        toast.error((createResponse as any).message || 'Failed to create invoice');
-        return;
-      }
-      
-      const invoiceId = (createResponse.data as any)?._id;
-      console.log('Invoice ID from response:', invoiceId);
-      
-      if (!invoiceId) {
-        toast.error('Invoice created but no ID returned');
-        return;
-      }
-      
-      toast.success('Invoice created successfully');
 
-      // Step 2: Confirm the invoice
+      const existing = deliveryNotes.find((dn) => dn._id === id);
+      let invoiceId =
+        (existing as any)?.invoice?._id ||
+        (typeof (existing as any)?.invoice === 'string' ? (existing as any).invoice : null);
+
+      if (!invoiceId) {
+        toast.info('Creating invoice from delivery note...');
+        const createResponse = await deliveryNotesApi.createInvoice(id, {
+          confirmDelivery: true,
+        });
+        console.log('Step 1 - createInvoice response:', createResponse);
+
+        if (!createResponse.success) {
+          toast.error((createResponse as any).message || 'Failed to create invoice');
+          return;
+        }
+
+        invoiceId = (createResponse.data as any)?._id;
+        if (!invoiceId) {
+          toast.error('Invoice created but no ID returned');
+          return;
+        }
+        toast.success((createResponse as any).message || 'Invoice ready');
+      } else {
+        toast.info('Using existing invoice for this delivery note...');
+      }
+
+      // Confirm invoice if still draft (or unknown — API returns 409 if already confirmed)
       toast.info('Confirming invoice...');
-      console.log('Step 2: Calling invoicesApi.confirm for:', invoiceId);
       const confirmInvoiceResponse = await invoicesApi.confirm(invoiceId);
       console.log('Step 2 - confirmInvoice response:', confirmInvoiceResponse);
-      
-      if (!confirmInvoiceResponse.success) {
-        console.error('Step 2 FAILED:', confirmInvoiceResponse);
-        toast.error((confirmInvoiceResponse as any).message || 'Failed to confirm invoice');
-        return;
-      }
-      toast.success('Invoice confirmed');
 
-      // Step 3: Refresh the list to show updated status
-      console.log('Step 3: Refreshing delivery notes list...');
+      if (!confirmInvoiceResponse.success) {
+        const code = (confirmInvoiceResponse as any).code;
+        if (code !== 'ERR_INVOICE_CONFIRMED') {
+          toast.error((confirmInvoiceResponse as any).message || 'Failed to confirm invoice');
+          return;
+        }
+      } else {
+        toast.success('Invoice confirmed');
+      }
+
       await fetchDeliveryNotes();
-      console.log('=== CONFIRM WORKFLOW COMPLETE ===');
       toast.success('Delivery note confirmed successfully');
     } catch (error: any) {
-      console.error('=== CONFIRM WORKFLOW ERROR ===');
-      console.error('Error:', error);
-      console.error('Error response:', error?.response?.data);
-      console.error('Error message:', error?.message);
-      toast.error(error?.response?.data?.message || error?.message || 'Failed to confirm delivery note');
+      console.error('=== CONFIRM WORKFLOW ERROR ===', error);
+      const msg = error?.message || 'Failed to confirm delivery note';
+      const code = error?.code || error?.data?.code;
+      if (code === 'ERR_INVOICE_CONFIRMED' || error?.status === 409) {
+        toast.success('Invoice already confirmed');
+        await fetchDeliveryNotes();
+        return;
+      }
+      toast.error(msg);
     }
   };
 
@@ -412,15 +422,15 @@ export default function DeliveryNotesListPage() {
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <BarChart3 className="mr-1 h-3 w-3" />
-                    {pagination.total || filteredDeliveryNotes.length} total
+                    {t('deliveryNote.totalBadge', '{{count}} total', { count: pagination.total || filteredDeliveryNotes.length })}
                   </Badge>
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <Package className="mr-1 h-3 w-3" />
-                    {dispatchedCount} dispatched
+                    {t('deliveryNote.dispatchedBadge', '{{count}} dispatched', { count: dispatchedCount })}
                   </Badge>
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <CheckCircle className="mr-1 h-3 w-3" />
-                    {deliveredCount} delivered
+                    {t('deliveryNote.deliveredBadge', '{{count}} delivered', { count: deliveredCount })}
                   </Badge>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
@@ -438,29 +448,29 @@ export default function DeliveryNotesListPage() {
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    Refresh
+                    {t('common.refresh', 'Refresh')}
                   </Button>
                   <Button variant="outline" size="sm" onClick={handleExport} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">
                     <Download className="h-4 w-4" />
-                    Export
+                    {t('common.export', 'Export')}
                   </Button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total Notes</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('deliveryNote.totalNotes', 'Total Notes')}</p>
                   <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{filteredDeliveryNotes.length}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total Value</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('deliveryNote.totalValue', 'Total Value')}</p>
                   <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(totalValue)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Dispatched</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('deliveryNote.status.dispatched', 'Dispatched')}</p>
                   <p className="mt-1 text-lg font-bold text-amber-600 dark:text-amber-400">{dispatchedCount}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Delivered</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('deliveryNote.status.delivered', 'Delivered')}</p>
                   <p className="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">{deliveredCount}</p>
                 </div>
               </div>
@@ -486,7 +496,7 @@ export default function DeliveryNotesListPage() {
                         {count}
                       </div>
                       <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                        {s}
+                        {t(`deliveryNote.status.${s}`, s)}
                       </span>
                     </div>
                     {!isLast && (
@@ -513,56 +523,56 @@ export default function DeliveryNotesListPage() {
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Notes</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('deliveryNote.totalNotes', 'Total Notes')}</p>
                         <p className="mt-3 text-2xl font-bold text-slate-950 dark:text-white">{filteredDeliveryNotes.length}</p>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-2.5 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60">
                         <Layers className="h-5 w-5" />
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{pagination.total || filteredDeliveryNotes.length} across all pages</p>
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('deliveryNote.acrossAllPages', '{{count}} across all pages', { count: pagination.total || filteredDeliveryNotes.length })}</p>
                   </CardContent>
                 </Card>
                 <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-950">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Value</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('deliveryNote.totalValue', 'Total Value')}</p>
                         <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">{formatCurrency(totalValue)}</p>
                       </div>
                       <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
                         <TrendingUp className="h-5 w-5" />
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Combined delivery value</p>
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('deliveryNote.combinedValue', 'Combined delivery value')}</p>
                   </CardContent>
                 </Card>
                 <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-950">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Dispatched</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('deliveryNote.status.dispatched', 'Dispatched')}</p>
                         <p className="mt-3 text-2xl font-bold text-amber-600 dark:text-amber-400">{dispatchedCount}</p>
                       </div>
                       <div className="rounded-lg bg-amber-50 p-2.5 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60">
                         <Truck className="h-5 w-5" />
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">In transit to client</p>
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('deliveryNote.inTransit', 'In transit to client')}</p>
                   </CardContent>
                 </Card>
                 <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-950">
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Delivered</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('deliveryNote.status.delivered', 'Delivered')}</p>
                         <p className="mt-3 text-2xl font-bold text-emerald-600 dark:text-emerald-400">{deliveredCount}</p>
                       </div>
                       <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
                         <CheckCircle className="h-5 w-5" />
                       </div>
                     </div>
-                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Received by client</p>
+                    <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">{t('deliveryNote.receivedByClient', 'Received by client')}</p>
                   </CardContent>
                 </Card>
               </>
@@ -576,7 +586,7 @@ export default function DeliveryNotesListPage() {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
-                    placeholder="Search by reference or client..."
+                    placeholder={t('deliveryNote.searchPlaceholder', 'Search by reference or client...')}
                     value={search}
                     onChange={(e) => handleSearch(e.target.value)}
                     className="bg-slate-50 pl-9 ring-1 ring-slate-200 placeholder:text-slate-400 dark:bg-slate-900 dark:ring-slate-700 dark:placeholder:text-slate-500"
@@ -585,7 +595,7 @@ export default function DeliveryNotesListPage() {
                 <Select value={statusFilter} onValueChange={handleStatusFilter}>
                   <SelectTrigger className="bg-slate-50 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
                     <Filter className="mr-2 h-4 w-4 text-slate-500" />
-                    <SelectValue placeholder="All Status" />
+                    <SelectValue placeholder={t('common.allStatus', 'All Status')} />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
                     {STATUS_OPTIONS.map((option) => (
@@ -598,10 +608,10 @@ export default function DeliveryNotesListPage() {
                 <Select value={clientFilter} onValueChange={handleClientFilter}>
                   <SelectTrigger className="bg-slate-50 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
                     <User className="mr-2 h-4 w-4 text-slate-500" />
-                    <SelectValue placeholder="All Clients" />
+                    <SelectValue placeholder={t('deliveryNote.allClients', 'All Clients')} />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
-                    <SelectItem value="all" className="dark:text-slate-200">All Clients</SelectItem>
+                    <SelectItem value="all" className="dark:text-slate-200">{t('deliveryNote.allClients', 'All Clients')}</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client._id} value={client._id} className="dark:text-slate-200">
                         {client.name}
@@ -623,7 +633,7 @@ export default function DeliveryNotesListPage() {
                 />
                 {(search || statusFilter !== 'all' || clientFilter !== 'all' || dateFrom || dateTo) && (
                   <Button variant="ghost" size="sm" onClick={clearFilters} className="text-slate-600 dark:text-slate-300">
-                    Clear Filters
+                    {t('deliveryNote.clearFilters', 'Clear Filters')}
                   </Button>
                 )}
               </div>
@@ -651,12 +661,12 @@ export default function DeliveryNotesListPage() {
               ) : filteredDeliveryNotes.length === 0 ? (
                 <EmptyState
                   icon={Truck}
-                  title="No delivery notes yet"
-                  description="Create a delivery note to record and track shipments sent to customers."
+                  title={t('deliveryNote.noDeliveryNotesYet', 'No delivery notes yet')}
+                  description={t('deliveryNote.noDeliveryNotesYetDescription', 'Create a delivery note to record and track shipments sent to customers.')}
                   action={
                     <Button onClick={() => navigate('/delivery-notes/new')} className="bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-md shadow-cyan-500/30 hover:brightness-110">
                       <Plus className="h-4 w-4 mr-2" />
-                      New Delivery Note
+                      {t('deliveryNote.newDeliveryNote', 'New Delivery Note')}
                     </Button>
                   }
                   className="m-4"
@@ -666,13 +676,13 @@ export default function DeliveryNotesListPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
-                        <TableHead className="text-slate-600 dark:text-slate-400">Reference</TableHead>
-                        <TableHead className="text-slate-600 dark:text-slate-400">Client</TableHead>
-                        <TableHead className="text-slate-600 dark:text-slate-400">Delivery Date</TableHead>
-                        <TableHead className="text-slate-600 dark:text-slate-400">Status</TableHead>
-                        <TableHead className="text-slate-600 dark:text-slate-400">Carrier</TableHead>
-                        <TableHead className="text-right text-slate-600 dark:text-slate-400">Total</TableHead>
-                        <TableHead className="text-right text-slate-600 dark:text-slate-400">Actions</TableHead>
+                        <TableHead className="text-slate-600 dark:text-slate-400">{t('deliveryNote.reference', 'Reference')}</TableHead>
+                        <TableHead className="text-slate-600 dark:text-slate-400">{t('deliveryNote.client', 'Client')}</TableHead>
+                        <TableHead className="text-slate-600 dark:text-slate-400">{t('deliveryNote.deliveryDate', 'Delivery Date')}</TableHead>
+                        <TableHead className="text-slate-600 dark:text-slate-400">{t('common.status', 'Status')}</TableHead>
+                        <TableHead className="text-slate-600 dark:text-slate-400">{t('deliveryNote.carrier', 'Carrier')}</TableHead>
+                        <TableHead className="text-right text-slate-600 dark:text-slate-400">{t('deliveryNote.total', 'Total')}</TableHead>
+                        <TableHead className="text-right text-slate-600 dark:text-slate-400">{t('common.actions', 'Actions')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -707,7 +717,7 @@ export default function DeliveryNotesListPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => navigate(`/delivery-notes/${dn._id}`)}
-                                title="View"
+                                title={t('deliveryNote.actionView', 'View')}
                                 className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                               >
                                 <Eye className="h-4 w-4" />
@@ -718,7 +728,7 @@ export default function DeliveryNotesListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => navigate(`/delivery-notes/${dn._id}/edit`)}
-                                    title="Edit"
+                                    title={t('deliveryNote.actionEdit', 'Edit')}
                                     className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                                   >
                                     <Edit className="h-4 w-4" />
@@ -727,7 +737,7 @@ export default function DeliveryNotesListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleConfirm(dn._id)}
-                                    title="Confirm"
+                                    title={t('deliveryNote.actionConfirm', 'Confirm')}
                                     className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                                   >
                                     <CheckCircle className="h-4 w-4" />
@@ -736,7 +746,7 @@ export default function DeliveryNotesListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDelete(dn._id)}
-                                    title="Delete"
+                                    title={t('deliveryNote.actionDelete', 'Delete')}
                                     className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                   >
                                     <Trash2 className="h-4 w-4" />
@@ -749,7 +759,7 @@ export default function DeliveryNotesListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDispatch(dn._id)}
-                                    title="Dispatch"
+                                    title={t('deliveryNote.actionDispatch', 'Dispatch')}
                                     className="h-8 w-8 p-0 text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
                                   >
                                     <Truck className="h-4 w-4" />
@@ -758,7 +768,7 @@ export default function DeliveryNotesListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleCancel(dn._id)}
-                                    title="Cancel"
+                                    title={t('deliveryNote.actionCancel', 'Cancel')}
                                     className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                   >
                                     <XCircle className="h-4 w-4" />
@@ -770,7 +780,7 @@ export default function DeliveryNotesListPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleCreateInvoice(dn._id)}
-                                  title="Create Invoice"
+                                  title={t('deliveryNote.actionCreateInvoice', 'Create Invoice')}
                                   className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                                 >
                                   <FilePlus className="h-4 w-4" />
@@ -791,7 +801,7 @@ export default function DeliveryNotesListPage() {
           {!loading && filteredDeliveryNotes.length > 0 && (
             <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Showing {filteredDeliveryNotes.length} of {pagination.total || filteredDeliveryNotes.length} delivery notes
+                {t('deliveryNote.showingOf', 'Showing {{shown}} of {{total}} delivery notes', { shown: filteredDeliveryNotes.length, total: pagination.total || filteredDeliveryNotes.length })}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -804,7 +814,7 @@ export default function DeliveryNotesListPage() {
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="flex items-center px-2 text-sm text-slate-600 dark:text-slate-400">
-                  Page {pagination.page}
+                  {t('deliveryNote.page', 'Page {{page}}', { page: pagination.page })}
                 </span>
                 <Button
                   variant="outline"

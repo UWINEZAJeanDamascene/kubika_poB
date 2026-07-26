@@ -222,7 +222,8 @@ export default function LiabilityDetailPage() {
         interestPortion: repaymentForm.interestPortion || 0,
         bankAccountId: repaymentForm.bankAccountId,
         transactionDate: repaymentForm.transactionDate,
-        notes: repaymentForm.notes
+        notes: repaymentForm.notes,
+        reference: repaymentForm.reference || undefined,
       });
       
       if (response.success) {
@@ -261,7 +262,8 @@ export default function LiabilityDetailPage() {
       const response: any = await loansApi.recordInterest(id!, {
         amount: interestForm.amount,
         chargeDate: interestForm.transactionDate,
-        notes: interestForm.notes
+        notes: interestForm.notes,
+        reference: interestForm.reference || undefined,
       });
       
       if (response.success) {
@@ -291,7 +293,8 @@ export default function LiabilityDetailPage() {
     amount: 0,
     bankAccountId: '',
     transactionDate: new Date().toISOString().split('T')[0],
-    notes: ''
+    notes: '',
+    reference: '',
   });
 
   const handleDrawdown = async () => {
@@ -311,7 +314,8 @@ export default function LiabilityDetailPage() {
         amount: drawdownForm.amount,
         bankAccountId: drawdownForm.bankAccountId,
         transactionDate: drawdownForm.transactionDate,
-        notes: drawdownForm.notes
+        notes: drawdownForm.notes,
+        reference: drawdownForm.reference || undefined,
       });
       
       if (response.success) {
@@ -323,7 +327,8 @@ export default function LiabilityDetailPage() {
           amount: 0,
           bankAccountId: '',
           transactionDate: new Date().toISOString().split('T')[0],
-          notes: ''
+          notes: '',
+          reference: '',
         });
       } else {
         toast.error(response.error || 'Failed to record drawdown');
@@ -1070,7 +1075,7 @@ export default function LiabilityDetailPage() {
                           .map((tx) => (
                             <TableRow key={tx._id} className="border-slate-100 dark:border-slate-800">
                               <TableCell className="text-sm text-slate-700 dark:text-slate-300">{formatDate(tx.transactionDate)}</TableCell>
-                              <TableCell className="text-sm text-slate-700 dark:text-slate-300">{tx.reference || '-'}</TableCell>
+                              <TableCell className="font-mono text-sm text-slate-700 dark:text-slate-300">{tx.reference || (tx as any).journalEntryNumber || '-'}</TableCell>
                               <TableCell className="text-right text-sm text-slate-700 dark:text-slate-300">{formatCurrency(tx.principalPortion || 0)}</TableCell>
                               <TableCell className="text-right text-sm text-slate-700 dark:text-slate-300">{formatCurrency(tx.interestPortion || 0)}</TableCell>
                               <TableCell className="text-right text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(tx.amount)}</TableCell>
@@ -1121,7 +1126,7 @@ export default function LiabilityDetailPage() {
                           .map((tx) => (
                             <TableRow key={tx._id} className="border-slate-100 dark:border-slate-800">
                               <TableCell className="text-sm text-slate-700 dark:text-slate-300">{formatDate(tx.transactionDate)}</TableCell>
-                              <TableCell className="text-sm text-slate-700 dark:text-slate-300">{tx.reference || '-'}</TableCell>
+                              <TableCell className="font-mono text-sm text-slate-700 dark:text-slate-300">{tx.reference || (tx as any).journalEntryNumber || '-'}</TableCell>
                               <TableCell className="text-sm text-slate-700 dark:text-slate-300">{tx.notes || '-'}</TableCell>
                               <TableCell className="text-right text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(tx.amount)}</TableCell>
                             </TableRow>
@@ -1165,7 +1170,7 @@ export default function LiabilityDetailPage() {
                         .map((tx) => (
                           <TableRow key={tx._id} className="border-slate-100 dark:border-slate-800">
                             <TableCell className="text-sm text-slate-700 dark:text-slate-300">{formatDate(tx.transactionDate)}</TableCell>
-                            <TableCell className="text-sm text-slate-700 dark:text-slate-300">{tx.reference || '-'}</TableCell>
+                            <TableCell className="font-mono text-sm text-slate-700 dark:text-slate-300">{tx.reference || (tx as any).journalEntryNumber || '-'}</TableCell>
                             <TableCell className="text-sm text-slate-700 dark:text-slate-300">{tx.notes || '-'}</TableCell>
                             <TableCell className="text-right text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(tx.amount)}</TableCell>
                           </TableRow>
@@ -1248,6 +1253,7 @@ export default function LiabilityDetailPage() {
                 <Input 
                   value={repaymentForm.reference}
                   onChange={(e) => setRepaymentForm({...repaymentForm, reference: e.target.value})}
+                  placeholder="Auto-generated if empty"
                   className="dark:bg-slate-700 dark:text-white dark:border-slate-600"
                 />
               </div>
@@ -1306,6 +1312,7 @@ export default function LiabilityDetailPage() {
                 <Input 
                   value={interestForm.reference}
                   onChange={(e) => setInterestForm({...interestForm, reference: e.target.value})}
+                  placeholder="Auto-generated if empty"
                   className="dark:bg-slate-700 dark:text-white dark:border-slate-600"
                 />
               </div>

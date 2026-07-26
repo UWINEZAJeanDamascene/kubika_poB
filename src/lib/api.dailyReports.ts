@@ -27,7 +27,7 @@ const downloadFile = async (url: string, filename: string) => {
   });
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: "Download failed" }));
-    throw new Error(error.message || "Download failed");
+    throw new Error(error.error || error.message || "Download failed");
   }
   const blob = await response.blob();
   const blobUrl = window.URL.createObjectURL(blob);
@@ -434,6 +434,10 @@ export const dailyReportsApi = {
 
   // Helper: Get today's date formatted
   getToday: () => formatDate(new Date()),
+
+  // Helper: Daily reports hub path (preserve selected date)
+  getListPath: (date?: string) =>
+    `/reports/daily${date ? `?date=${encodeURIComponent(date)}` : ""}`,
 
   // Helper: Format any date
   formatDate,

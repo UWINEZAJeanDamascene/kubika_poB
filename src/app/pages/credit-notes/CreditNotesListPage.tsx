@@ -84,27 +84,27 @@ interface Invoice {
   referenceNo: string;
 }
 
-const TYPE_OPTIONS = [
-  { value: 'all', label: 'All Types' },
-  { value: 'goods_return', label: 'Goods Return' },
-  { value: 'price_adjustment', label: 'Price Adjustment' },
-  { value: 'cancelled_order', label: 'Cancelled Order' },
-];
-
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Status' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'issued', label: 'Issued' },
-  { value: 'applied', label: 'Applied' },
-  { value: 'refunded', label: 'Refunded' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
 export default function CreditNotesListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { currency: companyCurrency } = useCompany();
+
+  const TYPE_OPTIONS = [
+    { value: 'all', label: t('creditNotes.allTypes', 'All Types') },
+    { value: 'goods_return', label: t('creditNotes.typeList.goods_return', 'Goods Return') },
+    { value: 'price_adjustment', label: t('creditNotes.typeList.price_adjustment', 'Price Adjustment') },
+    { value: 'cancelled_order', label: t('creditNotes.typeList.cancelled_order', 'Cancelled Order') },
+  ];
+
+  const STATUS_OPTIONS = [
+    { value: 'all', label: t('creditNotes.allStatus', 'All Status') },
+    { value: 'draft', label: t('creditNotes.statusList.draft', 'Draft') },
+    { value: 'confirmed', label: t('creditNotes.statusList.confirmed', 'Confirmed') },
+    { value: 'issued', label: t('creditNotes.statusList.issued', 'Issued') },
+    { value: 'applied', label: t('creditNotes.statusList.applied', 'Applied') },
+    { value: 'refunded', label: t('creditNotes.statusList.refunded', 'Refunded') },
+    { value: 'cancelled', label: t('creditNotes.statusList.cancelled', 'Cancelled') },
+  ];
 
   const [loading, setLoading] = useState(true);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
@@ -275,12 +275,12 @@ export default function CreditNotesListPage() {
 
   const getStatusLabel = (status: string) => {
     const map: Record<string, string> = {
-      draft: 'Draft',
-      confirmed: 'Confirmed',
-      issued: 'Issued',
-      applied: 'Applied',
-      refunded: 'Refunded',
-      cancelled: 'Cancelled',
+      draft: t('creditNotes.statusList.draft', 'Draft'),
+      confirmed: t('creditNotes.statusList.confirmed', 'Confirmed'),
+      issued: t('creditNotes.statusList.issued', 'Issued'),
+      applied: t('creditNotes.statusList.applied', 'Applied'),
+      refunded: t('creditNotes.statusList.refunded', 'Refunded'),
+      cancelled: t('creditNotes.statusList.cancelled', 'Cancelled'),
     };
     return map[status] || status;
   };
@@ -296,9 +296,9 @@ export default function CreditNotesListPage() {
 
   const getTypeLabel = (type: string) => {
     const map: Record<string, string> = {
-      goods_return: 'Goods Return',
-      price_adjustment: 'Price Adjustment',
-      cancelled_order: 'Cancelled Order',
+      goods_return: t('creditNotes.typeList.goods_return', 'Goods Return'),
+      price_adjustment: t('creditNotes.typeList.price_adjustment', 'Price Adjustment'),
+      cancelled_order: t('creditNotes.typeList.cancelled_order', 'Cancelled Order'),
     };
     return map[type] || type;
   };
@@ -422,19 +422,19 @@ export default function CreditNotesListPage() {
                     <Receipt className="h-5 w-5" />
                   </div>
                   <div>
-                    <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">Credit Notes</h1>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Manage returns, price adjustments, and cancelled orders</p>
+                    <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">{t('creditNotes.title', 'Credit Notes')}</h1>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{t('creditNotes.subtitle', 'Manage credit notes')}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Button variant="outline" size="sm" onClick={handleExport} className="gap-1.5 dark:border-slate-700 dark:text-slate-200">
                     <Download className="h-4 w-4" />
-                    <span className="hidden sm:inline">Export</span>
+                    <span className="hidden sm:inline">{t('common.export', 'Export')}</span>
                   </Button>
                   <Button size="sm" onClick={() => setShowCreateModal(true)} className="gap-1.5 bg-violet-600 hover:bg-violet-700">
                     <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">New Credit Note</span>
-                    <span className="sm:hidden">New</span>
+                    <span className="hidden sm:inline">{t('creditNotes.newCreditNote', 'New Credit Note')}</span>
+                    <span className="sm:hidden">{t('creditNotes.new', 'New')}</span>
                   </Button>
                 </div>
               </div>
@@ -450,7 +450,7 @@ export default function CreditNotesListPage() {
                     <Receipt className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Total Notes</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('creditNotes.totalNotes', 'Total Notes')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">{filteredCreditNotes.length}</p>
                   </div>
                 </div>
@@ -463,7 +463,7 @@ export default function CreditNotesListPage() {
                     <Wallet className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Total Amount</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('creditNotes.totalAmount', 'Total Amount')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">
                       {formatCurrency(filteredCreditNotes.reduce((s, c) => s + (c.grandTotal || c.totalAmount || 0), 0))}
                     </p>
@@ -478,7 +478,7 @@ export default function CreditNotesListPage() {
                     <CheckCircle className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Confirmed</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('creditNotes.statusList.confirmed', 'Confirmed')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">{filteredCreditNotes.filter(c => c.status === 'confirmed').length}</p>
                   </div>
                 </div>
@@ -491,7 +491,7 @@ export default function CreditNotesListPage() {
                     <TrendingUp className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Issued</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('creditNotes.statusList.issued', 'Issued')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">{filteredCreditNotes.filter(c => c.status === 'issued').length}</p>
                   </div>
                 </div>
@@ -504,7 +504,7 @@ export default function CreditNotesListPage() {
                     <Ban className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Cancelled</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{t('creditNotes.statusList.cancelled', 'Cancelled')}</p>
                     <p className="text-lg font-bold text-slate-900 dark:text-white">{filteredCreditNotes.filter(c => c.status === 'cancelled').length}</p>
                   </div>
                 </div>
@@ -518,7 +518,7 @@ export default function CreditNotesListPage() {
               <div className="relative flex-1 min-w-[200px]">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
-                  placeholder="Search credit notes..."
+                  placeholder={t('creditNotes.search', 'Search credit notes...')}
                   value={search}
                   onChange={(e) => handleSearch(e.target.value)}
                   className="bg-white pl-9 dark:border-slate-800 dark:bg-slate-900 dark:text-white"
@@ -526,7 +526,7 @@ export default function CreditNotesListPage() {
               </div>
               <Select value={statusFilter} onValueChange={handleStatusFilter}>
                 <SelectTrigger className="w-[150px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={t('creditNotes.filterStatus', 'Status')} />
                 </SelectTrigger>
                 <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
                   {STATUS_OPTIONS.map(option => (
@@ -536,7 +536,7 @@ export default function CreditNotesListPage() {
               </Select>
               <Select value={typeFilter} onValueChange={handleTypeFilter}>
                 <SelectTrigger className="w-[160px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder={t('creditNotes.filterType', 'Type')} />
                 </SelectTrigger>
                 <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
                   {TYPE_OPTIONS.map(option => (
@@ -546,10 +546,10 @@ export default function CreditNotesListPage() {
               </Select>
               <Select value={clientFilter} onValueChange={handleClientFilter}>
                 <SelectTrigger className="w-[180px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                  <SelectValue placeholder="Client" />
+                  <SelectValue placeholder={t('creditNotes.filterClient', 'Client')} />
                 </SelectTrigger>
                 <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
-                  <SelectItem value="all" className="dark:text-slate-200">All Clients</SelectItem>
+                  <SelectItem value="all" className="dark:text-slate-200">{t('creditNotes.allClients', 'All Clients')}</SelectItem>
                   {clients.map(client => (
                     <SelectItem key={client._id} value={client._id} className="dark:text-slate-200">{client.name}</SelectItem>
                   ))}
@@ -560,7 +560,7 @@ export default function CreditNotesListPage() {
               {(search || statusFilter !== 'all' || clientFilter !== 'all' || typeFilter !== 'all' || dateFrom || dateTo) && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-slate-500 dark:text-slate-400">
                   <RotateCcw className="h-3.5 w-3.5" />
-                  Clear
+                  {t('common.clear', 'Clear')}
                 </Button>
               )}
             </div>
@@ -577,12 +577,12 @@ export default function CreditNotesListPage() {
           ) : filteredCreditNotes.length === 0 ? (
             <EmptyState
               icon={Receipt}
-              title="No credit notes yet"
-              description="Create a credit note to issue refunds or adjustments against customer invoices."
+              title={t('creditNotes.noCreditNotes', 'No credit notes found')}
+              description={t('creditNotes.noCreditNotesDescription', 'Create your first credit note to get started')}
               action={
                 <Button onClick={() => setShowCreateModal(true)} className="bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-md shadow-cyan-500/30 hover:brightness-110">
                   <Plus className="h-4 w-4 mr-2" />
-                  New Credit Note
+                  {t('creditNotes.newCreditNote', 'New Credit Note')}
                 </Button>
               }
               className="py-8"
@@ -595,14 +595,14 @@ export default function CreditNotesListPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
-                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Reference</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Invoice</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Client</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Date</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Type</TableHead>
-                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Status</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('creditNotes.reference', 'Reference')}</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('creditNotes.invoice', 'Invoice')}</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('creditNotes.client', 'Client')}</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('creditNotes.date', 'Date')}</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('creditNotes.typeLabel', 'Type')}</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('creditNotes.statusLabel', 'Status')}</TableHead>
                         <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">EBM</TableHead>
-                        <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Total</TableHead>
+                        <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">{t('creditNotes.total', 'Total')}</TableHead>
                         <TableHead className="w-24"></TableHead>
                       </TableRow>
                     </TableHeader>

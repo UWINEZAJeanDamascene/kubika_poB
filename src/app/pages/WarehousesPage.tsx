@@ -90,6 +90,7 @@ interface WarehouseFormData {
   phone: string;
   email: string;
   inventoryAccount: string;
+  rraBranchId: string;
   isDefault: boolean;
   isActive: boolean;
 }
@@ -105,6 +106,7 @@ const initialFormData: WarehouseFormData = {
   phone: '',
   email: '',
   inventoryAccount: '',
+  rraBranchId: '',
   isDefault: false,
   isActive: true,
 };
@@ -177,19 +179,26 @@ export default function WarehousesPage() {
         phone: warehouse.location?.phone || '',
         email: warehouse.location?.email || '',
         inventoryAccount: warehouse.inventoryAccount || '',
+        rraBranchId: warehouse.rraBranchId || '',
         isDefault: warehouse.isDefault || false,
         isActive: warehouse.isActive !== false,
       });
     } else {
       setEditingWarehouse(null);
-      setFormData(initialFormData);
+      // The head office is branch 00 at RRA, which is what a first/default warehouse usually is.
+      setFormData({ ...initialFormData, rraBranchId: warehouses.length === 0 ? '00' : '' });
     }
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      toast.error(t('pages.warehouses.warehouseName') + ' is required');
+      toast.error(t('pages.warehouses.nameRequired'));
+      return;
+    }
+    const rraBranchId = formData.rraBranchId.trim();
+    if (rraBranchId && !/^\d{2}$/.test(rraBranchId)) {
+      toast.error('RRA Branch ID must be exactly two digits, for example 00 for the head office.');
       return;
     }
 
@@ -209,6 +218,7 @@ export default function WarehousesPage() {
           email: formData.email || undefined,
         },
         inventoryAccount: formData.inventoryAccount || undefined,
+        rraBranchId: rraBranchId || null,
         isDefault: formData.isDefault,
         isActive: formData.isActive,
       };
@@ -296,7 +306,10 @@ export default function WarehousesPage() {
   };
 
   const handleRegisterBranch = async (warehouse: Warehouse) => {
-    if (!warehouse.rraBranchId) return;
+    if (!warehouse.rraBranchId) {
+      toast.error('Set the RRA Branch ID on this warehouse first (use 00 for the head office).');
+      return;
+    }
     try {
       await ebmApi.registerBranch({ branchId: warehouse.rraBranchId });
       toast.success('Branch registered with RRA');
@@ -755,6 +768,22 @@ export default function WarehousesPage() {
                   placeholder={t('pages.warehouses.inventoryAccountPlaceholder')}
                   className="bg-white dark:bg-slate-700 text-slate-900 dark:text-white border-slate-200 dark:border-slate-600"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="rraBranchId" className="text-slate-900 dark:text-white">RRA Branch ID</Label>
+                <Input
+                  id="rraBranchId"
+                  value={formData.rraBranchId}
+                  onChange={(e) => setFormData(prev => ({ ...prev, rraBranchId: e.target.value.replace(/\D/g, '').slice(0, 2) }))}
+                  placeholder="00"
+                  inputMode="numeric"
+                  maxLength={2}
+                  className="bg-white dark:bg-slate-700 text-slate-900 dark:text-white border-slate-200 dark:border-slate-600"
+                />
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  The two digit branch number this warehouse has at RRA (00 is the head office). Required before you can
+                  register the branch, register products, or send EBM invoices from this warehouse.
+                </p>
               </div>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2">

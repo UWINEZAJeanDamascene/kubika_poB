@@ -1,4 +1,5 @@
 import { Component, ReactNode } from 'react';
+import { useLocation } from 'react-router';
 
 interface Props {
   children: ReactNode;
@@ -10,8 +11,8 @@ interface State {
   error: Error | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
-  constructor(props: Props) {
+class ErrorBoundaryInner extends Component<Props & { resetKey: string }, State> {
+  constructor(props: Props & { resetKey: string }) {
     super(props);
     this.state = { hasError: false, error: null };
   }
@@ -22,6 +23,12 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: { componentStack: string }) {
     console.error('[ErrorBoundary] Caught error:', error, info);
+  }
+
+  componentDidUpdate(prevProps: Props & { resetKey: string }) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   render() {
@@ -46,4 +53,14 @@ export class ErrorBoundary extends Component<Props, State> {
     }
     return this.props.children;
   }
+}
+
+/** Resets on route changes so a prior HMR/render crash does not stick on the next page. */
+export function ErrorBoundary({ children, fallback }: Props) {
+  const location = useLocation();
+  return (
+    <ErrorBoundaryInner resetKey={location.key || location.pathname} fallback={fallback}>
+      {children}
+    </ErrorBoundaryInner>
+  );
 }

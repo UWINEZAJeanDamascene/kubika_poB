@@ -33,6 +33,7 @@ import { HelpCircle } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
 import { PageHeader } from '@/app/components/PageHeader';
 import { LoadingState } from '@/app/components/PageState';
+import { useCompanyStore } from '@/store/companyStore';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -78,20 +79,14 @@ interface ProductFormData {
   category: string;
   unit: string;
   supplier: string;
-  preferredSupplier: string;
   isStockable: boolean;
   costPrice: string;
-  averageCost: string;
   sellingPrice: string;
-  taxCode: string;
-  taxRate: string;
   costingMethod: string;
-  reorderPoint: string;
   reorderQuantity: string;
   lowStockThreshold: string;
   brand: string;
   location: string;
-  weight: string;
   trackingType: string;
   defaultWarehouse: string;
   inventory_account_id: string;
@@ -101,10 +96,6 @@ interface ProductFormData {
   ebmTaxTypeCode: string;
   ebmPackagingUnitCode: string;
   ebmQuantityUnitCode: string;
-  ebmItemStandardName: string;
-  ebmBatchNo: string;
-  ebmSafetyQty: string;
-  ebmAdditionalInfo: string;
 }
 
 interface EBMCodeOption {
@@ -193,6 +184,15 @@ const taxTypeLabel = (code: EBMCodeOption) => {
   return fallback[code.code] || codeLabel(code);
 };
 
+/**
+ * The VAT rate follows the RRA tax type — the backend derives it the same way
+ * (`taxRateForType`), so it is never entered by hand.
+ */
+const taxRateForType = (taxTypeCode: string, vatRatePct: number, isVatRegistered: boolean) => {
+  if (!isVatRegistered) return 0;
+  return taxTypeCode === 'B' ? vatRatePct : 0;
+};
+
 const filterCodes = (codes: EBMCodeOption[], search: string) => {
   const term = search.trim().toLowerCase();
   if (!term) return codes;
@@ -233,6 +233,9 @@ export default function ProductFormPage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = Boolean(id);
+  const company = useCompanyStore((state) => state.company);
+  const vatRatePct = typeof company?.vat_rate_pct === 'number' ? company.vat_rate_pct : 18;
+  const isVatRegistered = company?.is_vat_registered !== false;
 
   const [initialLoading, setInitialLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
@@ -263,20 +266,14 @@ export default function ProductFormPage() {
     category: '',
     unit: 'pcs',
     supplier: '',
-    preferredSupplier: '',
     isStockable: true,
     costPrice: '0',
-    averageCost: '0',
     sellingPrice: '0',
-          taxCode: 'B',
-          taxRate: '18',
     costingMethod: 'fifo',
-    reorderPoint: '10',
     reorderQuantity: '10',
     lowStockThreshold: '10',
     brand: '',
     location: '',
-    weight: '0',
     trackingType: 'none',
     defaultWarehouse: '',
     inventory_account_id: '',
@@ -286,10 +283,6 @@ export default function ProductFormPage() {
     ebmTaxTypeCode: 'B',
     ebmPackagingUnitCode: '',
     ebmQuantityUnitCode: '',
-    ebmItemStandardName: '',
-    ebmBatchNo: '',
-    ebmSafetyQty: '10',
-    ebmAdditionalInfo: '',
   });
 
   useEffect(() => {
@@ -431,25 +424,19 @@ export default function ProductFormPage() {
       setEbmQuantityUnits(quantityUnits);
       setEbmItemClasses(itemClassResponse.success ? itemClassResponse.data : []);
       if (!isEditMode) {
-        setFormData((prev) => {
-          const mappedPackaging = prev.ebmPackagingUnitCode || mapUnitToRraCode(prev.unit, packagingUnits);
-          const mappedQuantity = prev.ebmQuantityUnitCode || mapUnitToRraCode(prev.unit, quantityUnits);
-          return {
-            ...prev,
-            ebmTaxTypeCode: prev.ebmTaxTypeCode || 'B',
-            taxCode: prev.taxCode || 'B',
-            taxRate: prev.taxRate || '18',
-            ebmPackagingUnitCode: mappedPackaging,
-            ebmQuantityUnitCode: mappedQuantity,
-          };
-        });
+        setFormData((prev) => ({
+          ...prev,
+          ebmTaxTypeCode: prev.ebmTaxTypeCode || 'B',
+          ebmPackagingUnitCode: prev.ebmPackagingUnitCode || mapUnitToRraCode(prev.unit, packagingUnits),
+          ebmQuantityUnitCode: prev.ebmQuantityUnitCode || mapUnitToRraCode(prev.unit, quantityUnits),
+        }));
       }
       if (!taxTypes.length || !packagingUnits.length || !quantityUnits.length || !(itemClassResponse.data || []).length) {
-        setEbmCodeMessage('Sync RRA code data before selecting EBM product fields.');
+        setEbmCodeMessage('RRA code lists are empty. Open Settings > EBM and run "Sync Codes" before creating products.');
       }
     } catch (error: any) {
       console.error('Failed to load EBM codes:', error);
-      setEbmCodeMessage(error.message || 'Sync RRA code data before selecting EBM product fields.');
+      setEbmCodeMessage(error.message || 'RRA code lists could not be loaded. Open Settings > EBM and run "Sync Codes" before creating products.');
     } finally {
       setEbmCodesLoading(false);
     }
@@ -469,21 +456,15 @@ export default function ProductFormPage() {
           description: product.description || '',
           category: product.category?._id || product.category || '',
           unit: product.unit || 'pcs',
-          supplier: product.supplier?._id || product.supplier || '',
-          preferredSupplier: product.preferredSupplier?._id || product.preferredSupplier || '',
+          supplier: product.preferredSupplier?._id || product.preferredSupplier || product.supplier?._id || product.supplier || '',
           isStockable: product.isStockable !== false,
           costPrice: String(product.costPrice || 0),
-          averageCost: String(product.averageCost || 0),
           sellingPrice: String(product.sellingPrice || 0),
-          taxCode: product.taxCode || 'B',
-          taxRate: String(product.taxRate ?? 18),
           costingMethod: product.costingMethod || 'fifo',
-          reorderPoint: String(product.reorderPoint || 10),
           reorderQuantity: String(product.reorderQuantity || 10),
-          lowStockThreshold: String(product.lowStockThreshold || 10),
+          lowStockThreshold: String(product.reorderPoint || product.lowStockThreshold || 10),
           brand: product.brand || '',
           location: product.location || '',
-          weight: String(product.weight || 0),
           trackingType: product.trackingType || 'none',
           defaultWarehouse: product.defaultWarehouse?._id || product.defaultWarehouse || '',
           inventory_account_id: product.inventory_account_id || product.inventoryAccount || '',
@@ -493,15 +474,11 @@ export default function ProductFormPage() {
           ebmTaxTypeCode: product.ebm?.taxTyCd || product.ebm?.taxTypeCode || product.taxCode || 'B',
           ebmPackagingUnitCode: product.ebm?.pkgUnitCd || product.ebm?.packagingUnitCode || '',
           ebmQuantityUnitCode: product.ebm?.qtyUnitCd || product.ebm?.quantityUnitCode || product.unit || '',
-          ebmItemStandardName: product.ebm?.itemStdNm || '',
-          ebmBatchNo: product.ebm?.btchNo || '',
-          ebmSafetyQty: String(product.ebm?.sftyQty ?? product.lowStockThreshold ?? 0),
-          ebmAdditionalInfo: product.ebm?.addInfo || '',
         });
       }
     } catch (error) {
       console.error('Failed to load product:', error);
-      toast.error('Failed to load product');
+      toast.error(t('products.loadProductFailed'));
       navigate('/products');
     } finally {
       setInitialLoading(false);
@@ -514,13 +491,6 @@ export default function ProductFormPage() {
       if (field === 'unit') {
         if (!next.ebmPackagingUnitCode) next.ebmPackagingUnitCode = mapUnitToRraCode(value, ebmPackagingUnits);
         if (!next.ebmQuantityUnitCode) next.ebmQuantityUnitCode = mapUnitToRraCode(value, ebmQuantityUnits);
-      }
-      if (field === 'ebmTaxTypeCode') {
-        next.taxCode = value;
-        next.taxRate = value === 'B' ? '18' : '0';
-      }
-      if (field === 'lowStockThreshold' && !prev.ebmSafetyQty) {
-        next.ebmSafetyQty = value;
       }
       return next;
     });
@@ -582,24 +552,27 @@ export default function ProductFormPage() {
       return;
     }
     if (!formData.ebmTaxTypeCode) {
-      toast.error('Tax type is required for RRA EBM compliance.');
+      toast.error(t('products.taxTypeRequired'));
       return;
     }
     if (!formData.ebmItemClassCode) {
-      toast.error('Item classification code is required for RRA EBM compliance.');
+      toast.error(t('products.itemClassRequired'));
       return;
     }
     if (!formData.ebmPackagingUnitCode) {
-      toast.error('Packaging unit is required for RRA EBM compliance.');
+      toast.error(t('products.packagingUnitRequired'));
       return;
     }
     if (!formData.ebmQuantityUnitCode) {
-      toast.error('Quantity unit is required for RRA EBM compliance.');
+      toast.error(t('products.quantityUnitRequired'));
       return;
     }
 
     setSaving(true);
     try {
+      // One stock level drives both the low-stock alert and the reorder suggestion,
+      // and one supplier is stored as both the linked and the preferred supplier.
+      const stockLevel = parseFloat(formData.lowStockThreshold) || 0;
       const payload = {
         name: formData.name.trim(),
         sku: formData.sku.trim().toUpperCase(),
@@ -609,29 +582,24 @@ export default function ProductFormPage() {
         category: formData.category,
         unit: formData.unit,
         supplier: formData.supplier || null,
-        preferredSupplier: formData.preferredSupplier || null,
+        preferredSupplier: formData.supplier || null,
         isStockable: formData.isStockable,
         costPrice: parseFloat(formData.costPrice) || 0,
         sellingPrice: parseFloat(formData.sellingPrice) || 0,
-        taxCode: formData.taxCode,
-        taxRate: parseFloat(formData.taxRate) || 0,
+        taxCode: formData.ebmTaxTypeCode,
+        taxRate: taxRateForType(formData.ebmTaxTypeCode, vatRatePct, isVatRegistered),
         ebm: {
           itemClassCd: formData.ebmItemClassCode || null,
           taxTyCd: formData.ebmTaxTypeCode || null,
           pkgUnitCd: formData.ebmPackagingUnitCode || null,
           qtyUnitCd: formData.ebmQuantityUnitCode || null,
-          itemStdNm: formData.ebmItemStandardName.trim() || null,
-          btchNo: formData.ebmBatchNo.trim() || null,
-          sftyQty: parseFloat(formData.ebmSafetyQty) || 0,
-          addInfo: formData.ebmAdditionalInfo.trim() || null,
         },
         costingMethod: formData.costingMethod,
-        reorderPoint: parseFloat(formData.reorderPoint) || 0,
+        reorderPoint: stockLevel,
         reorderQuantity: parseFloat(formData.reorderQuantity) || 0,
-        lowStockThreshold: parseFloat(formData.lowStockThreshold) || 10,
+        lowStockThreshold: stockLevel,
         brand: formData.brand.trim() || null,
         location: formData.location.trim() || null,
-        weight: parseFloat(formData.weight) || 0,
         trackingType: formData.trackingType,
         defaultWarehouse: formData.defaultWarehouse || null,
         inventoryAccount: formData.inventory_account_id || null,
@@ -677,12 +645,12 @@ export default function ProductFormPage() {
         <div className="container mx-auto max-w-5xl px-3 py-4 sm:px-4 sm:py-6 2xl:max-w-[1400px]">
           <PageHeader
             title={tr('products.editProduct', 'Edit Product')}
-            subtitle="Loading product information and linked accounting settings."
+            subtitle={t('products.loadingProductDesc')}
             icon={Package}
             onBack={() => navigate('/products')}
             backLabel={t('common.back') || 'Back'}
           />
-          <LoadingState title="Loading product" description="Preparing product details." />
+          <LoadingState title={t('products.loadingProduct')} description={t('products.loadingProductDesc')} />
         </div>
       </Layout>
     );
@@ -816,40 +784,23 @@ export default function ProductFormPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="supplier" className="dark:text-slate-200">{t('products.supplier') || 'Supplier'}</Label>
-                  <Select 
-                    value={formData.supplier} 
-                    onValueChange={(value) => handleChange('supplier', value)}
-                  >
-                    <SelectTrigger className="h-10 rounded-md flex items-center px-3">
-                      <SelectValue placeholder={t('products.selectSupplier') || 'Select supplier'} />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-slate-800">
-                      {suppliers.map((sup) => (
-                        <SelectItem key={sup._id} value={sup._id} className="dark:text-slate-200">{sup.name} ({sup.code})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
                   <TooltipProvider>
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="preferredSupplier" className="dark:text-slate-200">{t('products.preferredSupplier') || 'Preferred Supplier'}</Label>
+                      <Label htmlFor="supplier" className="dark:text-slate-200">{t('products.supplier') || 'Supplier'}</Label>
                       <Tooltip>
                         <TooltipTrigger><HelpCircle className="h-4 w-4 text-slate-400" /></TooltipTrigger>
                         <TooltipContent className="max-w-xs dark:bg-slate-800 dark:border-slate-700">
-                          <p className="font-semibold dark:text-white">Preferred Supplier</p>
-                          <p className="text-sm mt-1 dark:text-slate-300">Set a default supplier for purchase orders. You can still select other suppliers when creating orders.</p>
+                          <p className="font-semibold dark:text-white">Supplier</p>
+                          <p className="text-sm mt-1 dark:text-slate-300">The default supplier used for purchase orders and reorder suggestions. You can still pick a different supplier on any purchase order.</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>
-                    <Select 
-                      value={formData.preferredSupplier} 
-                      onValueChange={(value) => handleChange('preferredSupplier', value)}
+                    <Select
+                      value={formData.supplier}
+                      onValueChange={(value) => handleChange('supplier', value)}
                     >
                       <SelectTrigger className="h-10 rounded-md flex items-center px-3">
-                        <SelectValue placeholder={t('products.selectPreferredSupplier') || 'Select preferred supplier'} />
+                        <SelectValue placeholder={t('products.selectSupplier') || 'Select supplier'} />
                       </SelectTrigger>
                       <SelectContent className="dark:bg-slate-800">
                         {suppliers.map((sup) => (
@@ -878,10 +829,10 @@ export default function ProductFormPage() {
               <CardHeader className="px-6 py-4 border-b border-slate-200 dark:border-slate-800">
                 <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
                   <Package className="h-5 w-5" />
-                  RRA EBM Information
+                  {t('products.ebmFormTitle')}
                 </CardTitle>
                 <CardDescription className="text-slate-500 dark:text-slate-300">
-                  RRA product codes used for EBM item registration and invoice validation
+                  {t('products.ebmFormDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="grid gap-4 md:grid-cols-2 px-6 py-6">
@@ -892,14 +843,14 @@ export default function ProductFormPage() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="ebmTaxTypeCode" className="dark:text-slate-200">RRA Tax Type</Label>
+                  <Label htmlFor="ebmTaxTypeCode" className="dark:text-slate-200">{t('products.taxType')}</Label>
                   <Select
                     value={formData.ebmTaxTypeCode}
                     onValueChange={(value) => handleChange('ebmTaxTypeCode', value)}
                     disabled={ebmCodesLoading || ebmTaxTypes.length === 0}
                   >
                     <SelectTrigger className="h-10 rounded-md flex items-center px-3">
-                      <SelectValue placeholder={ebmCodesLoading ? 'Loading RRA codes...' : 'Select tax type'} />
+                      <SelectValue placeholder={ebmCodesLoading ? t('products.loadingRraCodes') : t('products.selectTaxType')} />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-slate-800">
                       {ebmTaxTypes.map((code) => (
@@ -912,11 +863,11 @@ export default function ProductFormPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="ebmItemClassCode" className="dark:text-slate-200">Item Classification Code</Label>
+                  <Label htmlFor="ebmItemClassCode" className="dark:text-slate-200">{t('products.itemClassification')}</Label>
                   <Input
                     value={itemClassSearch}
                     onChange={(event) => setItemClassSearch(event.target.value)}
-                    placeholder="Search item class"
+                    placeholder={t('products.searchItemClass')}
                     className="h-9 rounded-md px-3"
                     disabled={ebmCodesLoading || ebmItemClasses.length === 0}
                   />
@@ -926,7 +877,7 @@ export default function ProductFormPage() {
                     disabled={ebmCodesLoading || ebmItemClasses.length === 0}
                   >
                     <SelectTrigger className="h-10 rounded-md flex items-center px-3">
-                      <SelectValue placeholder={ebmCodesLoading ? 'Loading RRA codes...' : 'Select item class'} />
+                      <SelectValue placeholder={ebmCodesLoading ? t('products.loadingRraCodes') : t('products.selectItemClass')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-72 dark:bg-slate-800">
                       {filterItemClasses(ebmItemClasses, itemClassSearch).map((itemClass) => (
@@ -937,16 +888,16 @@ export default function ProductFormPage() {
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Select the RRA classification that best describes this product. If unsure, contact your accountant or check the RRA item classification list.
+                    {t('products.itemClassHint')}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="ebmPackagingUnitCode" className="dark:text-slate-200">Packaging Unit</Label>
+                  <Label htmlFor="ebmPackagingUnitCode" className="dark:text-slate-200">{t('products.packagingUnit')}</Label>
                   <Input
                     value={packagingUnitSearch}
                     onChange={(event) => setPackagingUnitSearch(event.target.value)}
-                    placeholder="Search packaging unit"
+                    placeholder={t('products.searchPackagingUnit')}
                     className="h-9 rounded-md px-3"
                     disabled={ebmCodesLoading || ebmPackagingUnits.length === 0}
                   />
@@ -956,7 +907,7 @@ export default function ProductFormPage() {
                     disabled={ebmCodesLoading || ebmPackagingUnits.length === 0}
                   >
                     <SelectTrigger className="h-10 rounded-md flex items-center px-3">
-                      <SelectValue placeholder={ebmCodesLoading ? 'Loading RRA codes...' : 'Select packaging unit'} />
+                      <SelectValue placeholder={ebmCodesLoading ? t('products.loadingRraCodes') : t('products.selectPackagingUnit')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-72 dark:bg-slate-800">
                       {filterCodes(ebmPackagingUnits, packagingUnitSearch).map((code) => (
@@ -969,11 +920,11 @@ export default function ProductFormPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="ebmQuantityUnitCode" className="dark:text-slate-200">Quantity Unit</Label>
+                  <Label htmlFor="ebmQuantityUnitCode" className="dark:text-slate-200">{t('products.quantityUnit')}</Label>
                   <Input
                     value={quantityUnitSearch}
                     onChange={(event) => setQuantityUnitSearch(event.target.value)}
-                    placeholder="Search quantity unit"
+                    placeholder={t('products.searchQuantityUnit')}
                     className="h-9 rounded-md px-3"
                     disabled={ebmCodesLoading || ebmQuantityUnits.length === 0}
                   />
@@ -983,7 +934,7 @@ export default function ProductFormPage() {
                     disabled={ebmCodesLoading || ebmQuantityUnits.length === 0}
                   >
                     <SelectTrigger className="h-10 rounded-md flex items-center px-3">
-                      <SelectValue placeholder={ebmCodesLoading ? 'Loading RRA codes...' : 'Select quantity unit'} />
+                      <SelectValue placeholder={ebmCodesLoading ? t('products.loadingRraCodes') : t('products.selectQuantityUnit')} />
                     </SelectTrigger>
                     <SelectContent className="max-h-72 dark:bg-slate-800">
                       {filterCodes(ebmQuantityUnits, quantityUnitSearch).map((code) => (
@@ -995,55 +946,11 @@ export default function ProductFormPage() {
                   </Select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="ebmItemStandardName" className="dark:text-slate-200">Item Standard Name</Label>
-                  <Input
-                    id="ebmItemStandardName"
-                    value={formData.ebmItemStandardName}
-                    maxLength={100}
-                    onChange={(e) => handleChange('ebmItemStandardName', e.target.value)}
-                    placeholder={formData.name || 'RRA standard item name'}
-                    className="h-10 rounded-md px-3"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ebmBatchNo" className="dark:text-slate-200">Batch Number</Label>
-                  <Input
-                    id="ebmBatchNo"
-                    value={formData.ebmBatchNo}
-                    maxLength={30}
-                    onChange={(e) => handleChange('ebmBatchNo', e.target.value)}
-                    placeholder="Default batch number"
-                    className="h-10 rounded-md px-3"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="ebmSafetyQty" className="dark:text-slate-200">Safety Quantity</Label>
-                  <Input
-                    id="ebmSafetyQty"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.ebmSafetyQty}
-                    onChange={(e) => handleChange('ebmSafetyQty', e.target.value)}
-                    className="h-10 rounded-md px-3"
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="ebmAdditionalInfo" className="dark:text-slate-200">Additional Information</Label>
-                  <Textarea
-                    id="ebmAdditionalInfo"
-                    value={formData.ebmAdditionalInfo}
-                    maxLength={400}
-                    onChange={(e) => handleChange('ebmAdditionalInfo', e.target.value)}
-                    placeholder="Optional RRA item registration details"
-                    rows={3}
-                    className="rounded-md px-3"
-                  />
-                </div>
+                <p className="md:col-span-2 text-xs text-slate-500 dark:text-slate-400">
+                  The rest of the RRA item registration is filled in automatically: the product name is sent as the
+                  standard item name, the description as additional information, the barcode and selling price as
+                  entered above, and the low stock level as the safety quantity.
+                </p>
               </CardContent>
             </Card>
 
@@ -1085,35 +992,13 @@ export default function ProductFormPage() {
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="taxCode" className="dark:text-slate-200">{t('products.taxCode') || 'Tax Code'}</Label>
-                  <Select 
-                    value={formData.taxCode} 
-                    onValueChange={(value) => handleChange('taxCode', value)}
-                  >
-                    <SelectTrigger className="h-10 rounded-md flex items-center px-3">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-slate-800">
-                      {ebmTaxTypes.map((code) => (
-                        <SelectItem key={code.code} value={code.code} className="dark:text-slate-200">{code.code} - {code.name || code.description || code.code}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="taxRate" className="dark:text-slate-200">{t('products.taxRate') || 'Tax Rate (%)'}</Label>
-                  <Input
-                      id="taxRate"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      value={formData.taxRate}
-                      onChange={(e) => handleChange('taxRate', e.target.value)}
-                      className="h-10 rounded-md px-3"
-                    />
+                <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                  Tax on this product follows the RRA tax type <strong>{formData.ebmTaxTypeCode || '-'}</strong> selected
+                  above, so sales and purchase documents will apply{' '}
+                  <strong>{taxRateForType(formData.ebmTaxTypeCode, vatRatePct, isVatRegistered)}% VAT</strong>.
+                  {isVatRegistered
+                    ? ' Change the VAT percentage in Settings > Company Profile.'
+                    : ' Your company is not registered for VAT, so no tax is applied.'}
                 </div>
               </CardContent>
             </Card>
@@ -1336,21 +1221,21 @@ export default function ProductFormPage() {
                 <div className="space-y-2">
                   <TooltipProvider>
                     <div className="flex items-center gap-2">
-                      <Label htmlFor="reorderPoint" className="dark:text-slate-200">{t('products.reorderPoint') || 'Reorder Point'}</Label>
+                      <Label htmlFor="lowStockThreshold" className="dark:text-slate-200">{tr('products.lowStockThreshold', 'Low Stock / Reorder Level')}</Label>
                       <Tooltip>
                         <TooltipTrigger><HelpCircle className="h-4 w-4 text-slate-400" /></TooltipTrigger>
                         <TooltipContent className="max-w-xs dark:bg-slate-800 dark:border-slate-700">
-                          <p className="font-semibold dark:text-white">Reorder Point</p>
-                          <p className="text-sm mt-1 dark:text-slate-300">Stock level that triggers a reorder suggestion. When stock reaches or falls below this level, the system will suggest reordering. Usually set slightly above the low stock threshold.</p>
+                          <p className="font-semibold dark:text-white">Low Stock / Reorder Level</p>
+                          <p className="text-sm mt-1 dark:text-slate-300">When stock falls to or below this number you get a low stock alert and the product appears in reorder suggestions. It is also sent to RRA as the safety quantity. Default is 10 units.</p>
                         </TooltipContent>
                       </Tooltip>
                     </div>
                     <Input
-                      id="reorderPoint"
+                      id="lowStockThreshold"
                       type="number"
                       min="0"
-                      value={formData.reorderPoint}
-                      onChange={(e) => handleChange('reorderPoint', e.target.value)}
+                      value={formData.lowStockThreshold}
+                      onChange={(e) => handleChange('lowStockThreshold', e.target.value)}
                       disabled={!formData.isStockable}
                       className="h-10 rounded-md px-3"
                     />
@@ -1375,30 +1260,6 @@ export default function ProductFormPage() {
                       min="0"
                       value={formData.reorderQuantity}
                       onChange={(e) => handleChange('reorderQuantity', e.target.value)}
-                      disabled={!formData.isStockable}
-                      className="h-10 rounded-md px-3"
-                    />
-                  </TooltipProvider>
-                </div>
-
-                <div className="space-y-2">
-                  <TooltipProvider>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor="lowStockThreshold" className="dark:text-slate-200">{t('products.lowStockThreshold') || 'Low Stock Alert'}</Label>
-                      <Tooltip>
-                        <TooltipTrigger><HelpCircle className="h-4 w-4 text-slate-400" /></TooltipTrigger>
-                        <TooltipContent className="max-w-xs dark:bg-slate-800 dark:border-slate-700">
-                          <p className="font-semibold dark:text-white">Low Stock Threshold</p>
-                          <p className="text-sm mt-1 dark:text-slate-300">When inventory falls to or below this number, you'll receive a low stock alert notification. Default is 10 units.</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    <Input
-                      id="lowStockThreshold"
-                      type="number"
-                      min="0"
-                      value={formData.lowStockThreshold}
-                      onChange={(e) => handleChange('lowStockThreshold', e.target.value)}
                       disabled={!formData.isStockable}
                       className="h-10 rounded-md px-3"
                     />
@@ -1440,20 +1301,6 @@ export default function ProductFormPage() {
                     value={formData.location}
                     onChange={(e) => handleChange('location', e.target.value)}
                     placeholder={t('products.locationPlaceholder') || 'e.g., Warehouse A, Shelf 3'}
-                    className="h-10 rounded-md px-3"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="weight" className="dark:text-slate-200">{tr('products.weight', 'Weight')}</Label>
-                  <Input
-                    id="weight"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.weight}
-                    onChange={(e) => handleChange('weight', e.target.value)}
-                    placeholder={tr('products.weightPlaceholder', 'Weight in kg')}
                     className="h-10 rounded-md px-3"
                   />
                 </div>

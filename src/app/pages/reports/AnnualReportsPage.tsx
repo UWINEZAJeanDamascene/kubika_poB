@@ -6,6 +6,7 @@ import {
   Building2,
   Calculator,
   Calendar,
+  Download,
   FileText,
   Package,
   Receipt,
@@ -16,6 +17,8 @@ import {
   Truck,
   Users,
 } from "lucide-react";
+import { annualReportsApi } from "@/lib/api.annualReports";
+import { toast } from "sonner";
 import {
   ReportCollectionPage,
   type ReportCatalogItem,
@@ -44,18 +47,65 @@ const currentYear = new Date().getFullYear();
 export default function AnnualReportsPage() {
   const navigate = useNavigate();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [loading, setLoading] = useState<string | null>(null);
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   const metrics: ReportMetric[] = [
     { label: "Reports", value: String(annualReports.length), caption: `${selectedYear} statutory pack`, icon: FileText, tone: "rose" },
-    { label: "Standard", value: "IFRS", caption: "Statement presentation", icon: TrendingUp, tone: "blue" },
-    { label: "Coverage", value: "12", caption: "Months in scope", icon: BarChart3, tone: "emerald" },
+    { label: "Exports", value: String(annualReports.length * 2), caption: "PDF and Excel formats", icon: Download, tone: "emerald" },
+    { label: "Coverage", value: "12", caption: "Months in scope", icon: BarChart3, tone: "blue" },
     { label: "Readiness", value: "Audit", caption: "External review support", icon: Scale, tone: "amber" },
   ];
 
   const handleViewReport = (reportId: string) => {
     const path = reportPaths[reportId];
     if (path) navigate(`${path}?year=${selectedYear}`);
+  };
+
+  const handleDownloadPDF = async (reportId: string) => {
+    setLoading(reportId);
+    try {
+      switch (reportId) {
+        case "financial-statements": await annualReportsApi.downloadFinancialStatementsPDF(selectedYear); break;
+        case "general-ledger": await annualReportsApi.downloadGeneralLedgerPDF(selectedYear); break;
+        case "fixed-assets": await annualReportsApi.downloadFixedAssetSchedulePDF(selectedYear); break;
+        case "inventory": await annualReportsApi.downloadInventoryReconciliationPDF(selectedYear); break;
+        case "accounts-receivable": await annualReportsApi.downloadAccountsReceivablePDF(selectedYear); break;
+        case "accounts-payable": await annualReportsApi.downloadAccountsPayablePDF(selectedYear); break;
+        case "payroll": await annualReportsApi.downloadPayrollReportPDF(selectedYear); break;
+        case "tax-summary": await annualReportsApi.downloadTaxSummaryPDF(selectedYear); break;
+        case "budget-vs-actual": await annualReportsApi.downloadBudgetVsActualPDF(selectedYear); break;
+        case "audit-trail": await annualReportsApi.downloadAuditTrailPDF(selectedYear); break;
+      }
+      toast.success("PDF downloaded successfully");
+    } catch {
+      toast.error("Failed to download PDF");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleDownloadExcel = async (reportId: string) => {
+    setLoading(`${reportId}-excel`);
+    try {
+      switch (reportId) {
+        case "financial-statements": await annualReportsApi.downloadFinancialStatementsExcel(selectedYear); break;
+        case "general-ledger": await annualReportsApi.downloadGeneralLedgerExcel(selectedYear); break;
+        case "fixed-assets": await annualReportsApi.downloadFixedAssetScheduleExcel(selectedYear); break;
+        case "inventory": await annualReportsApi.downloadInventoryReconciliationExcel(selectedYear); break;
+        case "accounts-receivable": await annualReportsApi.downloadAccountsReceivableExcel(selectedYear); break;
+        case "accounts-payable": await annualReportsApi.downloadAccountsPayableExcel(selectedYear); break;
+        case "payroll": await annualReportsApi.downloadPayrollReportExcel(selectedYear); break;
+        case "tax-summary": await annualReportsApi.downloadTaxSummaryExcel(selectedYear); break;
+        case "budget-vs-actual": await annualReportsApi.downloadBudgetVsActualExcel(selectedYear); break;
+        case "audit-trail": await annualReportsApi.downloadAuditTrailExcel(selectedYear); break;
+      }
+      toast.success("Excel downloaded successfully");
+    } catch {
+      toast.error("Failed to download Excel");
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
@@ -79,6 +129,9 @@ export default function AnnualReportsPage() {
       }
       onBack={() => navigate("/reports")}
       onView={handleViewReport}
+      onDownloadPDF={handleDownloadPDF}
+      onDownloadExcel={handleDownloadExcel}
+      loading={loading}
     />
   );
 }

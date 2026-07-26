@@ -196,9 +196,14 @@ export default function AssetDetailPage() {
         depreciateDate,
       );
       if (response.success) {
-        toast.success(t("assets.success.depreciation"));
+        if (response.alreadyPosted) {
+          toast.info(response.message || t("assets.success.depreciationAlreadyPosted"));
+        } else {
+          toast.success(t("assets.success.depreciation"));
+        }
         setDepreciateDialogOpen(false);
         fetchAsset();
+        if (activeTab === "entries") fetchDepreciationEntries();
       } else {
         toast.error(response.error || t("assets.errors.depreciationFailed"));
       }
@@ -268,15 +273,20 @@ export default function AssetDetailPage() {
     return new Date(date).toLocaleDateString();
   };
 
+  const tr = (key: string, fallback: string) => {
+    const value = t(key);
+    return value === key ? fallback : value;
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { color: string; label: string; icon: any }> = {
-      in_transit: { color: "bg-blue-500", label: t("assets.status.inTransit") || "In Transit", icon: Truck },
-      in_service: { color: "bg-green-500", label: t("assets.status.inService") || "In Service", icon: Play },
-      under_maintenance: { color: "bg-orange-500", label: t("assets.status.maintenance") || "Under Maintenance", icon: Wrench },
-      idle: { color: "bg-yellow-500", label: t("assets.status.idle") || "Idle", icon: Pause },
-      fully_depreciated: { color: "bg-amber-500", label: t("assets.status.fullyDepreciated") || "Fully Depreciated", icon: TrendingDown },
-      disposed: { color: "bg-red-500", label: t("assets.status.disposed") || "Disposed", icon: Trash2 },
-      active: { color: "bg-green-500", label: t("assets.status.active") || "Active", icon: Play },
+      in_transit: { color: "bg-blue-500", label: tr("assets.status.inTransit", "In Transit"), icon: Truck },
+      in_service: { color: "bg-green-500", label: tr("assets.status.inService", "In Service"), icon: Play },
+      under_maintenance: { color: "bg-orange-500", label: tr("assets.status.maintenance", "Under Maintenance"), icon: Wrench },
+      idle: { color: "bg-yellow-500", label: tr("assets.status.idle", "Idle"), icon: Pause },
+      fully_depreciated: { color: "bg-amber-500", label: tr("assets.status.fullyDepreciated", "Fully Depreciated"), icon: TrendingDown },
+      disposed: { color: "bg-red-500", label: tr("assets.status.disposed", "Disposed"), icon: Trash2 },
+      active: { color: "bg-green-500", label: tr("assets.status.active", "Active"), icon: Play },
     };
 
     const config = statusConfig[status] || { color: "bg-slate-500", label: status, icon: null };
@@ -532,7 +542,7 @@ export default function AssetDetailPage() {
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("assets.fields.referenceNo")}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{asset.referenceNo}</p>
+                      <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{asset.referenceNo || "-"}</p>
                     </div>
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("assets.fields.name")}</p>
@@ -893,8 +903,8 @@ export default function AssetDetailPage() {
 
         {/* Dispose Dialog - Enhanced */}
         <Dialog open={disposeDialogOpen} onOpenChange={setDisposeDialogOpen}>
-          <DialogContent className="w-full max-w-lg border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-950">
-            <DialogHeader className="gap-1">
+          <DialogContent className="flex max-h-[min(88vh,calc(100dvh-2rem))] w-full max-w-lg flex-col overflow-hidden border-slate-200 bg-white p-0 dark:border-slate-700 dark:bg-slate-950">
+            <DialogHeader className="shrink-0 gap-1 border-b border-slate-200 px-6 py-4 dark:border-slate-800">
               <div className="flex items-center gap-2">
                 <div className="rounded-lg bg-red-50 p-2 text-red-700 ring-1 ring-red-100 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900/60">
                   <Trash2 className="h-4 w-4" />
@@ -903,7 +913,7 @@ export default function AssetDetailPage() {
               </div>
               <DialogDescription className="dark:text-slate-400">Record asset disposal with complete financial details</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-4 [scrollbar-width:thin] [scrollbar-color:#64748b_transparent]">
               <div className="space-y-2">
                 <Label className="text-sm font-medium dark:text-slate-200">Disposal Method</Label>
                 <select className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" value={disposalForm.disposalMethod} onChange={(e) => setDisposalForm({ ...disposalForm, disposalMethod: e.target.value })}>
@@ -988,7 +998,7 @@ export default function AssetDetailPage() {
                 <Input value={disposalForm.notes} onChange={(e) => setDisposalForm({ ...disposalForm, notes: e.target.value })} placeholder="Additional disposal details..." className="dark:bg-slate-900 dark:text-white dark:border-slate-700" />
               </div>
             </div>
-            <DialogFooter className="flex-col gap-2 sm:flex-row">
+            <DialogFooter className="shrink-0 flex-col gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row dark:border-slate-800">
               <Button variant="outline" size="sm" onClick={() => setDisposeDialogOpen(false)} className="w-full dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800 sm:w-auto">
                 <X className="mr-1 h-4 w-4" />
                 {t("common.cancel")}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { Input } from "@/app/components/ui/input";
 import {
   AlertTriangle,
@@ -92,7 +92,10 @@ const dateScopedReports = new Set([
 
 export default function WeeklyReportsPage() {
   const navigate = useNavigate();
-  const [selectedWeek, setSelectedWeek] = useState(weeklyReportsApi.getDefaultWeek());
+  const [searchParams] = useSearchParams();
+  const [selectedWeek, setSelectedWeek] = useState(
+    searchParams.get("weekStart") || weeklyReportsApi.getDefaultWeek()
+  );
   const [loading, setLoading] = useState<string | null>(null);
 
   const getWeekEnd = (monday: string) => {
@@ -236,6 +239,7 @@ export default function WeeklyReportsPage() {
           </div>
         </div>
       }
+      onBack={() => navigate("/reports")}
       onView={handleViewReport}
       onDownloadPDF={handleDownloadPDF}
       onDownloadExcel={handleDownloadExcel}

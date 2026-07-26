@@ -144,13 +144,22 @@ export default function AssetsListPage() {
     }
   };
 
+  const tr = (key: string, fallback: string) => {
+    const value = t(key);
+    return value === key ? fallback : value;
+  };
+
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { variant: any; label: string }> = {
-      'active': { variant: 'default', label: t('assets.status.active') },
-      'fully-depreciated': { variant: 'secondary', label: t('assets.status.fullyDepreciated') },
-      'fully_depreciated': { variant: 'secondary', label: t('assets.status.fullyDepreciated') },
-      'disposed': { variant: 'destructive', label: t('assets.status.disposed') },
-      'maintenance': { variant: 'outline', label: t('assets.statusUnderMaintenance') },
+      'in_transit': { variant: 'outline', label: tr('assets.status.inTransit', 'In Transit') },
+      'in_service': { variant: 'default', label: tr('assets.status.inService', 'In Service') },
+      'under_maintenance': { variant: 'outline', label: tr('assets.status.maintenance', 'Under Maintenance') },
+      'idle': { variant: 'secondary', label: tr('assets.status.idle', 'Idle') },
+      'active': { variant: 'default', label: tr('assets.status.active', 'Active') },
+      'fully-depreciated': { variant: 'secondary', label: tr('assets.status.fullyDepreciated', 'Fully Depreciated') },
+      'fully_depreciated': { variant: 'secondary', label: tr('assets.status.fullyDepreciated', 'Fully Depreciated') },
+      'disposed': { variant: 'destructive', label: tr('assets.status.disposed', 'Disposed') },
+      'maintenance': { variant: 'outline', label: tr('assets.status.maintenance', 'Under Maintenance') },
     };
     const config = statusConfig[status] || { variant: 'outline', label: status };
     return <Badge variant={config.variant} className="dark:bg-slate-700 dark:text-slate-200">{config.label}</Badge>;
@@ -201,8 +210,9 @@ export default function AssetsListPage() {
   };
 
   // Helper to get category name by ID
-  const getCategoryName = (categoryId: string): string => {
+  const getCategoryName = (categoryId: string | { _id?: string; name?: string } | null | undefined): string => {
     if (!categoryId) return '-';
+    if (typeof categoryId === 'object' && categoryId.name) return categoryId.name;
     const category = categories.find((c) => c._id === categoryId);
     return category ? category.name : '-';
   };

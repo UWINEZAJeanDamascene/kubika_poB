@@ -31,12 +31,12 @@ export default function WeeklySalesPerformanceReportPage() {
   ] : [];
 
   return (
-    <WeeklyReportScaffold title="Weekly Sales Performance" shortTitle="Sales" subtitle="Compare this week against last week by value, invoices, orders, and items sold." icon={TrendingUp} tone="blue" weekStart={weekStart} weekLabel={data ? `${data.weekStart} to ${data.weekEnd}` : undefined} onWeekChange={handleWeekChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <WeeklyReportScaffold title="Weekly Sales Performance" shortTitle="Sales" subtitle="Compare this week against last week by value, invoices, orders, and items sold." icon={TrendingUp} tone="blue" weekStart={weekStart} weekLabel={data ? `${data.weekStart} to ${data.weekEnd}` : undefined} onWeekChange={handleWeekChange} loading={isLoading} downloading={downloading} onBack={() => navigate(weeklyReportsApi.getListPath(weekStart))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <div className="grid gap-6 lg:grid-cols-3">
           {[
-            { title: "This Week", rows: [["Sales", fmt(data.thisWeek.sales)], ["Invoices", data.thisWeek.invoices], ["Orders", data.thisWeek.orders], ["Items", data.thisWeek.items]] },
-            { title: "Last Week", rows: [["Sales", fmt(data.lastWeek.sales)], ["Invoices", data.lastWeek.invoices], ["Orders", data.lastWeek.orders], ["Items", data.lastWeek.items]] },
+            { title: "This Week", rows: [["Sales", fmt(data.thisWeek.sales)], ["Invoices", data.thisWeek.invoices], ["Orders", data.thisWeek.orders], ["Items Sold", data.thisWeek.items]] },
+            { title: "Last Week", rows: [["Sales", fmt(data.lastWeek.sales)], ["Invoices", data.lastWeek.invoices], ["Orders", data.lastWeek.orders], ["Items Sold", data.lastWeek.items]] },
             { title: "Change", rows: [["Sales", <Change value={data.changes.salesPercent} />], ["Invoices", <Change value={data.changes.invoicesPercent} />], ["Orders", <Change value={data.changes.ordersPercent} />], ["Items", <Change value={data.changes.itemsPercent} />]] },
           ].map((panel) => (
             <Card key={panel.title} className={weeklyReportCardClass}>

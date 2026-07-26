@@ -52,6 +52,24 @@ import { Label } from "@/app/components/ui/label";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 
+const resolveChartAccountCode = (
+  preferred: string | null | undefined,
+  accounts: any[],
+  filter: (acc: any) => boolean,
+  fallback: string,
+) => {
+  if (preferred && accounts.some((acc) => acc.code === preferred)) {
+    return preferred;
+  }
+  return accounts.find(filter)?.code || fallback;
+};
+
+const normalizeDepreciationMethod = (method?: string | null) =>
+  method === "none" || !method ? "straight_line" : method;
+
+const isNonDepreciableCategory = (category: AssetCategory & { isDepreciable?: boolean; defaultDepreciationMethod?: string }) =>
+  category.isDepreciable === false || category.defaultDepreciationMethod === "none";
+
 export default function AssetCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -137,20 +155,26 @@ export default function AssetCreatePage() {
 
   const fetchCategories = useCallback(async () => {
     try {
-      const response: any = await assetCategoriesApi.getAll({ isActive: true });
-      console.debug("[AssetCreatePage] fetchCategories response:", response);
-      const categoryData = Array.isArray(response.data)
+      const response: any = await assetCategoriesApi.getAll();
+      const categoryData = Array.isArray(response?.data)
         ? response.data
-        : Array.isArray(response.data?.data)
+        : Array.isArray(response?.data?.data)
           ? response.data.data
-          : Array.isArray(response.data?.categories)
+          : Array.isArray(response?.data?.categories)
             ? response.data.categories
             : [];
-      if (response.success && Array.isArray(categoryData)) {
-        setCategories(categoryData.filter((c: any) => c._id && c.isDeleted !== true));
+      if (response?.success && Array.isArray(categoryData)) {
+        setCategories(
+          categoryData
+            .filter((c: any) => (c._id || c.id) && c.isDeleted !== true)
+            .map((c: any) => ({ ...c, _id: String(c._id || c.id) })),
+        );
+      } else {
+        setCategories([]);
       }
     } catch (error) {
-      console.error("[AssetCreatePage] Failed to fetch categories:", error);
+      console.error("[AssetCreatePage] Failed to fetch asset categories:", error);
+      setCategories([]);
     }
   }, []);
 
@@ -237,57 +261,115 @@ export default function AssetCreatePage() {
     }
   }, [id, isEdit]);
 
-  // Auto-select first category in create mode when categories load.
-  // Auto-select first category in create mode when categories load.
+  // Auto-select first category only once when creating (optional default)
   useEffect(() => {
-    if (!isEdit && categories.length > 0) {
-      // Only set default when user hasn't already selected a category
+    if (!isEdit && categories.length > 0 && chartAccounts.length > 0) {
       setFormData((prev: any) => {
         if (prev.categoryId && prev.categoryId !== "") return prev;
-        const defaultCat = categories[0];
+        const defaultCat =
+          categories.find((c) => c.name?.toLowerCase().includes("computer")) ||
+          categories[0];
+        const nonDepreciable = isNonDepreciableCategory(defaultCat as AssetCategory);
         return {
           ...prev,
           categoryId: String(defaultCat._id),
-          usefulLifeMonths: defaultCat.defaultUsefulLifeMonths || prev.usefulLifeMonths || 60,
-          depreciationMethod: defaultCat.defaultDepreciationMethod || prev.depreciationMethod || "straight_line",
-          assetAccountCode: defaultCat.defaultAssetAccountCode || prev.assetAccountCode || "1700",
-          accumDepreciationAccountCode: defaultCat.defaultAccumDepreciationAccountCode || prev.accumDepreciationAccountCode || "1810",
-          depreciationExpenseAccountCode: defaultCat.defaultDepreciationExpenseAccountCode || prev.depreciationExpenseAccountCode || "5800",
+          usefulLifeMonths: nonDepreciable
+            ? 0
+            : (defaultCat.defaultUsefulLifeMonths ?? prev.usefulLifeMonths ?? 60),
+          depreciationMethod: normalizeDepreciationMethod(defaultCat.defaultDepreciationMethod),
+          assetAccountCode: resolveChartAccountCode(
+            defaultCat.defaultAssetAccountCode,
+            chartAccounts,
+            (acc) => acc.type === "asset" && acc.code?.startsWith("17"),
+            "1700",
+          ),
+          accumDepreciationAccountCode: nonDepreciable
+            ? "none"
+            : resolveChartAccountCode(
+                defaultCat.defaultAccumDepreciationAccountCode,
+                chartAccounts,
+                (acc) =>
+                  acc.type === "asset" &&
+                  (acc.code?.startsWith("18") ||
+                    acc.name?.toLowerCase().includes("accumulated depreciation")),
+                "1810",
+              ),
+          depreciationExpenseAccountCode: nonDepreciable
+            ? "none"
+            : resolveChartAccountCode(
+                defaultCat.defaultDepreciationExpenseAccountCode,
+                chartAccounts,
+                (acc) => acc.type === "expense" && acc.code?.startsWith("58"),
+                "5800",
+              ),
         };
       });
     }
-  }, [categories, isEdit]);
+  }, [categories, chartAccounts, isEdit]);
 
-  const handleCategoryChange = useCallback((categoryId: string) => {
-    if (!categoryId) {
-      setFormData((prev) => ({ ...prev, categoryId: "" }));
-      return;
-    }
-    
-    const category = categories.find((c) => String(c._id) === categoryId);
-    if (category) {
+  const handleCategoryChange = useCallback(
+    (categoryId: string) => {
+      if (!categoryId) {
+        setFormData((prev) => ({ ...prev, categoryId: "" }));
+        return;
+      }
+
+      const category = categories.find((c) => String(c._id) === String(categoryId));
+      if (!category) {
+        setFormData((prev) => ({ ...prev, categoryId: String(categoryId) }));
+        return;
+      }
+
+      const nonDepreciable = isNonDepreciableCategory(category as AssetCategory);
       setFormData((prev) => ({
         ...prev,
-        categoryId,
-        usefulLifeMonths: category.defaultUsefulLifeMonths || prev.usefulLifeMonths,
-        depreciationMethod: category.defaultDepreciationMethod || prev.depreciationMethod,
-        assetAccountCode: category.defaultAssetAccountCode || "1700",
-        accumDepreciationAccountCode: category.defaultAccumDepreciationAccountCode || "1810",
-        depreciationExpenseAccountCode: category.defaultDepreciationExpenseAccountCode || "5800",
+        categoryId: String(categoryId),
+        usefulLifeMonths: nonDepreciable
+          ? 0
+          : (category.defaultUsefulLifeMonths ?? prev.usefulLifeMonths),
+        depreciationMethod: normalizeDepreciationMethod(category.defaultDepreciationMethod),
+        decliningRate:
+          category.defaultDepreciationMethod === "declining_balance"
+            ? Number((category as any).defaultDecliningRate ?? prev.decliningRate ?? 20)
+            : prev.decliningRate,
+        assetAccountCode: resolveChartAccountCode(
+          category.defaultAssetAccountCode,
+          chartAccounts,
+          (acc) => acc.type === "asset" && acc.code?.startsWith("17"),
+          prev.assetAccountCode || "1700",
+        ),
+        accumDepreciationAccountCode: nonDepreciable
+          ? "none"
+          : resolveChartAccountCode(
+              category.defaultAccumDepreciationAccountCode,
+              chartAccounts,
+              (acc) =>
+                acc.type === "asset" &&
+                (acc.code?.startsWith("18") ||
+                  acc.name?.toLowerCase().includes("accumulated depreciation")),
+              prev.accumDepreciationAccountCode || "1810",
+            ),
+        depreciationExpenseAccountCode: nonDepreciable
+          ? "none"
+          : resolveChartAccountCode(
+              category.defaultDepreciationExpenseAccountCode,
+              chartAccounts,
+              (acc) => acc.type === "expense" && acc.code?.startsWith("58"),
+              prev.depreciationExpenseAccountCode || "5800",
+            ),
       }));
-    } else {
-      setFormData((prev) => ({ ...prev, categoryId }));
-    }
-  }, [categories]);
+    },
+    [categories, chartAccounts],
+  );
 
   const calculateDepreciation = () => {
     const depreciableAmount = formData.purchaseCost - formData.salvageValue;
+    if (formData.usefulLifeMonths <= 0) return 0;
     if (formData.depreciationMethod === "straight_line") {
       return depreciableAmount / formData.usefulLifeMonths;
-    } else {
-      const rate = formData.decliningRate / 100;
-      return (formData.purchaseCost * rate) / 12;
     }
+    const rate = formData.decliningRate / 100;
+    return (formData.purchaseCost * rate) / 12;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -312,8 +394,14 @@ export default function AssetCreatePage() {
             : undefined,
         depreciationFrequency: formData.depreciationFrequency,
         assetAccountCode: formData.assetAccountCode,
-        accumDepreciationAccountCode: formData.accumDepreciationAccountCode,
-        depreciationExpenseAccountCode: formData.depreciationExpenseAccountCode,
+        accumDepreciationAccountCode:
+          formData.accumDepreciationAccountCode === "none"
+            ? undefined
+            : formData.accumDepreciationAccountCode,
+        depreciationExpenseAccountCode:
+          formData.depreciationExpenseAccountCode === "none"
+            ? undefined
+            : formData.depreciationExpenseAccountCode,
         supplierId: formData.supplierId || undefined,
         // Payment source
         bankAccountId: formData.bankAccountId || undefined,
@@ -500,23 +588,36 @@ export default function AssetCreatePage() {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="category" className="dark:text-slate-200">
-                        Category
+                        {t("assets.fields.assetCategory", "Asset Category")}
                       </Label>
-                      <select
-                        id="category"
-                        className="w-full border border-input rounded-md px-3 py-2 text-sm bg-background dark:bg-slate-700 dark:text-white dark:border-slate-600"
-                        value={formData.categoryId || ""}
-                        onChange={(e) => handleCategoryChange(e.target.value)}
+                      <Select
+                        value={formData.categoryId || "none"}
+                        onValueChange={(value) =>
+                          handleCategoryChange(value === "none" ? "" : value)
+                        }
                       >
-                        <option value="">None</option>
-                        {categories.map((cat) => (
-                          <option key={String(cat._id)} value={String(cat._id)}>
-                            {cat.name || "Unnamed category"}
-                          </option>
-                        ))}
-                      </select>
+                        <SelectTrigger
+                          id="category"
+                          className="dark:bg-slate-700 dark:text-white dark:border-slate-600"
+                        >
+                          <SelectValue placeholder={t("assets.placeholders.category", "Select asset category")} />
+                        </SelectTrigger>
+                        <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
+                          <SelectItem value="none">{t("common.none", "None")}</SelectItem>
+                          {categories.map((cat) => (
+                            <SelectItem key={String(cat._id)} value={String(cat._id)}>
+                              {cat.name || "Unnamed category"}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       {categories.length === 0 && (
-                        <p className="text-sm text-red-600 mt-1">No asset categories loaded from server. Create categories first or check API.</p>
+                        <p className="text-sm text-red-600 mt-1">
+                          {t(
+                            "assets.noAssetCategories",
+                            "No asset categories available. Restart the backend or contact an administrator.",
+                          )}
+                        </p>
                       )}
                       {formData.categoryId && categories.length > 0 && !categories.find(c => String(c._id) === String(formData.categoryId)) && (
                         <p className="text-sm text-yellow-500 mt-1">Selected category ID not found in loaded categories (id: {String(formData.categoryId)}).</p>
@@ -1004,15 +1105,19 @@ export default function AssetCreatePage() {
                         {t("assets.fields.accumDepreciationAccount")}
                       </Label>
                       <Select
-                        value={formData.accumDepreciationAccountCode}
+                        value={formData.accumDepreciationAccountCode || "none"}
                         onValueChange={(v) =>
-                          setFormData({ ...formData, accumDepreciationAccountCode: v })
+                          setFormData({
+                            ...formData,
+                            accumDepreciationAccountCode: v === "none" ? "none" : v,
+                          })
                         }
                       >
                         <SelectTrigger className="dark:bg-slate-700 dark:text-white dark:border-slate-600">
                           <SelectValue placeholder="Select accumulated depreciation account" />
                         </SelectTrigger>
                         <SelectContent className="dark:bg-slate-800">
+                          <SelectItem value="none">{t("common.none", "None")}</SelectItem>
                           {chartAccounts
                             .filter((acc: any) => acc.type === "asset" && (acc.code?.startsWith("18") || acc.name?.toLowerCase().includes("accumulated depreciation")))
                             .map((acc: any) => (
@@ -1028,15 +1133,19 @@ export default function AssetCreatePage() {
                         {t("assets.fields.depreciationExpenseAccount")}
                       </Label>
                       <Select
-                        value={formData.depreciationExpenseAccountCode}
+                        value={formData.depreciationExpenseAccountCode || "none"}
                         onValueChange={(v) =>
-                          setFormData({ ...formData, depreciationExpenseAccountCode: v })
+                          setFormData({
+                            ...formData,
+                            depreciationExpenseAccountCode: v === "none" ? "none" : v,
+                          })
                         }
                       >
                         <SelectTrigger className="dark:bg-slate-700 dark:text-white dark:border-slate-600">
                           <SelectValue placeholder="Select depreciation expense account" />
                         </SelectTrigger>
                         <SelectContent className="dark:bg-slate-800">
+                          <SelectItem value="none">{t("common.none", "None")}</SelectItem>
                           {chartAccounts
                             .filter((acc: any) => acc.type === "expense" && (acc.code?.startsWith("5") || acc.code?.startsWith("6") || acc.name?.toLowerCase().includes("depreciation")))
                             .map((acc: any) => (

@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router";
 import { useEffect, lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -113,26 +113,16 @@ const PurchaseOrderFormPage = lazy(
 const PurchaseOrderDetailPage = lazy(
   () => import("./pages/purchases/PurchaseOrderDetailPage"),
 );
-const ImportedItemsPage = lazy(
-  () => import("./pages/purchases/ImportedItemsPage"),
-);
 const UnmatchedPurchasesPage = lazy(
   () => import("./pages/purchases/UnmatchedPurchasesPage"),
 );
 const EBMControlCenterPage = lazy(
   () => import("./pages/ebm/EBMControlCenter"),
 );
-const EBMRetryQueuePage = lazy(() => import("./pages/ebm/EBMRetryQueuePage"));
-const EBMComplianceDashboard = lazy(
-  () => import("./pages/ebm/EBMComplianceDashboard"),
-);
 const GRNListPage = lazy(() => import("./pages/grn/GRNListPage"));
 const GRNCreatePage = lazy(() => import("./pages/grn/GRNCreatePage"));
 const GRNDetailPage = lazy(() => import("./pages/grn/GRNDetailPage"));
 const GRNEditPage = lazy(() => import("./pages/grn/GRNEditPage"));
-const FreightBillsListPage = lazy(
-  () => import("./pages/freight/FreightBillsListPage"),
-);
 const FreightBillFormPage = lazy(
   () => import("./pages/freight/FreightBillFormPage"),
 );
@@ -502,6 +492,9 @@ const AccountingPeriodsPage = lazy(
 const CompanyProfilePage = lazy(
   () => import("./pages/settings/CompanyProfilePage"),
 );
+const CurrencySettingsPage = lazy(
+  () => import("./pages/settings/CurrencySettingsPage"),
+);
 const RolesSettingsPage = lazy(
   () => import("./pages/settings/RolesSettingsPage"),
 );
@@ -579,6 +572,21 @@ function ProductDetailPageWrapper() {
       </div>
     );
   }
+}
+
+// Wrapper for authenticated dashboard sub-routes (inventory, sales, etc.)
+function DashboardRouteWrapper({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <RouteLoadingFallback />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <ErrorBoundary>{children}</ErrorBoundary>;
 }
 
 // Wrapper for DashboardPage
@@ -685,14 +693,36 @@ function AppRoutes() {
           <Route path="/dashboard" element={<DashboardPageWrapper />} />
           <Route
             path="/dashboard/inventory"
-            element={<InventoryDashboardPage />}
+            element={
+              <DashboardRouteWrapper>
+                <InventoryDashboardPage />
+              </DashboardRouteWrapper>
+            }
           />
-          <Route path="/dashboard/sales" element={<SalesDashboardPage />} />
+          <Route
+            path="/dashboard/sales"
+            element={
+              <DashboardRouteWrapper>
+                <SalesDashboardPage />
+              </DashboardRouteWrapper>
+            }
+          />
           <Route
             path="/dashboard/purchases"
-            element={<PurchaseDashboardPage />}
+            element={
+              <DashboardRouteWrapper>
+                <PurchaseDashboardPage />
+              </DashboardRouteWrapper>
+            }
           />
-          <Route path="/dashboard/finance" element={<FinanceDashboardPage />} />
+          <Route
+            path="/dashboard/finance"
+            element={
+              <DashboardRouteWrapper>
+                <FinanceDashboardPage />
+              </DashboardRouteWrapper>
+            }
+          />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/security" element={<SecurityPage />} />
           <Route path="/notifications" element={<NotificationSettingsPage />} />
@@ -750,7 +780,7 @@ function AppRoutes() {
           <Route path="/purchases/new" element={<PurchaseFormPage />} />
           <Route path="/purchases/:id/edit" element={<PurchaseFormPage />} />
           <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
-          <Route path="/imported-items" element={<ImportedItemsPage />} />
+          <Route path="/imported-items" element={<Navigate to="/ebm/control-center?tab=imported" replace />} />
           <Route
             path="/ebm/control-center"
             element={
@@ -763,8 +793,8 @@ function AppRoutes() {
             path="/ebm/unmatched-purchases"
             element={<UnmatchedPurchasesPage />}
           />
-          <Route path="/ebm/retry-queue" element={<EBMRetryQueuePage />} />
-          <Route path="/ebm/compliance" element={<EBMComplianceDashboard />} />
+          <Route path="/ebm/retry-queue" element={<Navigate to="/ebm/control-center?tab=retry" replace />} />
+          <Route path="/ebm/compliance" element={<Navigate to="/ebm/control-center?tab=compliance" replace />} />
           <Route
             path="/grn"
             element={
@@ -788,7 +818,7 @@ function AppRoutes() {
             path="/purchase-returns/:id"
             element={<PurchaseReturnDetailPage />}
           />
-          <Route path="/freight-bills" element={<FreightBillsListPage />} />
+          <Route path="/freight-bills" element={<Navigate to="/purchase-orders?tab=freight-bills" replace />} />
           <Route path="/freight-bills/new" element={<FreightBillFormPage />} />
           <Route
             path="/freight-bills/:id/edit"
@@ -1998,6 +2028,14 @@ function AppRoutes() {
             element={
               <ErrorBoundary>
                 <CompanyProfilePage />
+              </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/currency-settings"
+            element={
+              <ErrorBoundary>
+                <CurrencySettingsPage />
               </ErrorBoundary>
             }
           />

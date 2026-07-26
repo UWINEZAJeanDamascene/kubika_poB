@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { suppliersApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
+import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
 import {
   ArrowLeft,
   Save,
@@ -65,7 +66,7 @@ const initialFormData: SupplierFormData = {
   taxId: '',
   region: '',
   currency: '',
-  leadTime: 0,
+  leadTime: 7,
   minimumOrder: 0,
   bankName: '',
   bankAccount: '',
@@ -150,7 +151,7 @@ export default function SupplierFormPage() {
       if (formData.taxId) payload.taxId = formData.taxId;
       if (formData.region) payload.region = formData.region;
       if (formData.currency) payload.currency = formData.currency;
-      if (formData.leadTime > 0) payload.leadTime = formData.leadTime;
+      payload.leadTime = Number.isFinite(formData.leadTime) ? formData.leadTime : 0;
       if (formData.minimumOrder > 0) payload.minimumOrder = formData.minimumOrder;
       if (formData.bankName) payload.bankName = formData.bankName;
       if (formData.bankAccount) payload.bankAccount = formData.bankAccount;
@@ -335,12 +336,10 @@ export default function SupplierFormPage() {
                         <Label htmlFor="currency" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                           {t('suppliers.currency', 'Currency')}
                         </Label>
-                        <Input
-                          id="currency"
+                        <DocumentCurrencySelect
                           value={formData.currency}
-                          onChange={(e) => handleChange('currency', e.target.value)}
-                          className="border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                          placeholder="USD"
+                          showRate={false}
+                          onChange={(currency) => handleChange('currency', currency)}
                         />
                       </div>
                       <div className="space-y-1.5">

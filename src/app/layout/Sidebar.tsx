@@ -18,7 +18,6 @@ import {
   Star,
   FileSpreadsheet,
   History,
-  Languages,
   LogOut,
   Settings,
   X,
@@ -48,21 +47,20 @@ import {
   Waves,
   Gauge,
   Calendar,
-  ShieldCheck,
   Shield,
   LayoutDashboard,
   Banknote,
+  Coins,
   ClipboardList,
   Clock,
   HelpCircle,
-  DownloadCloud,
   ChevronDown,
   Check,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { useTranslation } from "react-i18next";
 import CurrencySelector from "../components/CurrencySelector";
+import { LanguageSelector } from "../components/LanguageSelector";
 import { cn } from "../components/ui/utils";
 import { Button } from "@/app/components/ui/button";
 import {
@@ -90,8 +88,8 @@ import {
 
 interface NavSection {
   title?: string;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   accent: string;
   glow: string;
   items: NavItem[];
@@ -99,6 +97,7 @@ interface NavSection {
 
 interface NavItem {
   nameKey: string;
+  shortNameKey?: string;
   href: string;
   icon: React.ElementType;
   permission: string;
@@ -278,60 +277,10 @@ function expandPlanModules(modules?: string[]) {
 
 // ── Section Definitions ───────────────────────────────────────────────────────
 
-const dashboardsNav: NavSection = {
-  title: "nav.sectionDashboards",
-  label: "Command",
-  description: "Live executive views",
-  accent: "from-cyan-300 to-emerald-300",
-  glow: "bg-cyan-400/15",
-  items: [
-    {
-      nameKey: "nav.dashboard",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-      permission: "products:read",
-      featureKey: "inventory",
-      moduleNames: ["Dashboards"],
-    },
-    {
-      nameKey: "nav.inventoryDashboard",
-      href: "/dashboard/inventory",
-      icon: Boxes,
-      permission: "stock:read",
-      featureKey: "inventory",
-      moduleNames: ["Dashboards"],
-    },
-    {
-      nameKey: "nav.salesDashboard",
-      href: "/dashboard/sales",
-      icon: TrendingUp,
-      permission: "sales_invoices:read",
-      featureKey: "sales",
-      moduleNames: ["Dashboards"],
-    },
-    {
-      nameKey: "nav.purchaseDashboard",
-      href: "/dashboard/purchases",
-      icon: ShoppingCart,
-      permission: "purchase_orders:read",
-      featureKey: "purchases",
-      moduleNames: ["Dashboards"],
-    },
-    {
-      nameKey: "nav.financeDashboard",
-      href: "/dashboard/finance",
-      icon: PieChart,
-      permission: "journal_entries:read",
-      featureKey: "finance",
-      moduleNames: ["Financial reports"],
-    },
-  ],
-};
-
 const inventoryNav: NavSection = {
   title: "nav.sectionInventory",
-  label: "Inventory Core",
-  description: "Products, stock and warehouses",
+  labelKey: "nav.labelInventory",
+  descriptionKey: "nav.descInventory",
   accent: "from-emerald-300 to-teal-200",
   glow: "bg-emerald-400/12",
   items: [
@@ -412,8 +361,8 @@ const inventoryNav: NavSection = {
 
 const purchasingNav: NavSection = {
   title: "nav.sectionPurchasing",
-  label: "Supply Chain",
-  description: "Suppliers, buying and receiving",
+  labelKey: "nav.labelPurchasing",
+  descriptionKey: "nav.descPurchasing",
   accent: "from-amber-300 to-orange-200",
   glow: "bg-amber-300/12",
   items: [
@@ -442,14 +391,6 @@ const purchasingNav: NavSection = {
       moduleNames: ["GRN"],
     },
     {
-      nameKey: "nav.importedItems",
-      href: "/imported-items",
-      icon: DownloadCloud,
-      permission: "grn:read",
-      featureKey: "purchases",
-      moduleNames: ["GRN"],
-    },
-    {
       nameKey: "nav.purchases",
       href: "/purchases",
       icon: ShoppingCart,
@@ -464,14 +405,6 @@ const purchasingNav: NavSection = {
       permission: "purchase_returns:read",
       featureKey: "purchases",
       moduleNames: ["Purchase orders"],
-    },
-    {
-      nameKey: "nav.freightBills",
-      href: "/freight-bills",
-      icon: Truck,
-      permission: "grn:read",
-      featureKey: "purchases",
-      moduleNames: ["Freight bills", "GRN", "Purchase orders"],
     },
     {
       nameKey: "nav.ebmControlCenter",
@@ -491,8 +424,8 @@ const purchasingNav: NavSection = {
 
 const salesNav: NavSection = {
   title: "nav.sectionSales",
-  label: "Revenue Flow",
-  description: "Customers, orders and billing",
+  labelKey: "nav.labelSales",
+  descriptionKey: "nav.descSales",
   accent: "from-sky-300 to-indigo-300",
   glow: "bg-sky-400/12",
   items: [
@@ -589,8 +522,8 @@ const salesNav: NavSection = {
 
 const financeNav: NavSection = {
   title: "nav.sectionFinance",
-  label: "Finance Control",
-  description: "Cash, ledgers and payroll",
+  labelKey: "nav.labelFinance",
+  descriptionKey: "nav.descFinance",
   accent: "from-violet-300 to-cyan-200",
   glow: "bg-violet-400/12",
   items: [
@@ -711,11 +644,20 @@ const financeNav: NavSection = {
 
 const reportsNav: NavSection = {
   title: "nav.sectionReports",
-  label: "Intelligence",
-  description: "Reports and ratios",
+  labelKey: "nav.labelReports",
+  descriptionKey: "nav.descReports",
   accent: "from-lime-200 to-cyan-200",
   glow: "bg-lime-300/12",
   items: [
+    {
+      nameKey: "nav.dashboard",
+      shortNameKey: "nav.dashboardShort",
+      href: "/dashboard",
+      icon: LayoutDashboard,
+      permission: "reports:read",
+      featureKey: "inventory",
+      moduleNames: ["Dashboards"],
+    },
     {
       nameKey: "nav.reportsHub",
       href: "/reports",
@@ -769,8 +711,8 @@ const reportsNav: NavSection = {
 
 const systemNav: NavSection = {
   title: "nav.sectionSystem",
-  label: "Control Room",
-  description: "Security, data and settings",
+  labelKey: "nav.labelSystem",
+  descriptionKey: "nav.descSystem",
   accent: "from-rose-200 to-slate-200",
   glow: "bg-rose-300/12",
   items: [
@@ -802,6 +744,12 @@ const systemNav: NavSection = {
       nameKey: "nav.companySettings",
       href: "/company-settings",
       icon: Building2,
+      permission: "settings:read",
+    },
+    {
+      nameKey: "nav.currencySettings",
+      href: "/currency-settings",
+      icon: Coins,
       permission: "settings:read",
     },
     {
@@ -843,9 +791,8 @@ const systemNav: NavSection = {
   ],
 };
 
-// All sections in display order — Dashboards always first
+// All sections in display order
 const ALL_SECTIONS: NavSection[] = [
-  dashboardsNav,
   inventoryNav,
   salesNav,
   purchasingNav,
@@ -877,7 +824,6 @@ export function Sidebar({
     hasPermission: checkPermission,
     updateUser,
   } = useAuth();
-  const { language, toggleLanguage } = useLanguage();
   const { t } = useTranslation();
   const [loggingOut, setLoggingOut] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -905,7 +851,7 @@ export function Sidebar({
           const companyData = response.data as any;
           setCompany({
             _id: companyData._id || companyData.id || "",
-            name: companyData.name || "My Company",
+            name: companyData.name || t("nav.myCompany"),
             legal_name: companyData.legal_name,
             email: companyData.email,
             phone: companyData.phone,
@@ -926,7 +872,7 @@ export function Sidebar({
       })
       .catch(() => {
         if (!company) {
-          setCompany({ _id: "fallback", name: "My Company" });
+          setCompany({ _id: "fallback", name: t("nav.myCompany") });
         }
       });
 
@@ -957,13 +903,13 @@ export function Sidebar({
             const data = response.data as any;
             return [
               membership.companyId,
-              { name: data.name || "Company", logo_url: data.logo_url },
+              { name: data.name || t("nav.company"), logo_url: data.logo_url },
             ] as const;
           }
         } catch (error) {
-          return [membership.companyId, { name: "Company" }] as const;
+          return [membership.companyId, { name: t("nav.company") }] as const;
         }
-        return [membership.companyId, { name: "Company" }] as const;
+        return [membership.companyId, { name: t("nav.company") }] as const;
       }),
     ).then((entries) => {
       setCompanyOptions(Object.fromEntries(entries));
@@ -982,7 +928,7 @@ export function Sidebar({
         const companyData = response.data as any;
         setCompany({
           _id: companyData._id || companyData.id || companyId,
-          name: companyData.name || "My Company",
+          name: companyData.name || t("nav.myCompany"),
           legal_name: companyData.legal_name,
           email: companyData.email,
           phone: companyData.phone,
@@ -1068,9 +1014,12 @@ export function Sidebar({
     if (onNavigate) onNavigate();
   };
 
-  const isPathActive = (href: string) =>
-    location.pathname === href ||
-    (href !== "/dashboard" && location.pathname.startsWith(href + "/"));
+  const isPathActive = (href: string) => {
+    if (href === "/dashboard") {
+      return location.pathname === "/dashboard" || location.pathname.startsWith("/dashboard/");
+    }
+    return location.pathname === href || location.pathname.startsWith(`${href}/`);
+  };
 
   // ── Render a single nav link ───────────────────────────────────────────────
 
@@ -1132,11 +1081,11 @@ export function Sidebar({
         {!collapsed && (
           <span
             className={cn(
-              "truncate",
-              compact && "max-w-full text-[11px] leading-tight",
+              compact ? "text-center text-[11px] leading-tight" : "truncate",
             )}
+            title={t(item.nameKey)}
           >
-            {t(item.nameKey)}
+            {t(compact && item.shortNameKey ? item.shortNameKey : item.nameKey)}
           </span>
         )}
       </Link>
@@ -1145,10 +1094,10 @@ export function Sidebar({
 
   // ── Render a whole section ─────────────────────────────────────────────────
 
-  const renderSection = (section: NavSection, isDashboards = false) => {
+  const renderSection = (section: NavSection) => {
     const visible = filterVisible(section.items);
     if (visible.length === 0) return null;
-    const useGrid = !collapsed && (isDashboards || visible.length > 4);
+    const useGrid = !collapsed && visible.length > 4;
 
     return (
       <div
@@ -1170,11 +1119,11 @@ export function Sidebar({
                   )}
                 />
                 <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                  {section.label}
+                  {t(section.labelKey)}
                 </span>
               </div>
               <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                {section.description}
+                {t(section.descriptionKey)}
               </p>
             </div>
             <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
@@ -1241,7 +1190,7 @@ export function Sidebar({
             {collapsed ? (
               <button
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-300 to-emerald-300 text-slate-950 flex-shrink-0 hover:ring-2 hover:ring-cyan-200/60 transition-all"
-                title={company?.name || "Company"}
+                title={company?.name || t("nav.company")}
               >
                 {company?.logo_url ? (
                   <Avatar className="h-9 w-9">
@@ -1259,7 +1208,7 @@ export function Sidebar({
                 <Avatar className="h-10 w-10 flex-shrink-0 ring-2 ring-cyan-300/30">
                   <AvatarImage
                     src={company?.logo_url}
-                    alt={company?.name || "Company"}
+                    alt={company?.name || t("nav.company")}
                   />
                   <AvatarFallback className="bg-gradient-to-br from-cyan-300 to-emerald-300 text-slate-950 text-sm font-bold">
                     {company?.name?.charAt(0).toUpperCase() || "C"}
@@ -1267,12 +1216,12 @@ export function Sidebar({
                 </Avatar>
                 <div className="flex-1 min-w-0 overflow-hidden">
                   <p className="truncate text-sm font-bold text-white tracking-tight">
-                    {company?.name || "My Company"}
+                    {company?.name || t("nav.myCompany")}
                   </p>
                   <p className="mt-0.5 truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">
                     {companies.length > 1
-                      ? `${companies.length} companies`
-                      : activeRole || "Operating atlas"}
+                      ? t("nav.companiesCount", { count: companies.length })
+                      : activeRole || t("nav.operatingWorkspace")}
                   </p>
                 </div>
                 <ChevronDown className="h-4 w-4 flex-shrink-0 text-slate-400 transition-transform group-data-[state=open]:rotate-180" />
@@ -1285,7 +1234,7 @@ export function Sidebar({
             className="w-64 border-slate-200 bg-white text-slate-900 dark:border-white/10 dark:bg-slate-900 dark:text-white"
           >
             <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">
-              Company
+              {t("nav.company")}
             </DropdownMenuLabel>
             {companies.length > 1 ? (
               companies.map((membership) => {
@@ -1303,7 +1252,7 @@ export function Sidebar({
                     <Avatar className="h-7 w-7">
                       <AvatarImage
                         src={option?.logo_url}
-                        alt={option?.name || "Company"}
+                        alt={option?.name || t("nav.company")}
                       />
                       <AvatarFallback className="bg-cyan-100 text-xs font-semibold text-cyan-900">
                         {(option?.name || "C").charAt(0).toUpperCase()}
@@ -1311,7 +1260,7 @@ export function Sidebar({
                     </Avatar>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium">
-                        {option?.name || "Company"}
+                        {option?.name || t("nav.company")}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400">
                         {membership.role}
@@ -1327,7 +1276,7 @@ export function Sidebar({
                 className="cursor-pointer"
               >
                 <Building2 className="h-4 w-4" />
-                Manage company profile
+                {t("nav.manageCompanyProfile")}
               </DropdownMenuItem>
             )}
             {companies.length > 1 && (
@@ -1338,7 +1287,7 @@ export function Sidebar({
                   className="cursor-pointer"
                 >
                   <Building2 className="h-4 w-4" />
-                  Manage current company
+                  {t("nav.manageCurrentCompany")}
                 </DropdownMenuItem>
               </>
             )}
@@ -1382,9 +1331,9 @@ export function Sidebar({
             : "px-3 py-3",
         )}
       >
-        {/* DASHBOARDS — always rendered first, styled distinctly */}
-        {ALL_SECTIONS.map((section, idx) => (
-          <div key={section.label}>{renderSection(section, idx === 0)}</div>
+        {/* Navigation sections */}
+        {ALL_SECTIONS.map((section) => (
+          <div key={section.labelKey}>{renderSection(section)}</div>
         ))}
 
         {/* Onboarding Guide */}
@@ -1399,52 +1348,28 @@ export function Sidebar({
               ? "text-cyan-300 border-cyan-500/30 bg-cyan-500/10"
               : "text-slate-400 hover:text-cyan-300",
           )}
-          title={collapsed ? "Getting started guide" : undefined}
+          title={collapsed ? t("nav.gettingStarted") : undefined}
         >
           <HelpCircle
             className={cn("flex-shrink-0 h-4 w-4", collapsed && "h-5 w-5")}
           />
           {!collapsed && (
             <>
-              <span>Getting started guide</span>
+              <span>{t("nav.gettingStarted")}</span>
               <ArrowRight className="ml-auto h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
             </>
           )}
         </Link>
       </nav>
 
-      {/* ── Language toggle ── */}
+      {/* ── Language selector ── */}
       <div
         className={cn(
           "border-t border-white/10 flex-shrink-0 bg-white/[0.025]",
           collapsed ? "px-2 py-2" : "px-3 py-2",
         )}
       >
-        {collapsed ? (
-          <button
-            onClick={toggleLanguage}
-            title={
-              language === "en" ? "Passer en Français" : "Switch to English"
-            }
-            className="flex h-10 w-full items-center justify-center rounded-2xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
-          >
-            <Languages className="h-4 w-4" />
-          </button>
-        ) : (
-          <button
-            onClick={toggleLanguage}
-            title={
-              language === "en" ? "Passer en Français" : "Switch to English"
-            }
-            className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs md:text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-colors"
-          >
-            <Languages className="h-4 w-4 flex-shrink-0" />
-            <span>{language === "en" ? "Français" : "English"}</span>
-            <span className="ml-auto text-[10px] bg-cyan-300 text-slate-950 rounded-full px-1.5 py-0.5 font-bold">
-              {language.toUpperCase()}
-            </span>
-          </button>
-        )}
+        <LanguageSelector collapsed={collapsed} variant="sidebar" />
       </div>
 
       {/* ── Currency selector ── */}
@@ -1466,11 +1391,11 @@ export function Sidebar({
             <button
               onClick={() => setProfileOpen(true)}
               className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-white text-sm font-medium hover:ring-2 hover:ring-cyan-300/50 transition-all overflow-hidden"
-              title={user?.name || "User"}
+              title={user?.name || t("nav.userFallback")}
             >
               {user?.avatar ? (
                 <Avatar className="h-11 w-11">
-                  <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
+                  <AvatarImage src={user?.avatar} alt={user?.name || t("nav.userFallback")} />
                   <AvatarFallback className="bg-gradient-to-br from-violet-500 to-cyan-400 text-white text-sm">
                     {user?.name?.charAt(0).toUpperCase() || "U"}
                   </AvatarFallback>
@@ -1506,7 +1431,7 @@ export function Sidebar({
                       </div>
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                          Session
+                          {t("nav.session")}
                         </p>
                         <h3 className="text-lg font-bold text-white">
                           {t("nav.logoutConfirmTitle", "Sign out")}
@@ -1547,14 +1472,14 @@ export function Sidebar({
               className="flex items-center gap-2 mb-2 md:mb-3 md:gap-3 w-full text-left hover:bg-slate-800/50 rounded-lg p-1 transition-colors"
             >
               <Avatar className="h-8 w-8 md:h-9 md:w-9 flex-shrink-0">
-                <AvatarImage src={user?.avatar} alt={user?.name || "User"} />
+                <AvatarImage src={user?.avatar} alt={user?.name || t("nav.userFallback")} />
                 <AvatarFallback className="bg-indigo-600 text-white text-sm font-medium">
                   {user?.name?.charAt(0).toUpperCase() || "U"}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="truncate text-sm font-semibold text-white">
-                  {user?.name || "User"}
+                  {user?.name || t("nav.userFallback")}
                 </p>
                 <p className="truncate text-xs text-slate-400">
                   {user?.email || ""}
@@ -1590,7 +1515,7 @@ export function Sidebar({
                       </div>
                       <div>
                         <p className="text-xs font-medium uppercase tracking-wider text-slate-400">
-                          Session
+                          {t("nav.session")}
                         </p>
                         <h3 className="text-lg font-bold text-white">
                           {t("nav.logoutConfirmTitle", "Sign out")}

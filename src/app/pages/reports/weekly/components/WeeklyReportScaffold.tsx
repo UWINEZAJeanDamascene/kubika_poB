@@ -47,6 +47,7 @@ export function WeeklyReportScaffold({
   loading,
   downloading,
   onBack,
+  backLabel = "Back to Weekly Reports",
   onDownloadPDF,
   onDownloadExcel,
   metrics,
@@ -63,6 +64,7 @@ export function WeeklyReportScaffold({
   loading?: boolean;
   downloading: "pdf" | "excel" | null;
   onBack: () => void;
+  backLabel?: string;
   onDownloadPDF: () => void;
   onDownloadExcel: () => void;
   metrics: WeeklyMetric[];
@@ -76,8 +78,8 @@ export function WeeklyReportScaffold({
             <div className={`h-1 bg-gradient-to-r ${toneClass[tone].accent}`} />
             <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
               <div className="min-w-0">
-                <div className="flex items-center gap-3">
-                  <Button variant="outline" size="icon" onClick={onBack} className="border-slate-200 bg-slate-50 dark:border-white/15 dark:bg-white/5"><ArrowLeft className="h-4 w-4" /></Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button variant="outline" onClick={onBack} className="border-slate-200 bg-slate-50 dark:border-white/15 dark:bg-white/5"><ArrowLeft className="mr-2 h-4 w-4" />{backLabel}</Button>
                   <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-white dark:hover:bg-white/10"><Sparkles className="mr-1.5 h-3.5 w-3.5" />Weekly Report</Badge>
                 </div>
                 <div className="mt-4 flex items-start gap-3">

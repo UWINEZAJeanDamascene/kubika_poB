@@ -1,16 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { Button } from '@/app/components/ui/button';
-import { Menu, X, Package, Sun, Moon, Languages } from 'lucide-react';
+import { Menu, X, Package, Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useTranslation } from 'react-i18next';
+import { LanguageSelector } from '@/app/components/LanguageSelector';
 
 export function LandingNavbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { language, toggleLanguage } = useLanguage();
   const { t } = useTranslation();
   const isDark = theme === 'dark';
 
@@ -64,17 +63,7 @@ export function LandingNavbar() {
 
           {/* Desktop CTA Buttons - Always show login/signup regardless of auth */}
           <div className="hidden md:flex items-center gap-2">
-            {/* Language Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleLanguage}
-              title={language === 'en' ? 'Passer en Français' : 'Switch to English'}
-              className="h-9 gap-1.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium"
-            >
-              <Languages className="h-4 w-4" />
-              <span className="text-xs font-bold">{language === 'en' ? 'FR' : 'EN'}</span>
-            </Button>
+            <LanguageSelector variant="landing" />
 
             {/* Theme Toggle */}
             <Button
@@ -92,7 +81,7 @@ export function LandingNavbar() {
                 variant="ghost"
                 className="font-medium text-slate-700 dark:text-slate-200 hover:text-purple-600 dark:hover:text-purple-400"
               >
-                Log In
+                {t('landing.login')}
               </Button>
             </Link>
 
@@ -101,22 +90,14 @@ export function LandingNavbar() {
               <Button
                 className="font-medium px-5 bg-purple-600 hover:bg-purple-700 text-white"
               >
-                Sign Up
+                {t('landing.getStarted')}
               </Button>
             </Link>
           </div>
 
           {/* Mobile Controls */}
           <div className="flex items-center gap-2 md:hidden">
-            {/* Mobile Language Toggle */}
-            <button
-              className="p-2 rounded-lg text-slate-800 dark:text-slate-100 flex items-center gap-1"
-              onClick={toggleLanguage}
-              aria-label="Toggle language"
-            >
-              <Languages className="w-4 h-4" />
-              <span className="text-xs font-bold">{language === 'en' ? 'FR' : 'EN'}</span>
-            </button>
+            <LanguageSelector variant="landing" className="p-2 rounded-lg text-slate-800 dark:text-slate-100" />
 
             <button
               className="p-2 rounded-lg text-slate-800 dark:text-slate-100"

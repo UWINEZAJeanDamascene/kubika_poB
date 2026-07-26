@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { loansApi, Liability, journalEntriesApi, ChartOfAccounts, PaymentScheduleResponse, bankAccountsApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
+import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
@@ -703,40 +704,15 @@ export default function LiabilityFormPage() {
                 {/* Currency */}
                 <div className="space-y-2">
                   <Label htmlFor="currencyCode" className="dark:text-slate-200">Currency (IFRS 7.34)</Label>
-                  <Select
+                  <DocumentCurrencySelect
                     value={formData.currencyCode}
-                    onValueChange={(value) => handleChange('currencyCode', value)}
-                  >
-                    <SelectTrigger className="dark:bg-slate-700 dark:text-white dark:border-slate-600">
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent className="dark:bg-slate-800">
-                      <SelectItem value="RWF">RWF - Rwandan Franc</SelectItem>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="EUR">EUR - Euro</SelectItem>
-                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                      <SelectItem value="UGX">UGX - Ugandan Shilling</SelectItem>
-                      <SelectItem value="KES">KES - Kenyan Shilling</SelectItem>
-                      <SelectItem value="TZS">TZS - Tanzanian Shilling</SelectItem>
-                    </SelectContent>
-                  </Select>
+                    date={formData.startDate}
+                    onChange={(currency, rateToBase) => {
+                      handleChange('currencyCode', currency);
+                      handleChange('exchangeRate', rateToBase ?? 1);
+                    }}
+                  />
                 </div>
-
-                {/* Exchange Rate (only if not RWF) */}
-                {formData.currencyCode !== 'RWF' && (
-                  <div className="space-y-2">
-                    <Label htmlFor="exchangeRate" className="dark:text-slate-200">Exchange Rate (to RWF)</Label>
-                    <Input
-                      id="exchangeRate"
-                      type="number"
-                      step="0.0001"
-                      value={formData.exchangeRate}
-                      onChange={(e) => handleChange('exchangeRate', parseFloat(e.target.value) || 1)}
-                      placeholder="1.0"
-                      className="dark:bg-slate-700 dark:text-white dark:border-slate-600"
-                    />
-                  </div>
-                )}
 
                 {/* Secured Toggle */}
                 <div className="space-y-2 md:col-span-2">

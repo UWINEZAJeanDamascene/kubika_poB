@@ -47,13 +47,15 @@ import { useTranslation } from "react-i18next";
 
 interface PurchaseItem {
   product: { _id: string; name: string; sku: string; unit?: string };
-  quantity: string;
-  unitCost: string;
-  subtotal: string;
-  taxAmount: string;
-  totalWithTax: string;
+  quantity: string | number;
+  qty?: string | number;
+  unitCost: string | number;
+  subtotal?: string | number;
+  taxAmount?: string | number;
+  totalWithTax?: string | number;
+  lineTotal?: string | number;
   taxCode?: string;
-  taxRate?: string;
+  taxRate?: string | number;
 }
 
 interface Payment {
@@ -576,8 +578,16 @@ export default function PurchaseDetailPage() {
                             </TableCell>
                             <TableCell className="text-right text-slate-600 dark:text-slate-300">{item.quantity}</TableCell>
                             <TableCell className="text-right font-mono text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatCurrency(item.unitCost)}</TableCell>
-                            <TableCell className="text-right font-mono text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatCurrency(item.taxAmount)}</TableCell>
-                            <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(item.totalWithTax)}</TableCell>
+                            <TableCell className="text-right font-mono text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">
+                              {formatCurrency(
+                                item.taxAmount
+                                  ?? (
+                                    (Number(item.totalWithTax ?? item.lineTotal) || 0)
+                                    - (Number(item.quantity ?? item.qty) || 0) * (Number(item.unitCost) || 0)
+                                  )
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(item.totalWithTax ?? item.lineTotal)}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

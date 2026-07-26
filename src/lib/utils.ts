@@ -1,27 +1,21 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { formatBaseAmount } from "./currencyDisplay";
 
 // Utility to merge Tailwind classes
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-// Currency formatting utilities for Rwandan Francs (RWF)
+// Currency formatting: values are base-currency (RWF) amounts and are shown
+// in the currency selected in the sidebar (converted at the latest rate).
 
 export function formatCurrency(value: number | undefined | null): string {
-  if (value === undefined || value === null || isNaN(value)) return 'RWF 0';
-  return `RWF ${new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(value)}`;
+  return formatBaseAmount(value);
 }
 
 export function formatCurrencyWithDecimals(value: number | undefined | null): string {
-  if (value === undefined || value === null || isNaN(value)) return 'RWF 0';
-  return `RWF ${new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value)}`;
+  return formatBaseAmount(value, { decimals: 2 });
 }
 
 export function formatNumber(value: number | undefined | null): string {

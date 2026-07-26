@@ -69,34 +69,34 @@ interface Client {
   name: string;
 }
 
-const FREQUENCY_OPTIONS = [
-  { value: 'all', label: 'All Frequencies' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'quarterly', label: 'Quarterly' },
-  { value: 'annually', label: 'Annually' },
-];
-
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Status' },
-  { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
-const FREQUENCY_LABELS: Record<string, string> = {
-  daily: 'Daily',
-  weekly: 'Weekly',
-  monthly: 'Monthly',
-  quarterly: 'Quarterly',
-  annually: 'Annually',
-};
-
 export default function RecurringInvoicesListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+
+  const FREQUENCY_OPTIONS = [
+    { value: 'all', label: t('recurringInvoices.allFrequencies', 'All Frequencies') },
+    { value: 'daily', label: t('recurringInvoices.daily', 'Daily') },
+    { value: 'weekly', label: t('recurringInvoices.weekly', 'Weekly') },
+    { value: 'monthly', label: t('recurringInvoices.monthly', 'Monthly') },
+    { value: 'quarterly', label: t('recurringInvoices.quarterly', 'Quarterly') },
+    { value: 'annually', label: t('recurringInvoices.yearly', 'Annually') },
+  ];
+
+  const STATUS_OPTIONS = [
+    { value: 'all', label: t('common.allStatus', 'All Status') },
+    { value: 'active', label: t('recurringInvoices.status.active', 'Active') },
+    { value: 'paused', label: t('recurringInvoices.status.paused', 'Paused') },
+    { value: 'completed', label: t('recurringInvoices.status.completed', 'Completed') },
+    { value: 'cancelled', label: t('recurringInvoices.status.cancelled', 'Cancelled') },
+  ];
+
+  const FREQUENCY_LABELS: Record<string, string> = {
+    daily: t('recurringInvoices.daily', 'Daily'),
+    weekly: t('recurringInvoices.weekly', 'Weekly'),
+    monthly: t('recurringInvoices.monthly', 'Monthly'),
+    quarterly: t('recurringInvoices.quarterly', 'Quarterly'),
+    annually: t('recurringInvoices.yearly', 'Annually'),
+  };
 
   const [loading, setLoading] = useState(true);
   const [recurringInvoices, setRecurringInvoices] = useState<RecurringInvoice[]>([]);
@@ -179,15 +179,9 @@ export default function RecurringInvoicesListPage() {
   };
 
   const getStatusBadge = (status: string) => {
-    const labels: Record<string, string> = {
-      active: 'Active',
-      paused: 'Paused',
-      completed: 'Completed',
-      cancelled: 'Cancelled',
-    };
     return (
       <Badge variant="outline" className={`${STATUS_COLORS[status] || STATUS_COLORS.completed} capitalize text-xs`}>
-        {labels[status] || status}
+        {t(`recurringInvoices.status.${status}`, status)}
       </Badge>
     );
   };
@@ -200,7 +194,7 @@ export default function RecurringInvoicesListPage() {
   const formatFrequency = (schedule: RecurringInvoice['schedule']) => {
     const freq = FREQUENCY_LABELS[schedule.frequency] || schedule.frequency;
     if (schedule.interval > 1) {
-      return `Every ${schedule.interval} ${freq}s`;
+      return t('recurringInvoices.everyIntervalFreq', 'Every {{interval}} {{freq}}s', { interval: schedule.interval, freq });
     }
     return freq;
   };
@@ -358,7 +352,7 @@ export default function RecurringInvoicesListPage() {
                   <Repeat className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Templates</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('recurringInvoices.totalTemplates', 'Total Templates')}</p>
                   <p className="text-xl font-bold text-slate-950 dark:text-white">
                     {loading ? <Skeleton className="h-7 w-12" /> : filteredRecurringInvoices.length}
                   </p>
@@ -371,7 +365,7 @@ export default function RecurringInvoicesListPage() {
                   <TrendingUp className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Value</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('recurringInvoices.totalValue', 'Total Value')}</p>
                   <p className="text-xl font-bold text-slate-950 dark:text-white">
                     {loading ? <Skeleton className="h-7 w-16" /> : formatCurrency(totalValue)}
                   </p>
@@ -384,7 +378,7 @@ export default function RecurringInvoicesListPage() {
                   <CalendarDays className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Next Run This Week</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('recurringInvoices.nextRunThisWeek', 'Next Run This Week')}</p>
                   <p className="text-xl font-bold text-slate-950 dark:text-white">
                     {loading ? <Skeleton className="h-7 w-8" /> : filteredRecurringInvoices.filter((i) => i.status === 'active' && i.nextRunDate && new Date(i.nextRunDate) <= new Date(Date.now() + 7 * 86400000)).length}
                   </p>
@@ -397,7 +391,7 @@ export default function RecurringInvoicesListPage() {
                   <Zap className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Auto-Confirm</p>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('recurringInvoices.autoConfirmMetric', 'Auto-Confirm')}</p>
                   <p className="text-xl font-bold text-slate-950 dark:text-white">
                     {loading ? <Skeleton className="h-7 w-8" /> : filteredRecurringInvoices.filter((i) => i.autoConfirm).length}
                   </p>
@@ -448,7 +442,7 @@ export default function RecurringInvoicesListPage() {
                     <SelectValue placeholder={t('recurringInvoices.filterClient', 'Client')} />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
-                    <SelectItem value="all" className="dark:text-white">{t('common.all', 'All Clients')}</SelectItem>
+                    <SelectItem value="all" className="dark:text-white">{t('recurringInvoices.allClients', 'All Clients')}</SelectItem>
                     {clients.map((client) => (
                       <SelectItem key={client._id} value={client._id} className="dark:text-white">
                         {client.name}

@@ -4,6 +4,8 @@ import { Layout } from "../layout/Layout";
 import { dashboardApi, type InventoryDashboardData } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/hooks/useLiveRefresh";
 import { formatDashboardPercent, percentBarWidth } from "@/lib/dashboardMetrics";
+import { DashboardErrorBanner, DashboardPageHeader } from "@/app/components/dashboard/DashboardPageHeader";
+import { formatDashboardError, formatDashboardDateTime } from "@/app/components/dashboard/dashboardPageUtils";
 import {
   Card,
   CardContent,
@@ -34,7 +36,6 @@ import {
   Banknote,
   CheckCircle,
   ArrowUpRight,
-  RefreshCw,
   AlertCircle,
   ShoppingCart,
   Archive,
@@ -55,18 +56,6 @@ function formatCurrency(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value)}`;
-}
-
-function formatDateTime(value?: string): string {
-  if (!value) return "Not generated";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Not generated";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }
 
 const PIE_COLORS = [
@@ -224,7 +213,7 @@ export default function InventoryDashboardPage() {
       const result = await dashboardApi.getInventory();
       setData(result);
     } catch (err: any) {
-      setError(err.message || "Failed to load inventory dashboard");
+      setError(formatDashboardError(err.message || "Failed to load inventory dashboard"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -316,84 +305,37 @@ export default function InventoryDashboardPage() {
     <Layout>
       <div className="erp-dashboard min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1600px] 2xl:max-w-[2200px] space-y-6">
-          <div className="dashboard-hero rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
-                    Inventory Dashboard
-                  </h1>
-                  <Badge className="h-6 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-200">
-                    Live data
+          <DashboardPageHeader
+            title="Inventory Dashboard"
+            subtitle="See what you have in stock, what is running low, and where inventory sits by warehouse."
+            generatedAt={data?.generated_at}
+            loading={loading}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            badges={
+              <>
+                <Badge className="h-6 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-200">
+                  Live data
+                </Badge>
+                {!loading && (
+                  <Badge
+                    variant={atRiskCount > 0 ? "destructive" : "secondary"}
+                    className="h-6"
+                  >
+                    {atRiskCount > 0 ? `${atRiskCount} at risk` : "Healthy"}
                   </Badge>
-                  {!loading && (
-                    <Badge
-                      variant={atRiskCount > 0 ? "destructive" : "secondary"}
-                      className="h-6"
-                    >
-                      {atRiskCount > 0 ? `${atRiskCount} at risk` : "Healthy"}
-                    </Badge>
-                  )}
-                </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  Stock position, replenishment risk, movement velocity, and
-                  warehouse value distribution
-                </p>
-              </div>
+                )}
+              </>
+            }
+            stats={[
+              {
+                label: "Stock coverage",
+                value: loading ? "—" : formatDashboardPercent(stockCoverage),
+              },
+            ]}
+          />
 
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="grid grid-cols-2 gap-2 text-xs sm:flex sm:items-center">
-                  <div className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800">
-                    <p className="text-slate-500 dark:text-slate-400">
-                      Coverage
-                    </p>
-                    <p className="mt-0.5 font-semibold text-slate-950 dark:text-white">
-                      {loading ? "-" : formatDashboardPercent(stockCoverage)}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-200 px-3 py-2 dark:border-slate-800">
-                    <p className="text-slate-500 dark:text-slate-400">
-                      Generated
-                    </p>
-                    <p className="mt-0.5 font-semibold text-slate-950 dark:text-white">
-                      {loading ? "-" : formatDateTime(data?.generated_at)}
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  disabled={refreshing || loading}
-                  className="h-10 gap-2"
-                >
-                  <RefreshCw
-                    className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
-                  />
-                  Refresh
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <Card className="border-red-200 bg-red-50 dark:border-red-900/70 dark:bg-red-950/30">
-              <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
-                <AlertCircle className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
-                <p className="text-sm text-red-700 dark:text-red-300">
-                  {error}
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefresh}
-                  className="sm:ml-auto"
-                >
-                  Retry
-                </Button>
-              </CardContent>
-            </Card>
-          )}
+          {error && <DashboardErrorBanner message={error} />}
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             <SummaryCard
@@ -1009,7 +951,7 @@ export default function InventoryDashboardPage() {
                             )}
                           </p>
                           <p className="text-xs text-slate-500 dark:text-slate-400">
-                            {formatDateTime(
+                            {formatDashboardDateTime(
                               movement.date ||
                                 movement.movementDate ||
                                 movement.createdAt,

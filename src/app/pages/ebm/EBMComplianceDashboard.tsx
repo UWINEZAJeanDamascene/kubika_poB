@@ -84,7 +84,7 @@ function DeviceStatusBadge({ status }: { status: string }) {
 
 // ── Page ───────────────────────────────────────────────────────────────────────
 
-export function EBMComplianceDashboardContent() {
+export function EBMComplianceDashboardContent({ embedded = false }: { embedded?: boolean } = {}) {
   const [devices, setDevices] = useState<{
     mode: string;
     tin?: string | null;
@@ -133,14 +133,20 @@ export function EBMComplianceDashboardContent() {
     (queueCounts.failed ?? 0) + (queueCounts.abandoned ?? 0) + alerts.length;
 
   return (
-    <div className="bg-slate-50 px-4 py-6 dark:bg-slate-950 sm:px-6 lg:px-8">
+    <div className={embedded ? "space-y-6" : "bg-slate-50 px-4 py-6 dark:bg-slate-950 sm:px-6 lg:px-8"}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
-              EBM Compliance
-            </h1>
+            {embedded ? (
+              <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
+                EBM Compliance
+              </h2>
+            ) : (
+              <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
+                EBM Compliance
+              </h1>
+            )}
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Monitor RRA device status, code synchronisation, and submission health across all branches.
             </p>
@@ -327,7 +333,7 @@ export function EBMComplianceDashboardContent() {
                   <Activity className="h-4 w-4" /> Submission Queue Health
                 </CardTitle>
                 <Link
-                  to="/ebm/retry-queue"
+                  to="/ebm/control-center?tab=retry"
                   className="text-sm font-medium text-blue-600 hover:underline"
                 >
                   Open retry queue →
@@ -343,7 +349,7 @@ export function EBMComplianceDashboardContent() {
                 {totalIssues > 0 && (
                   <p className="mt-4 text-sm text-red-600">
                     ⚠ {totalIssues} submission{totalIssues !== 1 ? "s" : ""} need attention.{" "}
-                    <Link to="/ebm/retry-queue" className="font-medium underline">
+                    <Link to="/ebm/control-center?tab=retry" className="font-medium underline">
                       View retry queue
                     </Link>
                   </p>

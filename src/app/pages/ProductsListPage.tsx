@@ -226,7 +226,7 @@ export default function ProductsListPage() {
       }
     } catch (error) {
       console.error('[ProductsListPage] Failed to load products:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load products');
+      setError(error instanceof Error ? error.message : t('products.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -259,10 +259,10 @@ export default function ProductsListPage() {
     setActionLoading(true);
     try {
       await productsApi.registerWithEBM(product._id);
-      toast.success('Product registered with RRA EBM');
+      toast.success(t('products.ebmRegisterSuccess'));
       loadProducts();
     } catch (error: any) {
-      toast.error(error.message || 'EBM product registration failed');
+      toast.error(error.message || t('products.ebmRegisterFailed'));
       loadProducts();
     } finally {
       setActionLoading(false);
@@ -300,7 +300,7 @@ export default function ProductsListPage() {
           'Authorization': `Bearer ${token}`
         }
       }).then(res => {
-        if (!res.ok) throw new Error('Export failed');
+        if (!res.ok) throw new Error(t('products.exportFailed'));
         return res.blob();
       });
       
@@ -314,6 +314,7 @@ export default function ProductsListPage() {
       document.body.removeChild(a);
     } catch (error) {
       console.error('Export failed:', error);
+      toast.error(t('products.exportFailed'));
     }
   };
 
@@ -344,7 +345,7 @@ export default function ProductsListPage() {
     try {
       const response = await productsApi.checkLowStockAndNotify();
       if (response.success) {
-        toast.success(response.message || 'Low stock notifications sent');
+        toast.success(response.message || t('products.lowStockNotificationsSent'));
       }
     } catch (error) {
       console.error('Failed to check low stock:', error);
@@ -384,7 +385,7 @@ export default function ProductsListPage() {
             subtitle={t('products.subtitle') || 'Manage your product inventory'}
             icon={Package}
           />
-          <LoadingState title="Loading products" description="Fetching stock, pricing, and EBM status." />
+          <LoadingState title={t('products.loadingProducts')} description={t('products.loadingProductsDesc')} />
         </div>
       </Layout>
     );
@@ -396,7 +397,7 @@ export default function ProductsListPage() {
       <Layout>
         <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 2xl:max-w-[2200px]">
           <ErrorState
-            title="Failed to load products"
+            title={t('products.loadFailed')}
             description={error}
             onRetry={() => loadProducts()}
           />
@@ -461,50 +462,50 @@ export default function ProductsListPage() {
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Catalog Coverage</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('products.catalogCoverage')}</p>
                 <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{pagination.total}</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-blue-50 text-blue-600 dark:bg-blue-950/60 dark:text-blue-300">
                 <Package className="h-5 w-5" />
               </div>
             </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{inventorySummary.active} active on this view</p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('products.activeOnView', { count: inventorySummary.active })}</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Inventory Value</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('products.inventoryValue')}</p>
                 <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{formatCurrency(inventorySummary.stockValue)}</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-300">
                 <Layers className="h-5 w-5" />
               </div>
             </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{inventorySummary.units.toLocaleString()} units represented</p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('products.unitsRepresented', { count: inventorySummary.units.toLocaleString() })}</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Stock Risk</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('products.stockRisk')}</p>
                 <p className={`mt-2 text-2xl font-bold ${riskCount > 0 ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>{riskCount}</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-300">
                 <AlertTriangle className="h-5 w-5" />
               </div>
             </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{inventorySummary.lowStock} low, {inventorySummary.outOfStock} out of stock</p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('products.stockRiskDetail', { low: inventorySummary.lowStock, out: inventorySummary.outOfStock })}</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Data Readiness</p>
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('products.dataReadiness')}</p>
                 <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{products.length ? Math.round((products.filter(p => p.category && p.unit && p.costingMethod).length / products.length) * 100) : 0}%</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-300">
                 <ShieldCheck className="h-5 w-5" />
               </div>
             </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Category, unit, and costing assigned</p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('products.dataReadinessHint')}</p>
           </div>
         </div>
 
@@ -557,7 +558,7 @@ export default function ProductsListPage() {
                   <SelectItem value="in_stock">{t('products.inStock') || 'In Stock'}</SelectItem>
                   <SelectItem value="low_stock">{t('products.lowStock') || 'Low Stock'}</SelectItem>
                   <SelectItem value="out_of_stock">{t('products.outOfStock') || 'Out of Stock'}</SelectItem>
-                  <SelectItem value="ebm_unregistered">EBM Unregistered</SelectItem>
+                  <SelectItem value="ebm_unregistered">{t('products.ebmUnregistered')}</SelectItem>
                   <SelectItem value="archived">{t('products.archived') || 'Archived'}</SelectItem>
                 </SelectContent>
               </Select>
@@ -568,7 +569,7 @@ export default function ProductsListPage() {
               </Button>
               {hasFilters && (
                 <Button type="button" variant="ghost" onClick={clearFilters} className="w-full sm:w-auto">
-                  Clear
+                  {t('products.clearFilters')}
                 </Button>
               )}
             </div>
@@ -652,7 +653,7 @@ export default function ProductsListPage() {
                     <TableHead className="font-semibold text-right">{t('products.stockValue') || 'Stock Value'}</TableHead>
                     <TableHead className="font-semibold">{t('products.costingMethod') || 'Costing'}</TableHead>
                     <TableHead className="font-semibold text-center">{t('products.status') || 'Status'}</TableHead>
-                    <TableHead className="font-semibold text-center">EBM</TableHead>
+                    <TableHead className="font-semibold text-center">{t('products.ebmColumn')}</TableHead>
                     <TableHead className="font-semibold text-right">{t('common.actions') || 'Actions'}</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -718,11 +719,11 @@ export default function ProductsListPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           {product.ebm?.isRegisteredWithEBM ? (
-                            <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Registered</Badge>
+                            <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{t('products.ebmRegistered')}</Badge>
                           ) : product.ebm?.ebmRegistrationError ? (
-                            <Badge className="bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" title={product.ebm.ebmRegistrationError}>Failed</Badge>
+                            <Badge className="bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300" title={product.ebm.ebmRegistrationError}>{t('products.ebmFailed')}</Badge>
                           ) : (
-                            <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Not registered</Badge>
+                            <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{t('products.ebmNotRegistered')}</Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
@@ -739,7 +740,7 @@ export default function ProductsListPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRegisterEbm(product)}
-                              title="Register with RRA EBM"
+                              title={t('products.registerWithEbm')}
                               disabled={actionLoading}
                             >
                               <ShieldCheck className="h-4 w-4" />

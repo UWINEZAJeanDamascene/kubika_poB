@@ -9,9 +9,12 @@ import { API_BASE_URL, api as request } from "./api";
 // Helper to download file with auth token
 const downloadFile = async (url: string, filename: string) => {
   const token = localStorage.getItem("token");
+  const companyId = localStorage.getItem("companyId");
   const response = await fetch(url, {
+    cache: "no-store",
     headers: {
       Authorization: token ? `Bearer ${token}` : "",
+      ...(companyId ? { "X-Company-Id": companyId } : {}),
     },
   });
   if (!response.ok) {

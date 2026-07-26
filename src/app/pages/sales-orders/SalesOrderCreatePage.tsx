@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { salesOrdersApi, clientsApi, productsApi, quotationsApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
+import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
 import {
   ArrowLeft,
   Plus,
@@ -89,7 +90,8 @@ export default function SalesOrderCreatePage() {
     quotation: '',
     orderDate: new Date().toISOString().split('T')[0],
     expectedDate: '',
-    currencyCode: 'USD',
+    currencyCode: 'RWF',
+    exchangeRate: 1,
     terms: '',
     notes: '',
   });
@@ -445,17 +447,13 @@ export default function SalesOrderCreatePage() {
 
                       <div className="space-y-2">
                         <Label className="text-sm font-semibold text-slate-700 dark:text-slate-200">Currency</Label>
-                        <Select value={formData.currencyCode} onValueChange={(value) => setFormData({ ...formData, currencyCode: value })}>
-                          <SelectTrigger className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700">
-                            <SelectItem value="USD" className="dark:focus:bg-slate-800 dark:focus:text-white">USD</SelectItem>
-                            <SelectItem value="EUR" className="dark:focus:bg-slate-800 dark:focus:text-white">EUR</SelectItem>
-                            <SelectItem value="GBP" className="dark:focus:bg-slate-800 dark:focus:text-white">GBP</SelectItem>
-                            <SelectItem value="RWF" className="dark:focus:bg-slate-800 dark:focus:text-white">RWF</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <DocumentCurrencySelect
+                          value={formData.currencyCode}
+                          date={formData.orderDate}
+                          onChange={(currency, rateToBase) =>
+                            setFormData(prev => ({ ...prev, currencyCode: currency, exchangeRate: rateToBase ?? 1 }))
+                          }
+                        />
                       </div>
                     </div>
 

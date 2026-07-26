@@ -63,7 +63,7 @@ const statusClass: Record<string, string> = {
   rejected: "bg-red-50 text-red-700 border-red-200",
 };
 
-export default function ImportedItemsPage() {
+export function ImportedItemsContent({ branchId }: { branchId?: string } = {}) {
   const [items, setItems] = useState<ImportedItem[]>([]);
   const [products, setProducts] = useState<OptionItem[]>([]);
   const [warehouses, setWarehouses] = useState<OptionItem[]>([]);
@@ -102,6 +102,10 @@ export default function ImportedItemsPage() {
   useEffect(() => {
     fetchImports();
   }, [fetchImports]);
+
+  useEffect(() => {
+    if (branchId) setSyncBranchId(branchId);
+  }, [branchId]);
 
   useEffect(() => {
     Promise.all([
@@ -219,18 +223,17 @@ export default function ImportedItemsPage() {
   };
 
   return (
-    <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
-              Imported Items
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              Pull customs-declared imports from RRA and receive confirmed goods
-              through GRN.
-            </p>
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
+            Imported Goods
+          </h2>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Pull customs-declared imports from RRA and receive confirmed goods
+            through GRN.
+          </p>
+        </div>
           <div className="flex items-center gap-2">
             {ebmBranches.length > 0 ? (
               <Select value={syncBranchId} onValueChange={setSyncBranchId}>
@@ -480,7 +483,14 @@ export default function ImportedItemsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+    </div>
+  );
+}
+
+export default function ImportedItemsPage() {
+  return (
+    <Layout>
+      <ImportedItemsContent />
     </Layout>
   );
 }

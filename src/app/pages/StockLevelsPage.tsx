@@ -155,11 +155,11 @@ export default function StockLevelsPage() {
           setTotal(productData.length);
         }
       } else {
-        setError('Failed to fetch stock levels');
+        setError(t('stockLevels.fetchFailed'));
       }
     } catch (err) {
       console.error('[StockLevels] Error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(err instanceof Error ? err.message : t('stockLevels.unexpectedError'));
     } finally {
       setLoading(false);
     }
@@ -224,9 +224,9 @@ export default function StockLevelsPage() {
   };
 
   const getStockStatus = (product: ProductStock) => {
-    if (product.currentStock === 0) return { label: 'Out of Stock', color: 'error' as const };
-    if (product.currentStock <= product.lowStockThreshold) return { label: 'Low Stock', color: 'warning' as const };
-    return { label: 'In Stock', color: 'success' as const };
+    if (product.currentStock === 0) return { label: t('stockLevels.outOfStock'), color: 'error' as const };
+    if (product.currentStock <= product.lowStockThreshold) return { label: t('stockLevels.lowStock'), color: 'warning' as const };
+    return { label: t('stockLevels.inStock'), color: 'success' as const };
   };
 
   // Calculate totals
@@ -256,7 +256,7 @@ export default function StockLevelsPage() {
             {t('stockLevels.title', 'Stock Levels')}
           </Typography>
           </div>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Real-time quantity, availability, reserved stock, and valuation controls.</p>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t('stockLevels.subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -346,18 +346,18 @@ export default function StockLevelsPage() {
 
       <div className="grid gap-4 lg:grid-cols-3 mb-6">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Inventory Exposure</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockLevels.inventoryExposure')}</p>
           <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{formatCurrency(valueAtRisk)}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Value held in low or out-of-stock SKUs</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t('stockLevels.valueAtRisk')}</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Top Value SKU</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockLevels.topValueSku')}</p>
           <p className="mt-2 truncate text-lg font-bold text-slate-950 dark:text-white">{topValueItem?.name || '-'}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{topValueItem ? `${topValueItem.sku} · ${formatCurrency(topValueItem.totalValue)}` : 'No stock valuation available'}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{topValueItem ? `${topValueItem.sku} · ${formatCurrency(topValueItem.totalValue)}` : t('stockLevels.noValuation')}</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Stock Health Mix</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockLevels.stockHealthMix')}</p>
             <p className="text-sm font-semibold text-slate-900 dark:text-white">{products.length ? Math.round(((products.length - lowStockCount - outOfStockCount) / products.length) * 100) : 0}% healthy</p>
           </div>
           <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">

@@ -7,6 +7,7 @@ import {
   invoicesApi,
 } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
+import DocumentCurrencySelect from "@/app/components/DocumentCurrencySelect";
 import {
   ArrowLeft,
   Save,
@@ -103,8 +104,6 @@ const PAYMENT_METHODS = [
   { value: "other", label: "Other" },
 ];
 
-const CURRENCIES = ["USD", "EUR", "GBP", "RWF", "KES", "UGX", "TZS"];
-
 export default function ARReceiptCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -124,7 +123,7 @@ export default function ARReceiptCreatePage() {
     paymentMethod: "bank_transfer",
     bankAccount: "",
     amountReceived: 0,
-    currencyCode: "USD",
+    currencyCode: "RWF",
     reference: "",
     notes: "",
   });
@@ -186,7 +185,7 @@ export default function ARReceiptCreatePage() {
           paymentMethod: receipt.paymentMethod || "bank_transfer",
           bankAccount: receipt.bankAccount?._id || "",
           amountReceived: parseFloat(receipt.amountReceived) || 0,
-          currencyCode: receipt.currencyCode || "USD",
+          currencyCode: receipt.currencyCode || "RWF",
           reference: receipt.reference || "",
           notes: receipt.notes || "",
         });
@@ -428,14 +427,12 @@ export default function ARReceiptCreatePage() {
                       </div>
                       <div>
                         <Label className="text-xs text-slate-500 dark:text-slate-400">{t("arReceipt.currency", "Currency")}</Label>
-                        <Select value={formData.currencyCode} onValueChange={(value) => setFormData({ ...formData, currencyCode: value })}>
-                          <SelectTrigger className="mt-1 bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white"><SelectValue /></SelectTrigger>
-                          <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
-                            {CURRENCIES.map((currency) => (
-                              <SelectItem key={currency} value={currency} className="dark:text-slate-200">{currency}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <DocumentCurrencySelect
+                          className="mt-1"
+                          value={formData.currencyCode}
+                          date={formData.receiptDate}
+                          onChange={(currency) => setFormData((prev) => ({ ...prev, currencyCode: currency }))}
+                        />
                       </div>
                       <div className="sm:col-span-2">
                         <Label className="text-xs text-slate-500 dark:text-slate-400">{t("arReceipt.reference", "Reference")}</Label>

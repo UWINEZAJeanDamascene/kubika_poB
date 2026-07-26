@@ -118,30 +118,32 @@ export default function PickPackPickPage() {
     try {
       setSubmitting(true);
 
-      // Pick each line
+      const incomplete = pickPack!.lines.filter((line) => {
+        const qty = pickingLines[line._id] || 0;
+        return qty < toNumber(line.qtyToPick);
+      });
+      if (incomplete.length > 0) {
+        toast.error('Pick all quantities before completing');
+        return;
+      }
+
+      // Persist each line's picked qty through the authenticated API client
       for (const line of pickPack!.lines) {
         const qtyToRecord = pickingLines[line._id] || 0;
         const currentPicked = toNumber(line.qtyPicked);
-        
+
         if (qtyToRecord > currentPicked) {
-          // Call API for each line individually with direct properties
-          // Backend expects: { lineId, qtyPicked, notes } not { items: [...] }
-          await fetch(`${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api'}/pick-packs/${id}/pick-items`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            },
-            body: JSON.stringify({
-              lineId: line._id,
-              qtyPicked: qtyToRecord,
-              notes: ''
-            })
-          }).then(res => res.json());
+          const pickRes = await pickPackApi.pickItems(id!, {
+            lineId: line._id,
+            qtyPicked: qtyToRecord,
+            notes: '',
+          });
+          if (!pickRes.success) {
+            throw new Error(pickRes.message || 'Failed to record picked items');
+          }
         }
       }
 
-      // Complete picking
       await pickPackApi.completePicking(id!);
 
       toast.success('Picking completed successfully');

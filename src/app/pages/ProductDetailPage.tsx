@@ -161,26 +161,11 @@ interface EBMItemClassOption {
   itemClassName: string;
 }
 
-const MOVEMENT_REASON_LABELS: Record<string, string> = {
-  purchase: 'Purchase',
-  sale: 'Sale',
-  return: 'Return',
-  damage: 'Damage',
-  loss: 'Loss',
-  theft: 'Theft',
-  expired: 'Expired',
-  transfer_in: 'Transfer In',
-  transfer_out: 'Transfer Out',
-  correction: 'Correction',
-  initial_stock: 'Initial Stock',
-  audit_surplus: 'Audit Surplus',
-  audit_shortage: 'Audit Shortage',
-  dispatch: 'Dispatch',
-  dispatch_reversal: 'Dispatch Reversal',
-};
-
-const getReasonLabel = (reason: string): string => {
-  return MOVEMENT_REASON_LABELS[reason] || reason.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+const getReasonLabel = (reason: string, translate: (key: string) => string): string => {
+  const key = `products.movementReasons.${reason}`;
+  const translated = translate(key);
+  if (translated !== key) return translated;
+  return reason.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 };
 
 const getActionBadgeClass = (action: string): string => {
@@ -505,11 +490,11 @@ export default function ProductDetailPage() {
   const packagingUnit = ebmPackagingUnits.find((code) => code.code === ebm.pkgUnitCd);
   const quantityUnit = ebmQuantityUnits.find((code) => code.code === ebm.qtyUnitCd);
   const ebmStatusBadge = ebm.isRegisteredWithEBM ? (
-    <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Registered with RRA</Badge>
+    <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{t('products.registeredWithRra')}</Badge>
   ) : ebm.ebmRegistrationError ? (
-    <Badge className="bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">Registration Failed</Badge>
+    <Badge className="bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">{t('products.registrationFailed')}</Badge>
   ) : (
-    <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300">Not Registered</Badge>
+    <Badge className="bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300">{t('products.ebmNotRegistered')}</Badge>
   );
 
   return (
@@ -533,29 +518,29 @@ export default function ProductDetailPage() {
                 <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${stockStatus.color}`}>
                   {stockStatus.label}
                 </span>
-                <Badge variant="outline">{product.category?.name || 'Uncategorized'}</Badge>
+                <Badge variant="outline">{product.category?.name || t('products.uncategorized')}</Badge>
                 <Badge variant="outline" className="uppercase">{product.costingMethod || 'fifo'}</Badge>
                 {product.ebm?.isRegisteredWithEBM ? (
-                  <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">EBM registered</Badge>
+                  <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">{t('products.ebmRegistered')}</Badge>
                 ) : product.ebm?.ebmRegistrationError ? (
-                  <Badge className="bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">EBM failed</Badge>
+                  <Badge className="bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300">{t('products.ebmFailed')}</Badge>
                 ) : (
-                  <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">EBM not registered</Badge>
+                  <Badge className="bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{t('products.ebmNotRegistered')}</Badge>
                 )}
                 {product.isArchived && (
                   <Badge variant="outline" className="bg-slate-100 dark:bg-slate-700">
-                    {t('products.archived') || 'Archived'}
+                    {t('products.archived')}
                   </Badge>
                 )}
               </div>
               <p className="mt-3 max-w-3xl text-sm text-slate-500 dark:text-slate-400">
-                {product.description || 'Inventory, pricing, stock controls, and lifecycle activity for this SKU.'}
+                {product.description || t('products.productDefaultDesc')}
               </p>
             </div>
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800 w-full max-w-xs">
                 <div>
-                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Stock Health</p>
+                  <p className="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('products.stockHealth')}</p>
                   <p className={`mt-1 text-lg font-bold ${stock <= threshold ? 'text-amber-600 dark:text-amber-300' : 'text-emerald-600 dark:text-emerald-300'}`}>
                     {stockCoverage}%
                   </p>
@@ -652,74 +637,74 @@ export default function ProductDetailPage() {
           {/* Details Tab */}
           <TabsContent value="details" className="mt-6">
             <div className="grid gap-5 lg:grid-cols-2">
-              <DetailCard title={tr('products.basicInfo', 'Basic Information')} description="Master data used across inventory, sales, and purchase documents.">
-                <FieldRow label="SKU" value={product.sku} mono />
-                <FieldRow label="Name" value={product.name} />
-                <FieldRow label="Category" value={product.category?.name || '-'} />
-                <FieldRow label="Unit" value={<span className="capitalize">{product.unit}</span>} />
-                <FieldRow label="Supplier" value={product.supplier?.name || '-'} />
-                <FieldRow label="Preferred Supplier" value={product.preferredSupplier?.name || '-'} />
-                <FieldRow label="Default Warehouse" value={product.defaultWarehouse?.name || '-'} />
-                <FieldRow label="Brand" value={product.brand || '-'} />
-                <FieldRow label="Storage Location" value={product.location || '-'} />
+              <DetailCard title={tr('products.basicInfo', 'Basic Information')} description={t('products.basicInfoMasterDesc')}>
+                <FieldRow label={t('products.sku')} value={product.sku} mono />
+                <FieldRow label={t('products.name')} value={product.name} />
+                <FieldRow label={t('products.category')} value={product.category?.name || '-'} />
+                <FieldRow label={t('products.unit')} value={<span className="capitalize">{product.unit}</span>} />
+                <FieldRow label={t('products.supplier')} value={product.supplier?.name || '-'} />
+                <FieldRow label={t('products.preferredSupplier')} value={product.preferredSupplier?.name || '-'} />
+                <FieldRow label={t('products.defaultWarehouse')} value={product.defaultWarehouse?.name || '-'} />
+                <FieldRow label={t('products.brand')} value={product.brand || '-'} />
+                <FieldRow label={t('products.location')} value={product.location || '-'} />
               </DetailCard>
 
-              <DetailCard title={tr('products.pricingInventory', 'Pricing & Inventory')} description="Commercial values and stock control settings for this SKU.">
-                <FieldRow label="Average Cost" value={formatCurrency(product.averageCost)} mono />
-                <FieldRow label="Cost Price" value={formatCurrency(product.costPrice || product.averageCost)} mono />
-                <FieldRow label="Selling Price" value={formatCurrency(product.sellingPrice)} mono />
-                <FieldRow label="Gross Margin" value={`${marginPct.toFixed(1)}%`} mono />
-                <FieldRow label="Tax Code" value={product.taxCode || '-'} mono />
-                <FieldRow label="Costing Method" value={<span className="uppercase">{product.costingMethod || 'fifo'}</span>} />
-                <FieldRow label="Tracking Type" value={<span className="capitalize">{product.trackingType || 'none'}</span>} />
-                <FieldRow label="Track Inventory" value={product.isStockable ? tr('common.yes', 'Yes') : tr('common.no', 'No')} />
-                <FieldRow label="Low Stock Threshold" value={product.lowStockThreshold || 10} mono />
-                <FieldRow label="Reorder Point" value={product.reorderPoint || 0} mono />
-                <FieldRow label="Reorder Quantity" value={product.reorderQuantity || 0} mono />
+              <DetailCard title={tr('products.pricingInventory', 'Pricing & Inventory')} description={t('products.pricingInventoryDesc')}>
+                <FieldRow label={t('products.averageCost')} value={formatCurrency(product.averageCost)} mono />
+                <FieldRow label={t('products.costPrice')} value={formatCurrency(product.costPrice || product.averageCost)} mono />
+                <FieldRow label={t('products.sellingPrice')} value={formatCurrency(product.sellingPrice)} mono />
+                <FieldRow label={t('products.grossMargin')} value={`${marginPct.toFixed(1)}%`} mono />
+                <FieldRow label={t('products.taxCode')} value={product.taxCode || '-'} mono />
+                <FieldRow label={t('products.costingMethod')} value={<span className="uppercase">{product.costingMethod || 'fifo'}</span>} />
+                <FieldRow label={t('products.trackingType')} value={<span className="capitalize">{product.trackingType || 'none'}</span>} />
+                <FieldRow label={t('products.isStockable')} value={product.isStockable ? tr('common.yes', 'Yes') : tr('common.no', 'No')} />
+                <FieldRow label={t('products.lowStockThreshold')} value={product.lowStockThreshold || 10} mono />
+                <FieldRow label={t('products.reorderPoint')} value={product.reorderPoint || 0} mono />
+                <FieldRow label={t('products.reorderQuantity')} value={product.reorderQuantity || 0} mono />
               </DetailCard>
 
-              <DetailCard title="EBM Registration" description="RRA item codes required before this product can be used on EBM documents.">
+              <DetailCard title={t('products.ebmRegistration')} description={t('products.ebmRegistrationDesc')}>
                 {!product.ebm?.isRegisteredWithEBM && (
                   <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
-                    This product is not registered with RRA. It cannot be added to any sales invoice, POS transaction, or EBM document until registration is complete.
+                    {t('products.ebmNotRegisteredWarning')}
                   </div>
                 )}
-                <FieldRow label="Status" value={ebmStatusBadge} />
+                <FieldRow label={t('products.status')} value={ebmStatusBadge} />
                 {product.ebm?.isRegisteredWithEBM && (
                   <>
-                    <FieldRow label="RRA Item Code" value={product.ebm?.ebmItemCode || '-'} mono />
-                    <FieldRow label="Registered At" value={formatDate(product.ebm?.ebmRegisteredAt || undefined)} />
+                    <FieldRow label={t('products.rraItemCode')} value={product.ebm?.ebmItemCode || '-'} mono />
+                    <FieldRow label={t('products.registeredAt')} value={formatDate(product.ebm?.ebmRegisteredAt || undefined)} />
                   </>
                 )}
-                <FieldRow label="Tax Type" value={taxTypeDisplay(product.ebm?.taxTyCd || product.taxCode, ebmTaxTypes)} mono />
-                <FieldRow label="Item Classification" value={itemClass ? `${itemClass.itemClassCode} - ${itemClass.itemClassName}` : product.ebm?.itemClassCd || '-'} mono />
-                <FieldRow label="Packaging Unit" value={codeLabel(packagingUnit, product.ebm?.pkgUnitCd)} mono />
-                <FieldRow label="Quantity Unit" value={codeLabel(quantityUnit, product.ebm?.qtyUnitCd)} mono />
+                <FieldRow label={t('products.taxType')} value={taxTypeDisplay(product.ebm?.taxTyCd || product.taxCode, ebmTaxTypes)} mono />
+                <FieldRow label={t('products.itemClassification')} value={itemClass ? `${itemClass.itemClassCode} - ${itemClass.itemClassName}` : product.ebm?.itemClassCd || '-'} mono />
+                <FieldRow label={t('products.packagingUnit')} value={codeLabel(packagingUnit, product.ebm?.pkgUnitCd)} mono />
+                <FieldRow label={t('products.quantityUnit')} value={codeLabel(quantityUnit, product.ebm?.qtyUnitCd)} mono />
                 {product.ebm?.ebmRegistrationError && (
                   <>
-                    <FieldRow label="Last Attempt" value={formatDate(product.ebm?.ebmLastAttemptAt || product.updatedAt || undefined)} />
-                    <FieldRow label="Error Message" value={product.ebm.ebmRegistrationError} />
+                    <FieldRow label={t('products.lastAttempt')} value={formatDate(product.ebm?.ebmLastAttemptAt || product.updatedAt || undefined)} />
+                    <FieldRow label={t('products.errorMessage')} value={product.ebm.ebmRegistrationError} />
                   </>
                 )}
                 {!product.ebm?.isRegisteredWithEBM && (
                   <div className="mt-4">
                     <Button size="sm" onClick={handleRegisterEbm} disabled={registeringEbm}>
                       {registeringEbm ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                      Retry Registration
+                      {t('products.retryRegistration')}
                     </Button>
                   </div>
                 )}
               </DetailCard>
 
               {/* Accounting */}
-              <DetailCard title={tr('products.accounting', 'Accounting')} description="Posting accounts used by inventory valuation, COGS, and sales recognition." className="lg:col-span-2">
+              <DetailCard title={tr('products.accounting', 'Accounting')} description={t('products.accountingPostingDesc')} className="lg:col-span-2">
                 <div className="grid gap-3 md:grid-cols-3">
                   {[
-                    ['Inventory Account', product.inventoryAccount || '-'],
-                    ['COGS Account', product.cogsAccount || '-'],
-                    ['Revenue Account', product.revenueAccount || '-'],
+                    [t('products.inventoryAccount'), product.inventoryAccount || '-'],
+                    [t('products.cogsAccount'), product.cogsAccount || '-'],
+                    [t('products.revenueAccount'), product.revenueAccount || '-'],
                   ].map(([label, value]) => (
-                    <div key={label} className={productMutedPanelClass}>
+                    <div key={String(label)} className={productMutedPanelClass}>
                       <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
                       <p className="mt-2 font-mono text-lg font-bold text-slate-950 dark:text-white">{value}</p>
                     </div>
@@ -728,7 +713,7 @@ export default function ProductDetailPage() {
               </DetailCard>
 
               {/* Barcode and QR Code */}
-              <DetailCard title={tr('products.barcodeAndQR', 'Barcode & QR Code')} description="Scan references for receiving, dispatch, and physical stock checks." className="lg:col-span-2">
+              <DetailCard title={tr('products.barcodeAndQR', 'Barcode & QR Code')} description={t('products.barcodeAndQRDesc')} className="lg:col-span-2">
                   <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.8fr)]">
                     {barcodeCanRenderAsLinear && (
                       <div className={productMutedPanelClass}>
@@ -874,7 +859,7 @@ export default function ProductDetailPage() {
                   <EmptyProductState
                     icon={<History className="h-6 w-6" />}
                     title={tr('products.noMovements', 'No stock movements yet')}
-                    detail="Stock receipts, dispatches, transfers, and adjustments will appear here once posted."
+                    detail={t('products.noMovementsHint')}
                   />
                 ) : (
                   <>
@@ -905,7 +890,7 @@ export default function ProductDetailPage() {
                                 {movement.type}
                               </Badge>
                             </TableCell>
-                            <TableCell>{getReasonLabel(movement.reason)}</TableCell>
+                            <TableCell>{getReasonLabel(movement.reason, t)}</TableCell>
                             <TableCell className="text-right font-medium">
                               {movement.type === 'in' ? '+' : movement.type === 'out' ? '-' : ''}{movement.quantity}
                             </TableCell>
@@ -961,7 +946,7 @@ export default function ProductDetailPage() {
                   <EmptyProductState
                     icon={<Clock className="h-6 w-6" />}
                     title={tr('products.noHistory', 'No history records yet')}
-                    detail="Configuration changes and audit notes for this product will appear here."
+                    detail={t('products.noHistoryHint')}
                   />
                 ) : (
                   <div className="space-y-4">
@@ -1011,7 +996,7 @@ export default function ProductDetailPage() {
                   <EmptyProductState
                     icon={<FileText className="h-6 w-6" />}
                     title={tr('products.noLifecycle', 'No lifecycle events yet')}
-                    detail="Purchases, stock activity, quotations, invoices, and archive events will form the complete product timeline here."
+                    detail={t('products.noLifecycleHint')}
                   />
                 ) : (
                   <div className="relative pl-7">
@@ -1038,21 +1023,21 @@ export default function ProductDetailPage() {
                             </p>
                             {event.details && event.type === 'stock_movement' && (
                               <div className="mt-3 grid gap-2 text-xs text-slate-500 dark:text-slate-400 sm:grid-cols-3">
-                                {event.details.type && <p><span className="font-semibold text-slate-700 dark:text-slate-200">Type:</span> {event.details.type} ({getReasonLabel(event.details.reason)})</p>}
-                                {event.details.quantity && <p><span className="font-semibold text-slate-700 dark:text-slate-200">Qty:</span> {event.details.quantity}</p>}
-                                {event.details.newStock !== undefined && <p><span className="font-semibold text-slate-700 dark:text-slate-200">New Stock:</span> {event.details.newStock}</p>}
+                                {event.details.type && <p><span className="font-semibold text-slate-700 dark:text-slate-200">{t('products.type')}:</span> {event.details.type} ({getReasonLabel(event.details.reason, t)})</p>}
+                                {event.details.quantity && <p><span className="font-semibold text-slate-700 dark:text-slate-200">{t('products.quantity')}:</span> {event.details.quantity}</p>}
+                                {event.details.newStock !== undefined && <p><span className="font-semibold text-slate-700 dark:text-slate-200">{t('products.currentStock')}:</span> {event.details.newStock}</p>}
                               </div>
                             )}
                             {event.details && event.type === 'quotation' && (
                               <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                                {event.details.status && <p>Status: {event.details.status}</p>}
-                                {event.details.client?.name && <p>Client: {event.details.client.name}</p>}
+                                {event.details.status && <p>{t('products.status')}: {event.details.status}</p>}
+                                {event.details.client?.name && <p>{t('nav.clients')}: {event.details.client.name}</p>}
                               </div>
                             )}
                             {event.details && event.type === 'invoice' && (
                               <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-                                {event.details.status && <p>Status: {event.details.status}</p>}
-                                {event.details.client?.name && <p>Client: {event.details.client.name}</p>}
+                                {event.details.status && <p>{t('products.status')}: {event.details.status}</p>}
+                                {event.details.client?.name && <p>{t('nav.clients')}: {event.details.client.name}</p>}
                               </div>
                             )}
                           </div>

@@ -10,6 +10,7 @@ export default function CurrencySelector() {
     error,
     refreshRates,
     rates,
+    hasStaleRates,
     getCurrencySymbol
   } = useCurrency();
 
@@ -46,9 +47,15 @@ export default function CurrencySelector() {
       </button>
 
       {rates && (
-        <span className="text-xs text-slate-500 ml-1" title="Rates from CoinGecko">
-          ✓
-        </span>
+        hasStaleRates ? (
+          <span className="text-xs text-amber-500 ml-1" title="Some exchange rates are outdated — refresh or update them in Currency Settings">
+            !
+          </span>
+        ) : (
+          <span className="text-xs text-slate-500 ml-1" title="Exchange rates up to date">
+            ✓
+          </span>
+        )
       )}
     </div>
   );

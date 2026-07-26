@@ -167,62 +167,54 @@ export default function DeliveryNoteDetailPage() {
     try {
       console.log('Starting confirm workflow for delivery note:', id);
       console.log('Current delivery note invoice:', deliveryNote?.invoice);
-      
-      // Step 1: Check if delivery note has an invoice linked
-      let invoiceId = deliveryNote?.invoice?._id;
-      
-      // Step 2: If no invoice, create one from the delivery note
+
+      let invoiceId =
+        (deliveryNote?.invoice as any)?._id ||
+        (typeof deliveryNote?.invoice === 'string' ? deliveryNote.invoice : null);
+
+      // Create invoice if missing (idempotent if one already exists on the server)
       if (!invoiceId) {
         toast.info('Creating invoice from delivery note...');
-        console.log('No invoice linked, creating new invoice...');
-        
         const createResponse = await deliveryNotesApi.createInvoice(id!, {
-          confirmDelivery: true
+          confirmDelivery: true,
         });
         console.log('Create invoice response:', createResponse);
-        
+
         if (!createResponse.success) {
           toast.error((createResponse as any).message || 'Failed to create invoice');
           return;
         }
-        
+
         invoiceId = (createResponse.data as any)?._id;
-        console.log('Created invoice ID:', invoiceId);
-        
         if (!invoiceId) {
-          toast.success('Delivery note confirmed successfully');
-          fetchDeliveryNote();
+          toast.error('Invoice created but no ID returned');
           return;
         }
-        
-        toast.success('Delivery note confirmed successfully');
-        fetchDeliveryNote();
-        return;
       }
 
-      // Step 3: If invoice exists but not confirmed, create and confirm
+      // Confirm draft invoice
       const invoiceStatus = (deliveryNote?.invoice as any)?.status;
-      if (invoiceStatus === 'draft') {
+      if (!invoiceStatus || invoiceStatus === 'draft') {
         toast.info('Confirming invoice...');
-        console.log('Confirming invoice:', invoiceId);
-        
         const confirmInvoiceResponse = await invoicesApi.confirm(invoiceId);
         console.log('Confirm invoice response:', confirmInvoiceResponse);
-        
+
         if (!confirmInvoiceResponse.success) {
-          toast.error((confirmInvoiceResponse as any).message || 'Failed to confirm invoice');
-          return;
+          const code = (confirmInvoiceResponse as any).code;
+          if (code !== 'ERR_INVOICE_CONFIRMED') {
+            toast.error((confirmInvoiceResponse as any).message || 'Failed to confirm invoice');
+            return;
+          }
+        } else {
+          toast.success('Invoice confirmed');
         }
-        toast.success('Invoice confirmed');
       }
 
-      // Step 4: Confirm the delivery note
+      // Confirm the delivery note itself
       toast.info('Confirming delivery note...');
-      console.log('Confirming delivery note:', id);
-      
       const response = await deliveryNotesApi.confirm(id!, { sendEmail });
       console.log('Confirm delivery note response:', response);
-      
+
       if (response.success) {
         toast.success('Delivery note confirmed successfully');
         fetchDeliveryNote();
@@ -231,6 +223,12 @@ export default function DeliveryNoteDetailPage() {
       }
     } catch (error: any) {
       console.error('Error in confirm workflow:', error);
+      const code = error?.code || error?.data?.code;
+      if (code === 'ERR_INVOICE_CONFIRMED' || error?.status === 409) {
+        toast.success('Invoice already confirmed');
+        fetchDeliveryNote();
+        return;
+      }
       toast.error(error?.message || 'Failed to complete confirmation workflow');
     }
   };
@@ -515,11 +513,17 @@ export default function DeliveryNoteDetailPage() {
                           <tr key={item._id} className="transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-900/30">
                             <td className="px-5 py-3">
                               <div>
-                                <div className="font-medium text-slate-900 dark:text-white">{item.product?.name}</div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400">{item.product?.sku}</div>
+                                <div className="font-medium text-slate-900 dark:text-white">
+                                  {item.product?.name || item.productName || item.description || '—'}
+                                </div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400">
+                                  {item.product?.sku || item.productCode || ''}
+                                </div>
                               </div>
                             </td>
-                            <td className="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">{item.description || '—'}</td>
+                            <td className="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">
+                              {item.description || item.productName || '—'}
+                            </td>
                             <td className="px-5 py-3 text-right text-sm font-semibold text-slate-900 dark:text-white">{getQty(item)}</td>
                             <td className="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">{item.unit || 'pcs'}</td>
                           </tr>
@@ -676,7 +680,14 @@ export default function DeliveryNoteDetailPage() {
                   </div>
                   <div className="flex items-center justify-between text-xl font-bold text-slate-900 dark:text-white">
                     <span>Total</span>
-                    <span>{formatCurrency(toNumber(deliveryNote.grandTotal))}</span>
+                    <span>{formatCurrency(toNumber(
+                      deliveryNote.grandTotal
+                      ?? deliveryNote.totalAmount
+                      ?? (deliveryNote.lines || []).reduce((sum, l: any) => {
+                        const qty = getQty(l);
+                        return sum + (toNumber(l.lineTotal) || toNumber(l.unitPrice) * qty || toNumber(l.unitCost) * qty);
+                      }, 0)
+                    ))}</span>
                   </div>
                   <Separator className="dark:bg-slate-800" />
                   <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">

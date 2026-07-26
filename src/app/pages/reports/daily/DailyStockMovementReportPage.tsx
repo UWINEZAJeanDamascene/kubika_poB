@@ -30,7 +30,7 @@ export default function DailyStockMovementReportPage() {
   ] : [];
 
   return (
-    <DailyReportScaffold title="Daily Stock Movement" shortTitle="Stock" subtitle="Stock-in and stock-out transactions with warehouse, quantity, value, and running balance." icon={ArrowLeftRight} tone="violet" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <DailyReportScaffold title="Daily Stock Movement" shortTitle="Stock" subtitle="Stock-in and stock-out transactions with warehouse, quantity, value, and running balance." icon={ArrowLeftRight} tone="violet" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(dailyReportsApi.getListPath(date))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <Card className={reportCardClass}>
           <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Package className="h-4 w-4 text-violet-600" />Movement Details</CardTitle></CardHeader>

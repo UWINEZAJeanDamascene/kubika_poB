@@ -970,6 +970,37 @@ export const monthlyReportsApi = {
     request<{ success: boolean; data: SemiAnnualTaxObligations }>(
       `/reports/monthly/semi-annual/tax-obligations?startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`
     ),
+
+  semiAnnualQuery: (startYear: number, startMonth: number, endYear: number, endMonth: number) =>
+    `startYear=${startYear}&startMonth=${startMonth}&endYear=${endYear}&endMonth=${endMonth}`,
+
+  downloadSemiAnnualReportPDF: (
+    reportId: string,
+    startYear: number,
+    startMonth: number,
+    endYear: number,
+    endMonth: number,
+  ) => {
+    const q = monthlyReportsApi.semiAnnualQuery(startYear, startMonth, endYear, endMonth);
+    return downloadFile(
+      `${API_BASE_URL}/reports/monthly/semi-annual/${reportId}/pdf?${q}`,
+      `semi-annual-${reportId}-${startYear}.pdf`,
+    );
+  },
+
+  downloadSemiAnnualReportExcel: (
+    reportId: string,
+    startYear: number,
+    startMonth: number,
+    endYear: number,
+    endMonth: number,
+  ) => {
+    const q = monthlyReportsApi.semiAnnualQuery(startYear, startMonth, endYear, endMonth);
+    return downloadFile(
+      `${API_BASE_URL}/reports/monthly/semi-annual/${reportId}/excel?${q}`,
+      `semi-annual-${reportId}-${startYear}.xlsx`,
+    );
+  },
 };
 
 export default monthlyReportsApi;

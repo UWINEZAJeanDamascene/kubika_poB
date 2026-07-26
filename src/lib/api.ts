@@ -173,6 +173,8 @@ class ApiError extends Error {
   constructor(
     public status: number,
     message: string,
+    public code?: string,
+    public data?: unknown,
   ) {
     super(message);
     this.name = "ApiError";
@@ -223,7 +225,12 @@ async function request<T>(
   }
 
   if (!response.ok) {
-    throw new ApiError(response.status, data.message || "An error occurred");
+    throw new ApiError(
+      response.status,
+      data.error || data.message || "An error occurred",
+      data.code,
+      data,
+    );
   }
 
   return data;
@@ -1314,6 +1321,8 @@ export const productsApi = {
     isArchived?: boolean;
     sortBy?: string;
     order?: "asc" | "desc";
+    refresh?: string;
+    forPicker?: string;
   }) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown; pagination?: unknown }>(
@@ -1522,8 +1531,97 @@ export interface EBMStockReconciliationResponse {
     rows: EBMStockReconciliationRow[];
   };
 }
+export interface EBMReadinessCheck {
+  id: string;
+  label: string;
+  ok: boolean;
+  detail: string;
+  actionLabel?: string;
+  actionPath?: string | null;
+  actionId?: string;
+}
+
+export interface EBMSyncSummaryItem {
+  syncType: string;
+  label: string;
+  branchId: string;
+  mode: string;
+  lastSyncedAt?: string | null;
+  lastAttemptAt?: string | null;
+  lastErrorMessage?: string | null;
+  summary?: Record<string, number>;
+}
+
+export interface EBMReadinessResponse {
+  success: boolean;
+  data: {
+    companyId: string;
+    branchId: string;
+    mode: "mock" | "sandbox" | "production";
+    ready: boolean;
+    checks: EBMReadinessCheck[];
+    syncStates?: unknown[];
+    syncSummary?: EBMSyncSummaryItem[];
+  };
+}
+
+export interface EBMSalesSyncSummary {
+  invcNo?: string | null;
+  rcptTyCd?: string | null;
+  salesTyCd?: string | null;
+  salesDt?: string | null;
+  totAmt?: number | null;
+  prcOrdCd?: string | null;
+  localDocumentId?: string | null;
+  localReferenceNo?: string | null;
+  localStatus?: string;
+  localRcptNo?: string | null;
+  matchStatus: "matched" | "missing_local";
+}
+
+export interface EBMSalesSyncResponse {
+  success: boolean;
+  data: {
+    companyId: string;
+    branchId: string;
+    mode: string;
+    lastReqDt: string;
+    lastSyncedAt?: string | null;
+    summaries: EBMSalesSyncSummary[];
+    summary: Record<string, number>;
+  };
+}
+
+export interface EBMItemSyncRow {
+  itemCd: string;
+  itemNm?: string;
+  itemClsCd?: string;
+  taxTyCd?: string;
+  useYn?: string;
+  localProductId?: string | null;
+  localProductName?: string | null;
+  matchStatus: "matched" | "missing_local";
+}
+
+export interface EBMItemSyncResponse {
+  success: boolean;
+  data: {
+    companyId: string;
+    branchId: string;
+    mode: string;
+    lastReqDt: string;
+    lastSyncedAt?: string | null;
+    items: EBMItemSyncRow[];
+    summary: Record<string, number>;
+  };
+}
+
 export const ebmApi = {
   getDevices: () => request<EBMDeviceStatusResponse>("/ebm/devices"),
+  getReadiness: (params?: { branchId?: string; bhfId?: string }) => {
+    const query = buildQuery(params as Record<string, any>);
+    return request<EBMReadinessResponse>(`/ebm/readiness${query ? `?${query}` : ""}`);
+  },
   initializeDevice: (payload: {
     branchId: string;
     deviceSerialNo?: string | null;
@@ -1593,6 +1691,16 @@ export const ebmApi = {
     }),
   syncPurchases: (payload?: { branchId?: string; full?: boolean }) =>
     request<{ success: boolean; data: unknown }>("/ebm/purchases/sync", {
+      method: "POST",
+      body: payload || {},
+    }),
+  syncSalesSummaries: (payload?: { branchId?: string; bhfId?: string; full?: boolean; prcOrdCd?: string }) =>
+    request<EBMSalesSyncResponse>("/ebm/sales/sync", {
+      method: "POST",
+      body: payload || {},
+    }),
+  syncRegisteredItems: (payload?: { branchId?: string; bhfId?: string; full?: boolean }) =>
+    request<EBMItemSyncResponse>("/ebm/items/sync", {
       method: "POST",
       body: payload || {},
     }),
@@ -1978,7 +2086,13 @@ export const invoicesApi = {
     request<{ success: boolean; data: unknown; verification?: unknown }>(
       `/sales-invoices/${id}/ebm/verify-tin`,
       { method: "POST", body: payload || {} },
-    ),  recordPayment: (
+    ),
+  submitEbm: (id: string, payload?: { variant?: "sale" | "proforma" | "copy"; branchId?: string; bhfId?: string }) =>
+    request<{ success: boolean; data: unknown; message?: string; code?: string; resultCd?: string }>(
+      `/sales-invoices/${id}/ebm/submit`,
+      { method: "POST", body: payload || {} },
+    ),
+  recordPayment: (
     id: string,
     data: {
       amount: number;
@@ -2381,10 +2495,13 @@ export const quotationsApi = {
       method: "DELETE",
     }),
   send: (id: string, sendEmail?: boolean, recipientEmail?: string) =>
-    request<{ success: boolean; data: unknown }>(`/quotations/${id}/send`, {
-      method: "POST",
-      body: sendEmail ? { sendEmail, recipientEmail } : undefined,
-    }),
+    request<{ success: boolean; data: unknown; message?: string; emailSent?: boolean | null }>(
+      `/quotations/${id}/send`,
+      {
+        method: "POST",
+        body: { sendEmail: Boolean(sendEmail), recipientEmail },
+      },
+    ),
   accept: (id: string, sendEmail?: boolean) =>
     request<{ success: boolean; data: unknown }>(`/quotations/${id}/accept`, {
       method: "POST",
@@ -3613,97 +3730,165 @@ export type {
   PayrollHistoryItem,
 } from "./api.employees";
 
-// Exchange Rates API
-export interface ExchangeRateData {
-  USD: number;
-  EUR: number;
-  GBP: number;
-  FRW: number;
-  LBP: number;
-  SAR: number;
-  AED: number;
-  TZS: number;
-  UGX: number;
-  KES: number;
-  BIF: number;
-  ZMW: number;
-  MWK: number;
-  AOA: number;
-}
-
+// Currencies & Exchange Rates API
 export interface CurrencyInfo {
+  _id?: string;
   code: string;
   name: string;
   symbol: string;
+  decimal_places?: number;
+  is_active?: boolean;
 }
 
-export const exchangeRatesApi = {
-  // Get current exchange rates
-  getRates: (params?: { forceRefresh?: boolean }) => {
-    const query = params?.forceRefresh ? "?forceRefresh=true" : "";
-    return request<{
-      success: boolean;
-      data: {
-        rates: ExchangeRateData;
-        source: string;
-        timestamp: string;
-        cached: boolean;
-      };
-    }>(`/exchange-rates${query}`);
-  },
+// Latest known rate for one currency vs the company base currency
+export interface LatestExchangeRate {
+  currency: string;
+  name: string;
+  symbol: string;
+  base_currency: string;
+  rate: number | null;
+  effective_date: string | null;
+  source: "manual" | "api" | "import" | null;
+  stale: boolean;
+  has_rate: boolean;
+}
 
-  // Get list of supported currencies
-  getCurrencies: () => {
+// A row in the exchange rate history table
+export interface ExchangeRateDoc {
+  _id: string;
+  company_id: string;
+  from_currency: string;
+  to_currency: string;
+  rate: number;
+  effective_date: string;
+  source: "manual" | "api" | "import";
+  created_by?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const currenciesApi = {
+  getAll: (params?: { includeInactive?: boolean; limit?: number }) => {
+    const query = buildQuery({
+      includeInactive: params?.includeInactive ? "true" : undefined,
+      limit: params?.limit ?? 200,
+    } as Record<string, any>);
     return request<{ success: boolean; data: CurrencyInfo[] }>(
-      "/exchange-rates/currencies",
+      `/currencies${query ? `?${query}` : ""}`,
     );
   },
 
-  // Convert amount between currencies
-  convert: (amount: number, from: string, to: string) => {
+  create: (data: {
+    code: string;
+    name: string;
+    symbol?: string;
+    decimal_places?: number;
+  }) =>
+    request<{ success: boolean; data: CurrencyInfo }>("/currencies", {
+      method: "POST",
+      body: data,
+    }),
+
+  update: (
+    id: string,
+    data: Partial<{
+      name: string;
+      symbol: string;
+      decimal_places: number;
+      is_active: boolean;
+    }>,
+  ) =>
+    request<{ success: boolean; data: CurrencyInfo }>(`/currencies/${id}`, {
+      method: "PUT",
+      body: data,
+    }),
+
+  seedDefaults: () =>
+    request<{ success: boolean; data: CurrencyInfo[] }>("/currencies/seed", {
+      method: "POST",
+    }),
+};
+
+export const exchangeRatesApi = {
+  // Latest known rate per active currency (vs base), with staleness flags
+  getLatest: (params?: { fresh?: boolean }) => {
+    const query = params?.fresh ? "?fresh=true" : "";
     return request<{
       success: boolean;
       data: {
-        originalAmount: number;
-        convertedAmount: number;
-        from: string;
-        to: string;
-        rate: number;
+        base_currency?: string;
+        rates: LatestExchangeRate[];
+        as_of: string;
       };
-    }>("/exchange-rates/convert", {
-      method: "POST",
-      body: { amount, from, to },
-    });
+    }>(`/exchange-rates/latest${query}`);
   },
 
-  // Get exchange rate history
+  // Paginated rate history
   getHistory: (params?: {
-    baseCurrency?: string;
-    targetCurrency?: string;
-    startDate?: string;
-    endDate?: string;
+    from_currency?: string;
+    date?: string;
+    page?: number;
     limit?: number;
   }) => {
     const query = buildQuery(params as Record<string, any>);
-    return request<{ success: boolean; count: number; data: unknown[] }>(
-      `/exchange-rates/history${query ? `?${query}` : ""}`,
-    );
+    return request<{
+      success: boolean;
+      data: ExchangeRateDoc[];
+      pagination?: { page: number; limit: number; total: number; pages: number };
+    }>(`/exchange-rates${query ? `?${query}` : ""}`);
   },
 
-  // Manual update (admin only)
-  updateManualRate: (
-    baseCurrency: string,
-    targetCurrency: string,
-    rate: number,
-  ) => {
-    return request<{ success: boolean; data: unknown }>(
-      "/exchange-rates/manual",
-      {
-        method: "PUT",
-        body: { baseCurrency, targetCurrency, rate },
-      },
-    );
+  // Manual rate entry / admin override (always stored vs base currency)
+  addRate: (data: {
+    from_currency: string;
+    rate: number;
+    effective_date?: string;
+  }) =>
+    request<{ success: boolean; data: ExchangeRateDoc }>("/exchange-rates", {
+      method: "POST",
+      body: data,
+    }),
+
+  // Admin "Refresh Now" — pull today's market rates from the provider
+  syncNow: () =>
+    request<{
+      success: boolean;
+      data: {
+        base: string;
+        created: number;
+        updated: number;
+        skipped: string[];
+        syncedAt: string;
+      };
+    }>("/exchange-rates/sync", { method: "POST" }),
+
+  // Current rate for one currency (most recent on or before date)
+  getCurrentRate: (currency: string, date?: string) => {
+    const query = date ? `?date=${encodeURIComponent(date)}` : "";
+    return request<{
+      success: boolean;
+      data: { currency: string; rate: number; as_of: string };
+    }>(`/exchange-rates/current/${currency}${query}`);
   },
+
+  // Convert an amount into the company base currency
+  convert: (amount: number, from_currency: string, as_of_date?: string) =>
+    request<{
+      success: boolean;
+      data: {
+        original_amount: number;
+        from_currency: string;
+        converted_amount: number;
+        as_of: string;
+      };
+    }>("/exchange-rates/convert", {
+      method: "POST",
+      body: { amount, from_currency, as_of_date },
+    }),
+
+  // Supported/active currencies (kept for backwards compatibility)
+  getCurrencies: () =>
+    request<{ success: boolean; data: CurrencyInfo[] }>("/currencies?limit=200"),
 };
 
 // Advanced Stock API - Warehouses
@@ -4288,8 +4473,8 @@ export const fixedAssetsApi = {
 };
 
 export const assetCategoriesApi = {
-  getAll: (params?: { isActive?: boolean }) => {
-    const query = buildQuery(params as Record<string, any>);
+  getAll: (params?: { isActive?: boolean; limit?: number }) => {
+    const query = buildQuery({ limit: 100, ...(params as Record<string, any>) });
     return request<{ success: boolean; data: AssetCategory[] }>(
       `/asset-categories${query ? `?${query}` : ""}`,
     );
@@ -4378,6 +4563,7 @@ export interface LiabilityTransaction {
   principalPortion?: number;
   interestPortion?: number;
   reference?: string;
+  journalEntryNumber?: string;
   notes?: string;
   bankAccountId?: string;
   journalEntryId?: string;
@@ -4466,6 +4652,7 @@ export const loansApi = {
       bankAccountId: string;
       transactionDate?: string;
       notes?: string;
+      reference?: string;
     },
   ) =>
     request<{ success: boolean; data: Liability; journalEntry: unknown }>(
@@ -4481,6 +4668,7 @@ export const loansApi = {
       bankAccountId: string;
       transactionDate?: string;
       notes?: string;
+      reference?: string;
     },
   ) =>
     request<{ success: boolean; data: Liability; journalEntry: unknown }>(
@@ -4490,7 +4678,12 @@ export const loansApi = {
   // Interest - record interest charge/accrual
   recordInterest: (
     id: string,
-    data: { amount: number; chargeDate?: string; notes?: string },
+    data: {
+      amount: number;
+      chargeDate?: string;
+      notes?: string;
+      reference?: string;
+    },
   ) =>
     request<{ success: boolean; data: Liability; journalEntry: unknown }>(
       `/loans/${id}/interest`,
@@ -12057,10 +12250,19 @@ export const pickPackApi = {
       `/pick-packs/${id}/start-picking`,
       { method: "POST" },
     ),
-  pickItems: (id: string, items: unknown[]) =>
-    request<{ success: boolean; data: unknown }>(
+  pickItems: (
+    id: string,
+    data: {
+      lineId: string;
+      qtyPicked: number;
+      notes?: string;
+      batchId?: string;
+      serialNumbers?: string[];
+    },
+  ) =>
+    request<{ success: boolean; data: unknown; message?: string }>(
       `/pick-packs/${id}/pick-items`,
-      { method: "POST", body: { items } },
+      { method: "POST", body: data },
     ),
   completePicking: (id: string) =>
     request<{ success: boolean; data: unknown }>(
@@ -12074,17 +12276,15 @@ export const pickPackApi = {
     ),
   packItems: (
     id: string,
-    items: unknown[],
-    data?: {
-      packageCount?: number;
-      packageType?: string;
-      totalWeight?: number;
-      trackingNumber?: string;
+    data: {
+      lineId: string;
+      qtyPacked: number;
+      notes?: string;
     },
   ) =>
-    request<{ success: boolean; data: unknown }>(
+    request<{ success: boolean; data: unknown; message?: string }>(
       `/pick-packs/${id}/pack-items`,
-      { method: "POST", body: { items, ...data } },
+      { method: "POST", body: data },
     ),
   completePacking: (
     id: string,

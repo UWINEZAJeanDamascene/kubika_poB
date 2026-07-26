@@ -729,6 +729,15 @@ export default function SalesLegacyPage() {
   useEffect(() => {
     setPaymentAmount(cartCalculations.grandTotal);
   }, [cartCalculations.grandTotal]);
+
+  // Why checkout is unavailable, so a disabled button is never a dead end.
+  const checkoutBlockedReason = cart.length === 0
+    ? 'Add at least one product to the cart'
+    : !selectedWarehouseId
+      ? 'Select a warehouse'
+      : !tillSession
+        ? 'Open the till before recording a sale'
+        : null;
   
   const handleSubmit = async () => {
     // Validation
@@ -1392,7 +1401,8 @@ export default function SalesLegacyPage() {
                   <Button
                     className="mt-3 h-12 w-full bg-indigo-600 text-base font-semibold hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500"
                     onClick={handleSubmit}
-                    disabled={isSubmitting || cart.length === 0 || !selectedWarehouseId || !tillSession}
+                    disabled={isSubmitting || !!checkoutBlockedReason}
+                    title={checkoutBlockedReason || undefined}
                   >
                     {isSubmitting ? (
                       <>
@@ -1406,6 +1416,11 @@ export default function SalesLegacyPage() {
                       </>
                     )}
                   </Button>
+                  {checkoutBlockedReason && !isSubmitting && (
+                    <p className="mt-2 text-center text-xs font-medium text-amber-600 dark:text-amber-400">
+                      {checkoutBlockedReason}
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>

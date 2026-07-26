@@ -29,7 +29,7 @@ export default function WeeklySupplierPerformanceReportPage() {
   ] : [];
 
   return (
-    <WeeklyReportScaffold title="Weekly Supplier Performance" shortTitle="Suppliers" subtitle="Purchase orders raised, deliveries received, pending orders, and overdue supplier activity." icon={Truck} tone="emerald" weekStart={weekStart} weekLabel={data ? `${data.weekStart} to ${data.weekEnd}` : undefined} onWeekChange={onWeekChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <WeeklyReportScaffold title="Weekly Supplier Performance" shortTitle="Suppliers" subtitle="Purchase orders raised, deliveries received, pending orders, and overdue supplier activity." icon={Truck} tone="emerald" weekStart={weekStart} weekLabel={data ? `${data.weekStart} to ${data.weekEnd}` : undefined} onWeekChange={onWeekChange} loading={isLoading} downloading={downloading} onBack={() => navigate(weeklyReportsApi.getListPath(weekStart))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <Card className={weeklyReportCardClass}>
           <CardHeader><CardTitle className="text-base">Supplier Details</CardTitle></CardHeader>

@@ -243,7 +243,7 @@ export default function BatchesPage() {
                   {t('common.batches.title', 'Batches')}
                 </Typography>
                 <Typography variant="body2" sx={{ color: dark ? '#94a3b8' : '#64748b' }}>
-                  Lot traceability, expiry exposure, quarantine status, and stock value by batch.
+                  {t('common.batches.subtitle')}
                 </Typography>
               </div>
               <Button
@@ -259,10 +259,10 @@ export default function BatchesPage() {
 
           <div className="mb-5 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
             {[
-              ['Batches in View', total.toLocaleString(), `${batches.length.toLocaleString()} loaded`],
-              ['Quantity on Hand', totalQty.toLocaleString(undefined, { maximumFractionDigits: 2 }), 'Across active filters'],
-              ['Batch Value', `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Qty x unit cost'],
-              ['Expiry / Quarantine Risk', `${expiryRiskCount + quarantinedCount}`, `${expiryRiskCount} expiry, ${quarantinedCount} quarantine`],
+              [t('common.batches.batchesInView'), total.toLocaleString(), t('common.batches.loadedCount', { count: batches.length })],
+              [t('common.batches.quantityOnHand'), totalQty.toLocaleString(undefined, { maximumFractionDigits: 2 }), t('common.batches.acrossFilters')],
+              [t('common.batches.batchValue'), `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, t('common.batches.qtyTimesCost')],
+              [t('common.batches.expiryQuarantineRisk'), `${expiryRiskCount + quarantinedCount}`, t('common.batches.expiryQuarantineDetail', { expiry: expiryRiskCount, quarantine: quarantinedCount })],
             ].map(([label, value, sub]) => (
               <Paper key={label} sx={{ p: 2.75, backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none', borderRadius: 2 }}>
                 <Typography variant="caption" sx={{ color: dark ? '#94a3b8' : '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 800 }}>

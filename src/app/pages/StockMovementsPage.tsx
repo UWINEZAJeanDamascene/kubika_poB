@@ -158,11 +158,11 @@ export default function StockMovementsPage() {
       } else if (response) {
         console.error('[StockMovements] API error response:', response);
         const errMsg = (response as { message?: string }).message;
-        setError(errMsg || 'Failed to fetch stock movements');
+        setError(errMsg || t('stockMovements.loadFailed'));
       }
     } catch (err) {
       console.error('[StockMovements] Error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setError(err instanceof Error ? err.message : t('stockMovements.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -311,7 +311,7 @@ export default function StockMovementsPage() {
                 {t('stockMovements.title', 'Stock Movements')}
               </Typography>
                 <Typography variant="body2" sx={{ color: dark ? '#94a3b8' : '#64748b' }}>
-                  Full movement ledger for receipts, dispatches, adjustments, and source references.
+                  {t('stockMovements.subtitle')}
                 </Typography>
               </div>
             </div>
@@ -382,10 +382,10 @@ export default function StockMovementsPage() {
               </Box>
               <div>
                 <Typography variant="caption" sx={{ color: dark ? '#94a3b8' : '#64748b', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700 }}>
-                  Units Moved
+                  {t('stockMovements.unitsMoved')}
                 </Typography>
                 <Typography variant="h5" sx={{ color: dark ? '#f1f5f9' : '#1e293b', fontWeight: 800, mt: 0.5 }}>{movementUnits.toLocaleString()}</Typography>
-                <Typography variant="caption" sx={{ color: dark ? '#94a3b8' : '#64748b' }}>{referenceCoverage}% with references</Typography>
+                <Typography variant="caption" sx={{ color: dark ? '#94a3b8' : '#64748b' }}>{t('stockMovements.withReferences')}: {referenceCoverage}%</Typography>
               </div>
             </Paper>
           </div>
@@ -394,7 +394,7 @@ export default function StockMovementsPage() {
             <Paper sx={{ p: 3, backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none', borderRadius: 2 }}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <Typography variant="subtitle2" sx={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 800 }}>Movement Mix</Typography>
+                  <Typography variant="subtitle2" sx={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 800 }}>{t('stockMovements.movementMix')}</Typography>
                   <Typography variant="caption" sx={{ color: dark ? '#94a3b8' : '#64748b' }}>Stock in, stock out, and adjustment distribution in the current view.</Typography>
                 </div>
                 <Typography variant="subtitle2" sx={{ color: netMovementValue >= 0 ? '#22c55e' : '#ef4444', fontWeight: 800 }}>
@@ -407,13 +407,13 @@ export default function StockMovementsPage() {
                 <div className="bg-amber-500" style={{ width: `${(adjustmentCount / movementCount) * 100}%` }} />
               </div>
               <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500 dark:text-slate-400">
-                <span>{stockInCount} stock in</span>
-                <span>{stockOutCount} stock out</span>
-                <span>{adjustmentCount} adjustments</span>
+                <span>{stockInCount} {t('stockMovements.stockIn')}</span>
+                <span>{stockOutCount} {t('stockMovements.stockOut')}</span>
+                <span>{adjustmentCount} {t('stockMovements.adjustment')}</span>
               </div>
             </Paper>
             <Paper sx={{ p: 3, backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none', borderRadius: 2 }}>
-              <Typography variant="subtitle2" sx={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 800 }}>Largest Movement</Typography>
+              <Typography variant="subtitle2" sx={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 800 }}>{t('stockMovements.largestMovement')}</Typography>
               <Typography variant="h6" sx={{ color: dark ? '#f8fafc' : '#0f172a', mt: 1, fontWeight: 800 }}>
                 {largestMovement ? formatCurrency(largestMovement.totalCost) : formatCurrency(0)}
               </Typography>
@@ -564,7 +564,7 @@ export default function StockMovementsPage() {
                   {movements.map((item) => {
                     const isOut = item.type === 'out';
                     const movementDate = item.movementDate || item.date ? new Date(item.movementDate || item.date!).toLocaleDateString() : '-';
-                    const source = item.sourceType || item.referenceType || 'Manual';
+                    const source = item.sourceType || item.referenceType || t('stockMovements.manual');
                     const reference = item.referenceNumber || item.reference || '-';
                     return (
                       <div
@@ -585,30 +585,30 @@ export default function StockMovementsPage() {
                         </div>
 
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Warehouse</p>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockMovements.warehouse')}</p>
                           <p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{getWarehouseName(item.warehouse)}</p>
-                          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Reference</p>
+                          <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockMovements.reference')}</p>
                           <p className="mt-1 font-mono text-xs text-slate-700 dark:text-slate-300">{reference}</p>
                         </div>
 
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Source</p>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockMovements.source')}</p>
                           <Chip
                             label={source}
                             size="small"
                             variant="outlined"
                             sx={{ mt: 0.75, borderColor: dark ? '#475569' : '#cbd5e1', color: dark ? '#cbd5e1' : '#475569' }}
                           />
-                          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Unit Cost</p>
+                          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockMovements.unitCost')}</p>
                           <p className="mt-1 font-mono text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(item.unitCost)}</p>
                         </div>
 
                         <div className="rounded-md bg-slate-50 p-3 text-right dark:bg-slate-900">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Quantity</p>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockMovements.quantity')}</p>
                           <p className={`mt-1 text-xl font-black ${isOut ? 'text-red-500' : 'text-emerald-500'}`}>
                             {isOut ? '-' : '+'}{toNum(item.quantity).toLocaleString()}
                           </p>
-                          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Cost</p>
+                          <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockMovements.totalCost')}</p>
                           <p className="mt-1 font-mono text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(item.totalCost)}</p>
                         </div>
                       </div>

@@ -160,8 +160,8 @@ export default function PickPackDetailPage() {
         toast.success('Picking completed');
         fetchPickPack();
       }
-    } catch (error) {
-      toast.error('Failed to complete picking');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to complete picking');
     }
   };
 
@@ -323,21 +323,21 @@ export default function PickPackDetailPage() {
                     </Button>
                   )}
                   {pickPack.status === 'picking' && (
-                    <Button size="sm" onClick={handleCompletePicking} className="h-9 gap-1 bg-blue-600 hover:bg-blue-700">
+                    <Button size="sm" onClick={() => navigate(`/pick-packs/${id}/pick`)} className="h-9 gap-1 bg-blue-600 hover:bg-blue-700">
                       <CheckCircle className="h-4 w-4" />
-                      <span className="hidden sm:inline">Complete Picking</span>
+                      <span className="hidden sm:inline">Continue Picking</span>
                     </Button>
                   )}
                   {pickPack.status === 'picked' && (
-                    <Button size="sm" onClick={handleStartPacking} className="h-9 gap-1 bg-violet-600 hover:bg-violet-700">
+                    <Button size="sm" onClick={() => navigate(`/pick-packs/${id}/pack`)} className="h-9 gap-1 bg-violet-600 hover:bg-violet-700">
                       <Play className="h-4 w-4" />
                       <span className="hidden sm:inline">Start Packing</span>
                     </Button>
                   )}
                   {pickPack.status === 'packed' && (
-                    <Button size="sm" onClick={handleCompletePacking} className="h-9 gap-1 bg-emerald-600 hover:bg-emerald-700">
+                    <Button size="sm" onClick={() => navigate(`/pick-packs/${id}/pack`)} className="h-9 gap-1 bg-emerald-600 hover:bg-emerald-700">
                       <Truck className="h-4 w-4" />
-                      <span className="hidden sm:inline">Complete Packing</span>
+                      <span className="hidden sm:inline">Continue Packing</span>
                     </Button>
                   )}
                 </div>

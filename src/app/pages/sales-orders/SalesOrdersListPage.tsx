@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { salesOrdersApi, clientsApi } from '@/lib/api';
 import { EmptyState } from '@/app/components/EmptyState';
 import { Layout } from '../../layout/Layout';
@@ -97,18 +98,6 @@ interface Client {
   name: string;
 }
 
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'All Status' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'picking', label: 'Picking' },
-  { value: 'packed', label: 'Packed' },
-  { value: 'delivered', label: 'Delivered' },
-  { value: 'invoiced', label: 'Invoiced' },
-  { value: 'closed', label: 'Closed' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/40 dark:text-slate-300 dark:border-slate-700',
   confirmed: 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800',
@@ -122,8 +111,22 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function SalesOrdersListPage() {
   console.log('[SalesOrdersListPage] Component starting render');
+  const { t } = useTranslation();
   const navigate = useNavigate();
   console.log('[SalesOrdersListPage] useNavigate called');
+
+  const STATUS_OPTIONS = [
+    { value: 'all', label: t('salesOrders.status_options.all', 'All Status') },
+    { value: 'draft', label: t('salesOrders.status_options.draft', 'Draft') },
+    { value: 'confirmed', label: t('salesOrders.status_options.confirmed', 'Confirmed') },
+    { value: 'picking', label: t('salesOrders.status_options.picking', 'Picking') },
+    { value: 'packed', label: t('salesOrders.status_options.packed', 'Packed') },
+    { value: 'delivered', label: t('salesOrders.status_options.delivered', 'Delivered') },
+    { value: 'invoiced', label: t('salesOrders.status_options.invoiced', 'Invoiced') },
+    { value: 'closed', label: t('salesOrders.status_options.closed', 'Closed') },
+    { value: 'cancelled', label: t('salesOrders.status_options.cancelled', 'Cancelled') },
+  ];
+
   const [loading, setLoading] = useState(true);
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -171,7 +174,7 @@ export default function SalesOrdersListPage() {
       }
     } catch (error) {
       console.error('Error fetching sales orders:', error);
-      toast.error('Failed to fetch sales orders');
+      toast.error(t('salesOrders.fetchFailed', 'Failed to fetch sales orders'));
     } finally {
       setLoading(false);
     }
@@ -202,12 +205,12 @@ export default function SalesOrdersListPage() {
     try {
       const response = await salesOrdersApi.confirm(pendingOrderId);
       if (response.success) {
-        toast.success('Sales order confirmed successfully');
+        toast.success(t('salesOrders.confirmSuccess', 'Sales order confirmed successfully'));
         fetchSalesOrders();
       }
     } catch (error) {
       console.error('Error confirming sales order:', error);
-      toast.error('Failed to confirm sales order');
+      toast.error(t('salesOrders.confirmFailed', 'Failed to confirm sales order'));
     } finally {
       setConfirming(false);
       setConfirmDialogOpen(false);
@@ -221,12 +224,12 @@ export default function SalesOrdersListPage() {
     try {
       const response = await salesOrdersApi.cancel(pendingOrderId, 'Cancelled by user');
       if (response.success) {
-        toast.success('Sales order cancelled successfully');
+        toast.success(t('salesOrders.cancelSuccess', 'Sales order cancelled successfully'));
         fetchSalesOrders();
       }
     } catch (error) {
       console.error('Error cancelling sales order:', error);
-      toast.error('Failed to cancel sales order');
+      toast.error(t('salesOrders.cancelFailed', 'Failed to cancel sales order'));
     } finally {
       setCancelling(false);
       setCancelDialogOpen(false);
@@ -265,24 +268,24 @@ export default function SalesOrdersListPage() {
                     <Layers className="h-5 w-5" />
                   </div>
                   <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-3xl">
-                    Sales Orders
+                    {t('salesOrders.title', 'Sales Orders')}
                   </h1>
                 </div>
                 <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-                  Manage sales orders from confirmation through fulfillment to invoicing.
+                  {t('salesOrders.subtitle', 'Manage sales orders from confirmation through fulfillment to invoicing.')}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <BarChart3 className="mr-1 h-3 w-3" />
-                    {pagination.total || salesOrders.length} total
+                    {t('salesOrders.totalCount', '{{count}} total', { count: pagination.total || salesOrders.length })}
                   </Badge>
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <TrendingUp className="mr-1 h-3 w-3" />
-                    {confirmedCount} confirmed
+                    {t('salesOrders.confirmedCount', '{{count}} confirmed', { count: confirmedCount })}
                   </Badge>
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     <CalendarDays className="mr-1 h-3 w-3" />
-                    {deliveredCount} delivered
+                    {t('salesOrders.deliveredCount', '{{count}} delivered', { count: deliveredCount })}
                   </Badge>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
@@ -291,7 +294,7 @@ export default function SalesOrdersListPage() {
                     className="h-10 gap-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500"
                   >
                     <Plus className="h-4 w-4" />
-                    Create Sales Order
+                    {t('salesOrders.createSalesOrder', 'Create Sales Order')}
                   </Button>
                   <Button
                     variant="outline"
@@ -300,25 +303,25 @@ export default function SalesOrdersListPage() {
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <RefreshCw className="h-4 w-4" />
-                    Refresh
+                    {t('common.refresh', 'Refresh')}
                   </Button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total Orders</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('salesOrders.totalOrders', 'Total Orders')}</p>
                   <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{salesOrders.length}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total Value</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('salesOrders.totalValue', 'Total Value')}</p>
                   <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(totalValue)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Draft</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('salesOrders.draft', 'Draft')}</p>
                   <p className="mt-1 text-lg font-bold text-amber-600 dark:text-amber-400">{draftCount}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Delivered</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('salesOrders.delivered', 'Delivered')}</p>
                   <p className="mt-1 text-lg font-bold text-emerald-600 dark:text-emerald-400">{deliveredCount}</p>
                 </div>
               </div>
@@ -375,7 +378,7 @@ export default function SalesOrdersListPage() {
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Orders</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('salesOrders.totalOrders', 'Total Orders')}</p>
                         <p className="mt-3 text-2xl font-bold text-slate-950 dark:text-white">{salesOrders.length}</p>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-2.5 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60">
@@ -383,7 +386,7 @@ export default function SalesOrdersListPage() {
                       </div>
                     </div>
                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      {pagination.total || salesOrders.length} across all pages
+                      {t('salesOrders.acrossAllPages', '{{count}} across all pages', { count: pagination.total || salesOrders.length })}
                     </p>
                   </CardContent>
                 </Card>
@@ -391,7 +394,7 @@ export default function SalesOrdersListPage() {
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total Value</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('salesOrders.totalValue', 'Total Value')}</p>
                         <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">{formatCurrency(totalValue)}</p>
                       </div>
                       <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
@@ -399,7 +402,7 @@ export default function SalesOrdersListPage() {
                       </div>
                     </div>
                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      Combined grand total
+                      {t('salesOrders.combinedGrandTotal', 'Combined grand total')}
                     </p>
                   </CardContent>
                 </Card>
@@ -407,7 +410,7 @@ export default function SalesOrdersListPage() {
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Confirmed</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('salesOrders.confirmed', 'Confirmed')}</p>
                         <p className="mt-3 text-2xl font-bold text-blue-600 dark:text-blue-400">{confirmedCount}</p>
                       </div>
                       <div className="rounded-lg bg-blue-50 p-2.5 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60">
@@ -415,7 +418,7 @@ export default function SalesOrdersListPage() {
                       </div>
                     </div>
                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      Ready for fulfillment
+                      {t('salesOrders.readyForFulfillment', 'Ready for fulfillment')}
                     </p>
                   </CardContent>
                 </Card>
@@ -423,7 +426,7 @@ export default function SalesOrdersListPage() {
                   <CardContent className="p-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Draft</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('salesOrders.draft', 'Draft')}</p>
                         <p className="mt-3 text-2xl font-bold text-amber-600 dark:text-amber-400">{draftCount}</p>
                       </div>
                       <div className="rounded-lg bg-amber-50 p-2.5 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60">
@@ -431,7 +434,7 @@ export default function SalesOrdersListPage() {
                       </div>
                     </div>
                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      Pending confirmation
+                      {t('salesOrders.pendingConfirmation', 'Pending confirmation')}
                     </p>
                   </CardContent>
                 </Card>
@@ -447,7 +450,7 @@ export default function SalesOrdersListPage() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                     <Input
-                      placeholder="Search by reference or client..."
+                      placeholder={t('salesOrders.searchPlaceholder', 'Search by reference or client...')}
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       className="h-10 bg-white pl-10 text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700"
@@ -458,7 +461,7 @@ export default function SalesOrdersListPage() {
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
                     <SelectTrigger className="h-10 w-full bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700 sm:w-[180px]">
                       <Filter className="mr-2 h-4 w-4 text-slate-500" />
-                      <SelectValue placeholder="Filter by status" />
+                      <SelectValue placeholder={t('salesOrders.filterByStatus', 'Filter by status')} />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700">
                       {STATUS_OPTIONS.map((option) => (
@@ -472,10 +475,10 @@ export default function SalesOrdersListPage() {
                   <Select value={clientFilter} onValueChange={setClientFilter}>
                     <SelectTrigger className="h-10 w-full bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700 sm:w-[180px]">
                       <User className="mr-2 h-4 w-4 text-slate-500" />
-                      <SelectValue placeholder="Filter by client" />
+                      <SelectValue placeholder={t('salesOrders.filterByClient', 'Filter by client')} />
                     </SelectTrigger>
                     <SelectContent className="dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700">
-                      <SelectItem value="all" className="dark:focus:bg-slate-800 dark:focus:text-white">All Clients</SelectItem>
+                      <SelectItem value="all" className="dark:focus:bg-slate-800 dark:focus:text-white">{t('salesOrders.allClients', 'All Clients')}</SelectItem>
                       {clients.map((client) => (
                         <SelectItem key={client._id} value={client._id} className="dark:focus:bg-slate-800 dark:focus:text-white">
                           {client.name}
@@ -487,14 +490,14 @@ export default function SalesOrdersListPage() {
                   <div className="flex gap-2">
                     <Input
                       type="date"
-                      placeholder="From"
+                      placeholder={t('salesOrders.dateFrom', 'From')}
                       value={dateFrom}
                       onChange={(e) => setDateFrom(e.target.value)}
                       className="h-10 w-full bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700 sm:w-[140px]"
                     />
                     <Input
                       type="date"
-                      placeholder="To"
+                      placeholder={t('salesOrders.dateTo', 'To')}
                       value={dateTo}
                       onChange={(e) => setDateTo(e.target.value)}
                       className="h-10 w-full bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700 sm:w-[140px]"
@@ -512,13 +515,13 @@ export default function SalesOrdersListPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
-                      <TableHead className="text-slate-600 dark:text-slate-400">Reference</TableHead>
-                      <TableHead className="text-slate-600 dark:text-slate-400">Client</TableHead>
-                      <TableHead className="text-slate-600 dark:text-slate-400">Order Date</TableHead>
-                      <TableHead className="text-slate-600 dark:text-slate-400">Expected</TableHead>
-                      <TableHead className="text-slate-600 dark:text-slate-400">Status</TableHead>
-                      <TableHead className="text-right text-slate-600 dark:text-slate-400">Total</TableHead>
-                      <TableHead className="text-right text-slate-600 dark:text-slate-400">Actions</TableHead>
+                      <TableHead className="text-slate-600 dark:text-slate-400">{t('salesOrders.reference', 'Reference')}</TableHead>
+                      <TableHead className="text-slate-600 dark:text-slate-400">{t('salesOrders.client', 'Client')}</TableHead>
+                      <TableHead className="text-slate-600 dark:text-slate-400">{t('salesOrders.orderDate', 'Order Date')}</TableHead>
+                      <TableHead className="text-slate-600 dark:text-slate-400">{t('salesOrders.expected', 'Expected')}</TableHead>
+                      <TableHead className="text-slate-600 dark:text-slate-400">{t('salesOrders.status', 'Status')}</TableHead>
+                      <TableHead className="text-right text-slate-600 dark:text-slate-400">{t('salesOrders.total', 'Total')}</TableHead>
+                      <TableHead className="text-right text-slate-600 dark:text-slate-400">{t('salesOrders.actions', 'Actions')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -544,12 +547,12 @@ export default function SalesOrdersListPage() {
                           <EmptyState
                             compact
                             icon={Layers}
-                            title="No sales orders yet"
-                            description="Create a sales order to start managing customer orders and fulfilment."
+                            title={t('salesOrders.noOrders', 'No sales orders yet')}
+                            description={t('salesOrders.noOrdersDescription', 'Create a sales order to start managing customer orders and fulfilment.')}
                             action={
                               <Button onClick={() => navigate('/sales-orders/new')} className="bg-gradient-to-r from-cyan-500 to-emerald-500 text-white shadow-md shadow-cyan-500/30 hover:brightness-110">
                                 <Plus className="h-4 w-4 mr-2" />
-                                New Sales Order
+                                {t('salesOrders.newSalesOrder', 'New Sales Order')}
                               </Button>
                             }
                           />
@@ -567,10 +570,10 @@ export default function SalesOrdersListPage() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-semibold text-slate-950 dark:text-white">{order.referenceNo}</span>
                                   {order.isBackorder && (
-                                    <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700 text-[10px] dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">Backorder</Badge>
+                                    <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700 text-[10px] dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">{t('salesOrders.backorder', 'Backorder')}</Badge>
                                   )}
                                 </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">{order.lines.length} line{order.lines.length !== 1 ? 's' : ''}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{order.lines.length} {t(order.lines.length !== 1 ? 'salesOrders.lines' : 'salesOrders.line', order.lines.length !== 1 ? 'lines' : 'line')}</p>
                               </div>
                             </div>
                           </TableCell>
@@ -596,7 +599,7 @@ export default function SalesOrdersListPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => navigate(`/sales-orders/${order._id}`)}
-                                title="View Details"
+                                title={t('salesOrders.viewDetails', 'View Details')}
                                 className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                               >
                                 <Eye className="h-4 w-4" />
@@ -608,7 +611,7 @@ export default function SalesOrdersListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => navigate(`/sales-orders/${order._id}/edit`)}
-                                    title="Edit"
+                                    title={t('salesOrders.edit', 'Edit')}
                                     className="h-8 w-8 p-0 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
                                   >
                                     <FileText className="h-4 w-4" />
@@ -617,7 +620,7 @@ export default function SalesOrdersListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => { setPendingOrderId(order._id); setConfirmDialogOpen(true); }}
-                                    title="Confirm"
+                                    title={t('salesOrders.confirm', 'Confirm')}
                                     className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
                                   >
                                     <CheckCircle className="h-4 w-4" />
@@ -626,7 +629,7 @@ export default function SalesOrdersListPage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => { setPendingOrderId(order._id); setCancelDialogOpen(true); }}
-                                    title="Cancel"
+                                    title={t('salesOrders.cancel', 'Cancel')}
                                     className="h-8 w-8 p-0 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
                                   >
                                     <XCircle className="h-4 w-4" />
@@ -639,7 +642,7 @@ export default function SalesOrdersListPage() {
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => navigate(`/pick-packs/create?salesOrderId=${order._id}`)}
-                                  title="Create Pick & Pack"
+                                  title={t('salesOrders.createPickPack', 'Create Pick & Pack')}
                                   className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                                 >
                                   <Package className="h-4 w-4" />
@@ -660,7 +663,7 @@ export default function SalesOrdersListPage() {
           {!loading && salesOrders.length > 0 && (
             <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Showing {salesOrders.length} of {pagination.total} sales orders
+                {t('salesOrders.showingOf', 'Showing {{shown}} of {{total}} sales orders', { shown: salesOrders.length, total: pagination.total })}
               </p>
               <div className="flex gap-2">
                 <Button
@@ -670,10 +673,10 @@ export default function SalesOrdersListPage() {
                   disabled={pagination.page === 1}
                   className="dark:border-slate-700 dark:text-slate-200"
                 >
-                  Previous
+                  {t('salesOrders.previous', 'Previous')}
                 </Button>
                 <span className="flex items-center px-2 text-sm text-slate-600 dark:text-slate-400">
-                  Page {pagination.page} of {pagination.pages}
+                  {t('salesOrders.pageOf', 'Page {{page}} of {{pages}}', { page: pagination.page, pages: pagination.pages })}
                 </span>
                 <Button
                   variant="outline"
@@ -682,7 +685,7 @@ export default function SalesOrdersListPage() {
                   disabled={pagination.page >= pagination.pages}
                   className="dark:border-slate-700 dark:text-slate-200"
                 >
-                  Next
+                  {t('salesOrders.next', 'Next')}
                 </Button>
               </div>
             </div>
@@ -694,15 +697,15 @@ export default function SalesOrdersListPage() {
       <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800">
           <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">Confirm Sales Order</AlertDialogTitle>
+            <AlertDialogTitle className="dark:text-white">{t('salesOrders.confirmDialogTitle', 'Confirm Sales Order')}</AlertDialogTitle>
             <AlertDialogDescription className="dark:text-slate-400">
-              Are you sure you want to confirm this sales order? Once confirmed, it will move to the confirmed status and can be processed for picking & packing.
+              {t('salesOrders.confirmDialogDescription', 'Are you sure you want to confirm this sales order? Once confirmed, it will move to the confirmed status and can be processed for picking & packing.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={confirming} className="dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={confirming} className="dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">{t('common.cancel', 'Cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={doConfirm} disabled={confirming} className="bg-emerald-600 hover:bg-emerald-700">
-              {confirming ? 'Confirming...' : 'Confirm'}
+              {confirming ? t('salesOrders.confirming', 'Confirming...') : t('salesOrders.confirm', 'Confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -712,15 +715,15 @@ export default function SalesOrdersListPage() {
       <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
         <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800">
           <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">Cancel Sales Order</AlertDialogTitle>
+            <AlertDialogTitle className="dark:text-white">{t('salesOrders.cancelDialogTitle', 'Cancel Sales Order')}</AlertDialogTitle>
             <AlertDialogDescription className="dark:text-slate-400">
-              Are you sure you want to cancel this sales order? This action cannot be undone.
+              {t('salesOrders.cancelDialogDescription', 'Are you sure you want to cancel this sales order? This action cannot be undone.')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={cancelling} className="dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">Keep Order</AlertDialogCancel>
+            <AlertDialogCancel disabled={cancelling} className="dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">{t('salesOrders.keepOrder', 'Keep Order')}</AlertDialogCancel>
             <AlertDialogAction onClick={doCancel} disabled={cancelling} className="bg-red-600 hover:bg-red-700">
-              {cancelling ? 'Cancelling...' : 'Cancel Order'}
+              {cancelling ? t('salesOrders.cancelling', 'Cancelling...') : t('salesOrders.cancelOrder', 'Cancel Order')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

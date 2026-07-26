@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
 import { purchasesApi, suppliersApi, productsApi, budgetsApi, warehousesApi } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
+import DocumentCurrencySelect from "@/app/components/DocumentCurrencySelect";
 import {
   ArrowLeft,
   Save,
@@ -118,7 +119,6 @@ interface PurchaseFormData {
   items: PurchaseLine[];
 }
 
-const CURRENCIES = ['RWF', 'USD', 'EUR', 'GBP', 'KES', 'UGX', 'TZS'];
 const PAYMENT_TERMS = [
   { value: 'cash', label: 'Cash' },
   { value: 'credit_7', label: 'Credit 7 Days' },
@@ -537,16 +537,11 @@ export default function PurchaseFormPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t('purchase.form.currency', 'Currency')}</Label>
-                      <Select value={formData.currency} onValueChange={(value) => setFormData({ ...formData, currency: value })}>
-                        <SelectTrigger className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {CURRENCIES.map((currency) => (
-                            <SelectItem key={currency} value={currency}>{currency}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <DocumentCurrencySelect
+                        value={formData.currency}
+                        date={formData.purchaseDate}
+                        onChange={(currency) => setFormData((prev) => ({ ...prev, currency }))}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t('purchase.form.purchaseDate', 'Purchase Date')}</Label>

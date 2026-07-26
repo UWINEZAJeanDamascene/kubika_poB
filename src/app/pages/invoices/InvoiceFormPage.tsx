@@ -36,6 +36,7 @@ import {
   TableRow
 } from '@/app/components/ui/table';
 import { useTranslation } from 'react-i18next';
+import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
 
 interface Product {
   _id: string;
@@ -87,11 +88,10 @@ interface InvoiceFormData {
   dueDate: string;
   paymentTerms: string;
   currencyCode: string;
+  exchangeRate: number;
   notes: string;
   lines: InvoiceLine[];
 }
-
-const CURRENCIES = ['RWF'];
 
 const emptyLine: InvoiceLine = {
   product: '',
@@ -125,6 +125,7 @@ export default function InvoiceFormPage() {
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     paymentTerms: 'net30',
     currencyCode: 'RWF',
+    exchangeRate: 1,
     notes: '',
     lines: [{ ...emptyLine }]
   });
@@ -182,7 +183,8 @@ export default function InvoiceFormPage() {
           invoiceDate: invoice.invoiceDate ? invoice.invoiceDate.split('T')[0] : '',
           dueDate: invoice.dueDate ? invoice.dueDate.split('T')[0] : '',
           paymentTerms: invoice.paymentTerms || 'net30',
-          currencyCode: 'RWF',
+          currencyCode: invoice.currencyCode || invoice.currency || 'RWF',
+          exchangeRate: Number(invoice.exchangeRate) || 1,
           notes: invoice.notes || '',
           lines: invoice.lines && invoice.lines.length > 0
             ? invoice.lines.map((line: any) => ({
@@ -347,6 +349,7 @@ export default function InvoiceFormPage() {
         dueDate: formData.dueDate,
         paymentTerms: formData.paymentTerms,
         currencyCode: formData.currencyCode,
+        exchangeRate: formData.exchangeRate || 1,
         notes: formData.notes,
         lines: formData.lines.map(line => ({
           product: line.product,
@@ -474,16 +477,13 @@ export default function InvoiceFormPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-sm text-slate-700 dark:text-slate-300">Currency</Label>
-                      <Select value={formData.currencyCode} onValueChange={() => setFormData(prev => ({ ...prev, currencyCode: 'RWF' }))}>
-                        <SelectTrigger className="bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
-                          {CURRENCIES.map(curr => (
-                            <SelectItem key={curr} value={curr} className="dark:text-slate-200">{curr}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <DocumentCurrencySelect
+                        value={formData.currencyCode}
+                        date={formData.invoiceDate}
+                        onChange={(currency, rateToBase) =>
+                          setFormData(prev => ({ ...prev, currencyCode: currency, exchangeRate: rateToBase ?? 1 }))
+                        }
+                      />
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

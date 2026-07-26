@@ -5,6 +5,7 @@ import {
   Calculator,
   Calendar,
   CalendarRange,
+  Download,
   Package,
   Receipt,
   Scale,
@@ -12,6 +13,8 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
+import { monthlyReportsApi } from "@/lib/api.monthlyReports";
+import { toast } from "sonner";
 import {
   ReportCollectionPage,
   type ReportCatalogItem,
@@ -47,6 +50,7 @@ export default function SemiAnnualReportsPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<"H1" | "H2">(
     currentMonth <= 6 ? "H1" : "H2"
   );
+  const [loading, setLoading] = useState<string | null>(null);
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   const startMonth = selectedPeriod === "H1" ? 1 : 7;
@@ -54,7 +58,7 @@ export default function SemiAnnualReportsPage() {
 
   const metrics: ReportMetric[] = [
     { label: "Reports", value: String(semiAnnualReports.length), caption: "Half-year review pack", icon: CalendarRange, tone: "amber" },
-    { label: "Coverage", value: "6", caption: "Months in scope", icon: TrendingUp, tone: "emerald" },
+    { label: "Exports", value: String(semiAnnualReports.length * 2), caption: "PDF and Excel formats", icon: Download, tone: "emerald" },
     { label: "Period", value: selectedPeriod, caption: `${selectedYear} selected`, icon: Calendar, tone: "blue" },
     { label: "Focus", value: "Trend", caption: "Medium-term analysis", icon: Scale, tone: "violet" },
   ];
@@ -63,6 +67,42 @@ export default function SemiAnnualReportsPage() {
     const path = reportPaths[reportId as keyof typeof reportPaths];
     if (!path) return;
     navigate(`${path}?startYear=${selectedYear}&startMonth=${startMonth}&endYear=${selectedYear}&endMonth=${endMonth}`);
+  };
+
+  const handleDownloadPDF = async (reportId: string) => {
+    setLoading(reportId);
+    try {
+      await monthlyReportsApi.downloadSemiAnnualReportPDF(
+        reportId,
+        selectedYear,
+        startMonth,
+        selectedYear,
+        endMonth,
+      );
+      toast.success("PDF downloaded successfully");
+    } catch {
+      toast.error("Failed to download PDF");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleDownloadExcel = async (reportId: string) => {
+    setLoading(`${reportId}-excel`);
+    try {
+      await monthlyReportsApi.downloadSemiAnnualReportExcel(
+        reportId,
+        selectedYear,
+        startMonth,
+        selectedYear,
+        endMonth,
+      );
+      toast.success("Excel downloaded successfully");
+    } catch {
+      toast.error("Failed to download Excel");
+    } finally {
+      setLoading(null);
+    }
   };
 
   return (
@@ -92,6 +132,9 @@ export default function SemiAnnualReportsPage() {
       }
       onBack={() => navigate("/reports")}
       onView={handleViewReport}
+      onDownloadPDF={handleDownloadPDF}
+      onDownloadExcel={handleDownloadExcel}
+      loading={loading}
     />
   );
 }

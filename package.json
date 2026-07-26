@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "i18n:generate-rw": "tsx scripts/generate-rw-locale.ts && tsx scripts/patch-rw-home.ts",
+    "i18n:sync-fr": "tsx scripts/sync-fr-locale.ts"
   },
   "engines": {
     "node": "24.x"

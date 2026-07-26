@@ -28,7 +28,7 @@ export default function WeeklyCashFlowReportPage() {
   ] : [];
 
   return (
-    <WeeklyReportScaffold title="Weekly Cash Flow" shortTitle="Cash Flow" subtitle="Daily cash inflows, outflows, and net position across the selected week." icon={Wallet} tone="cyan" weekStart={weekStart} weekLabel={data ? `${data.weekStart} to ${data.weekEnd}` : undefined} onWeekChange={onWeekChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <WeeklyReportScaffold title="Weekly Cash Flow" shortTitle="Cash Flow" subtitle="Daily cash inflows, outflows, and net position across the selected week." icon={Wallet} tone="cyan" weekStart={weekStart} weekLabel={data ? `${data.weekStart} to ${data.weekEnd}` : undefined} onWeekChange={onWeekChange} loading={isLoading} downloading={downloading} onBack={() => navigate(weeklyReportsApi.getListPath(weekStart))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <Card className={weeklyReportCardClass}>
           <CardHeader><CardTitle className="text-base">Daily Cash Flow</CardTitle></CardHeader>

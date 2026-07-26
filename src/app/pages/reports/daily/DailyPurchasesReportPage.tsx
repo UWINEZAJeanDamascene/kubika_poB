@@ -30,7 +30,7 @@ export default function DailyPurchasesReportPage() {
   ] : [];
 
   return (
-    <DailyReportScaffold title="Daily Purchases Summary" shortTitle="Purchases" subtitle="Goods received, supplier orders, purchase value, and top suppliers for the selected date." icon={Package} tone="emerald" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <DailyReportScaffold title="Daily Purchases Summary" shortTitle="Purchases" subtitle="Goods received, supplier orders, purchase value, and top suppliers for the selected date." icon={Package} tone="emerald" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(dailyReportsApi.getListPath(date))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <Card className={reportCardClass}>
           <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Truck className="h-4 w-4 text-emerald-600" />Top Suppliers</CardTitle></CardHeader>

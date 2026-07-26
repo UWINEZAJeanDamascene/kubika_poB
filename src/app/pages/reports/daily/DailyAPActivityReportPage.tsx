@@ -30,7 +30,7 @@ export default function DailyAPActivityReportPage() {
   ] : [];
 
   return (
-    <DailyReportScaffold title="Daily AP Activity" shortTitle="AP Activity" subtitle="New bills posted, supplier payments, debit notes, and net payables movement." icon={Truck} tone="rose" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <DailyReportScaffold title="Daily AP Activity" shortTitle="AP Activity" subtitle="New bills posted, supplier payments, debit notes, and net payables movement." icon={Truck} tone="rose" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(dailyReportsApi.getListPath(date))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <div className="grid gap-6 lg:grid-cols-3">
           <Card className={reportCardClass}>

@@ -189,9 +189,9 @@ export default function ARDashboardPage() {
     setLoadingTrans(true);
     try {
       const res: any = await arReconciliationApi.getTransactions({ page, limit: 20 });
-      if (res?.data) {
-        setTransactions(res.data.data || []);
-        setTransTotalPages(res.data.pages || 1);
+      if (res?.success !== false) {
+        setTransactions(Array.isArray(res.data) ? res.data : []);
+        setTransTotalPages(res.pages || 1);
       }
     } catch (e) {
       console.error('Failed to load transactions', e);

@@ -80,7 +80,7 @@ export default function DailySalesReportPage() {
       onDateChange={handleDateChange}
       loading={isLoading}
       downloading={downloading}
-      onBack={() => navigate(-1)}
+      onBack={() => navigate(dailyReportsApi.getListPath(date))}
       onDownloadPDF={handleDownloadPDF}
       onDownloadExcel={handleDownloadExcel}
       metrics={metrics}

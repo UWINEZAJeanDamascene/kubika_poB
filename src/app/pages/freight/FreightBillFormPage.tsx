@@ -75,7 +75,7 @@ export default function FreightBillFormPage() {
       } else {
         await freightBillsApi.create(payload as any);
       }
-      navigate("/freight-bills");
+      navigate("/purchase-orders?tab=freight-bills");
     } catch (e) {
       console.error("Failed to save freight bill:", e);
       alert(t("freight.saveFailed", "Failed to save freight bill"));
@@ -99,7 +99,7 @@ export default function FreightBillFormPage() {
       <div className="min-h-screen bg-slate-50 px-3 py-4 dark:bg-slate-950 sm:px-4 sm:py-6 lg:px-8">
         <div className="mx-auto max-w-[800px] space-y-6">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate("/freight-bills")}>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate("/purchase-orders?tab=freight-bills")}>
               <ArrowLeft className="h-4 w-4 text-slate-500" />
             </Button>
             <div className="rounded-lg bg-amber-50 p-2 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60">
@@ -154,7 +154,7 @@ export default function FreightBillFormPage() {
                 </div>
               </div>
               <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline" onClick={() => navigate("/freight-bills")}>
+                <Button variant="outline" onClick={() => navigate("/purchase-orders?tab=freight-bills")}>
                   {t("common.cancel", "Cancel")}
                 </Button>
                 <Button onClick={handleSave} disabled={saving} className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100">

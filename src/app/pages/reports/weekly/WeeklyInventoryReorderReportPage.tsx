@@ -36,7 +36,7 @@ export default function WeeklyInventoryReorderReportPage() {
   );
 
   return (
-    <WeeklyReportScaffold title="Inventory Reorder Report" shortTitle="Reorder" subtitle="Products below reorder point that need procurement attention now." icon={AlertTriangle} tone="amber" loading={isLoading} downloading={downloading} onBack={() => navigate(-1)} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
+    <WeeklyReportScaffold title="Inventory Reorder Report" shortTitle="Reorder" subtitle="Products below reorder point that need procurement attention now." icon={AlertTriangle} tone="amber" loading={isLoading} downloading={downloading} onBack={() => navigate(weeklyReportsApi.getListPath())} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
         <div className="space-y-6">
           {data.critical.length > 0 && <Card className={weeklyReportCardClass}><CardHeader><CardTitle className="flex items-center gap-2 text-base text-rose-600"><AlertCircle className="h-4 w-4" />Critical - Out of Stock ({data.critical.length})</CardTitle></CardHeader><CardContent>{renderItems(data.critical, true)}</CardContent></Card>}

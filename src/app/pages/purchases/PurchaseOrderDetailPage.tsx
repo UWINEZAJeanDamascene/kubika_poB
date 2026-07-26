@@ -744,8 +744,12 @@ export default function PurchaseOrderDetailPage() {
                           <TableRow key={line._id} className="border-b-slate-100 dark:border-b-slate-800/50">
                             <TableCell className="min-w-[150px]">
                               <div>
-                                <p className="text-sm font-medium text-slate-900 dark:text-white sm:text-base">{line.product?.name || '-'}</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">{line.product?.sku || ''}</p>
+                                <p className="text-sm font-medium text-slate-900 dark:text-white sm:text-base">
+                                  {line.product?.name || (line as any).productName || '-'}
+                                </p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 sm:text-sm">
+                                  {line.product?.sku || (line as any).productCode || ''}
+                                </p>
                               </div>
                             </TableCell>
                             <TableCell className="whitespace-nowrap text-right font-mono text-sm text-slate-600 dark:text-slate-300">
