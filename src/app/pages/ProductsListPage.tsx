@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { productsApi, categoriesApi, suppliersApi } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/apiBase';
 import { Layout } from '../layout/Layout';
 import { 
   Plus, 
@@ -294,7 +295,6 @@ export default function ProductsListPage() {
   const handleExport = async () => {
     try {
       const token = localStorage.getItem('token');
-      const API_BASE_URL = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api';
       const blob = await fetch(`${API_BASE_URL}/bulk/export/products`, {
         headers: {
           'Authorization': `Bearer ${token}`

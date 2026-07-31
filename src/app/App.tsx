@@ -603,16 +603,22 @@ function DashboardPageWrapper() {
     );
   }
 
-  try {
-    return <DashboardPage />;
-  } catch (err: any) {
-    console.error("[DashboardPageWrapper] Render error:", err);
-    return (
-      <div style={{ padding: 40, color: "red", textAlign: "center" }}>
-        Error: {err.message || String(err)}
-      </div>
-    );
-  }
+  return (
+    <ErrorBoundary
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 p-6 dark:bg-slate-950">
+          <div className="w-full max-w-lg rounded-lg border border-red-200 bg-white p-6 shadow-sm dark:border-red-900/60 dark:bg-slate-900">
+            <h2 className="text-lg font-semibold text-red-600 dark:text-red-400">Dashboard failed to load</h2>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+              Refresh the page or try again after checking your session.
+            </p>
+          </div>
+        </div>
+      }
+    >
+      <DashboardPage />
+    </ErrorBoundary>
+  );
 }
 
 // Wrapper for GRNListPage
@@ -2099,7 +2105,7 @@ export default function App() {
                 <AppRoutes />
               </CurrencyProvider>
             </AuthProvider>
-          </LanguageProvider>
+        </LanguageProvider>
         </ThemeProvider>
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />

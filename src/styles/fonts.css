@@ -1,1 +1,4 @@
-/* Font styles - currently using system fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Staatliches&family=Work+Sans:wght@400;500;600;700&display=swap');
+
+/* Public surfaces use Staatliches for industrial display type, Work Sans for UI copy,
+   and JetBrains Mono for telemetry, metrics, and technical labels. */

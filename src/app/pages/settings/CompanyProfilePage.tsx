@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { companyApi, ebmApi, type EBMDeviceBranchStatus } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/apiBase';
 import { Layout } from '../../layout/Layout';
 import {
   Loader2,
@@ -187,7 +188,7 @@ export default function CompanyProfilePage() {
     if (!settings) return;
     setSaving(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api'}/settings`, {
+      const res = await fetch(`${API_BASE_URL}/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

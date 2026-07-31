@@ -1,4 +1,5 @@
 import { authApi, Membership } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/apiBase';
 
 // Types matching backend response
 export interface LoginCredentials {
@@ -34,25 +35,14 @@ export interface UserData {
   mustChangePassword?: boolean;
 }
 
-export interface UserData {
-  _id: string;
-  name: string;
-  email: string;
-  role: string;
-  permissions?: string[];
-  company?: string;
-  lastLogin?: string;
-  mustChangePassword?: boolean;
-}
-
 // Auth service using real API
 const authService = {
   /**
    * Login with email and password
    * Calls POST /auth/login
    */
-  async login(credentials: LoginCredentials): Promise<{ 
-    success: boolean; 
+  async login(credentials: LoginCredentials): Promise<{
+    success: boolean;
     error?: string;
     errorCode?: string;
     lockedUntil?: number;
@@ -77,6 +67,7 @@ const authService = {
         token: response.access_token || response.token,
         refreshToken: response.refresh_token,
         userId: response.userId,
+        user: response.user as UserData | undefined,
         memberships: response.memberships,
       };
     } catch (error: unknown) {
@@ -209,7 +200,7 @@ const authService = {
     message?: string;
   }> {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api'}/auth/forgot-password`, {
+      const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -291,7 +282,7 @@ const authService = {
     message?: string;
   }> {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api'}/auth/reset-password`, {
+      const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token, password: newPassword }),

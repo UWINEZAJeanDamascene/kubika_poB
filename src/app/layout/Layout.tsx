@@ -85,7 +85,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Full-app background */}
       <div className="absolute inset-0 bg-background" />
       {/* Desktop Sidebar - always visible on lg screens */}
-      <div className={`hidden lg:block transition-all duration-300 relative z-10 ${sidebarCollapsed ? 'w-20' : 'w-72'}`}>
+      <div className={`hidden lg:block relative z-10 shrink-0 transition-[width] duration-300 ${sidebarCollapsed ? 'w-[72px]' : 'w-[340px]'}`}>
         <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
       </div>
 
@@ -157,7 +157,7 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Desktop Top Bar */}
         {!isMobile && (
-          <header className="hidden h-14 flex-shrink-0 items-center justify-between border-b border-border bg-card/95 px-6 shadow-sm backdrop-blur-xl lg:flex">
+            <header className="hidden h-14 flex-shrink-0 items-center justify-between border-b border-border bg-card/95 px-5 shadow-sm backdrop-blur-xl lg:flex">
             <div className="flex items-center gap-4 min-w-0">
               <Breadcrumbs />
             </div>

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Badge } from '@/app/components/ui/badge';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle, XCircle, FileText } from 'lucide-react';
+import { API_BASE_URL } from '@/lib/apiBase';
 
 // Simple public page for clients to accept/reject with reason via signed token
 export default function ClientQuotationPublicPage() {
@@ -19,7 +20,7 @@ export default function ClientQuotationPublicPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
-  const apiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api';
+  const apiBase = API_BASE_URL;
 
   const normalizedAction = action === 'accept' ? 'accept' : action === 'reject' ? 'reject' : 'accept';
 

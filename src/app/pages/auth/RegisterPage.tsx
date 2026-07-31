@@ -3,10 +3,12 @@ import { Link, useNavigate } from 'react-router';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2, ArrowLeft, ArrowRight, Building2, UserPlus, CheckCircle2, Mail, Phone, ShieldCheck, Check } from 'lucide-react';
+import { Alert, Button, InputAdornment, Stack, TextField, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { ArrowLeft, ArrowRight, Building2, Check, Eye, EyeOff, Loader2, Mail, Phone, ShieldCheck, UserPlus } from 'lucide-react';
 import { companyService } from '@/services';
 import { companyApi } from '@/lib/api';
 import { PUBLIC_ROUTES } from '@/config/routes';
+import { AuthFrame } from './AuthFrame';
 
 const registerSchema = z.object({
   companyName: z.string().min(2, 'Company name must be at least 2 characters'),
@@ -18,12 +20,20 @@ const registerSchema = z.object({
   adminEmail: z.string().email('Please enter a valid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ['confirmPassword'],
-});
+}).refine((data) => data.password === data.confirmPassword, { message: "Passwords don't match", path: ['confirmPassword'] });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
+type Plan = { key: string; name: string; description: string; features: string[]; modules: string[]; badge: string; default_billing_amount: number; default_billing_cycle: string; featured: boolean };
+
+const fieldSx = {
+  '& .MuiInputLabel-root': { color: 'var(--industrial-muted)', fontFamily: '"JetBrains Mono", monospace', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em' },
+  '& .MuiInputLabel-root.Mui-focused': { color: 'var(--industrial-copper)' },
+  '& .MuiInput-root:before': { borderBottomColor: 'rgba(240, 240, 240, 0.18)' },
+  '& .MuiInput-root:hover:not(.Mui-disabled):before': { borderBottomColor: 'rgba(240, 240, 240, 0.36)' },
+  '& .MuiInput-root:after': { borderBottomColor: 'var(--industrial-copper)' },
+  '& .MuiInputBase-input': { color: 'var(--industrial-ink)', fontFamily: '"Work Sans", sans-serif', paddingTop: '12px', paddingBottom: '10px' },
+  '& .MuiInputBase-input::placeholder': { color: 'var(--industrial-muted)', opacity: 0.8 },
+};
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -34,315 +44,42 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [plans, setPlans] = useState<{ key: string; name: string; description: string; features: string[]; modules: string[]; badge: string; default_billing_amount: number; default_billing_cycle: string; featured: boolean }[]>([]);
+  const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<string>('starter');
+  const [selectedPlan, setSelectedPlan] = useState('starter');
+  const { register, handleSubmit, trigger, getValues, setValue, formState: { errors } } = useForm<RegisterFormData>({ resolver: zodResolver(registerSchema), mode: 'onChange', defaultValues: { subscriptionPlan: 'starter' } });
 
   useEffect(() => {
-    companyApi.getPublicSubscriptionPlans()
-      .then((res) => {
-        if (res.success && res.data) {
-          const activePlans = res.data.filter((p) => p.is_active).sort((a, b) => a.sort_order - b.sort_order);
-          setPlans(activePlans);
-          if (activePlans.length > 0) {
-            setSelectedPlan(activePlans[0].key);
-          }
-        }
-      })
-      .catch(() => {
-        // fallback: no plans available
-      })
-      .finally(() => setPlansLoading(false));
-  }, []);
+    companyApi.getPublicSubscriptionPlans().then((response) => {
+      if (response.success && response.data) { const activePlans = response.data.filter((plan) => plan.is_active).sort((a, b) => a.sort_order - b.sort_order) as Plan[]; setPlans(activePlans); if (activePlans.length > 0) { setSelectedPlan(activePlans[0].key); setValue('subscriptionPlan', activePlans[0].key); } }
+    }).catch(() => undefined).finally(() => setPlansLoading(false));
+  }, [setValue]);
 
-  const {
-    register,
-    handleSubmit,
-    trigger,
-    getValues,
-    setValue,
-    formState: { errors },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
-    mode: 'onChange',
-    defaultValues: { subscriptionPlan: 'starter' },
-  });
-
-  const handleContinue = async () => {
-    const isValid = await trigger(['companyName', 'companyEmail', 'companyTin', 'companyPhone']);
-    if (isValid) setStep(2);
-  };
-
-  const handleSelectPlan = (key: string) => {
-    setSelectedPlan(key);
-    setValue('subscriptionPlan', key);
-  };
-
+  const handleContinue = async () => { if (await trigger(['companyName', 'companyEmail', 'companyTin', 'companyPhone'])) setStep(2); };
+  const handleSelectPlan = (_event: React.MouseEvent<HTMLElement>, value: string | null) => { if (value) { setSelectedPlan(value); setValue('subscriptionPlan', value); } };
   const onSubmit = async () => {
-    const data = getValues();
-
-    setIsLoading(true);
-    setError(null);
-    setEmailError(null);
-    setSuccessMessage(null);
-
+    const data = getValues(); setIsLoading(true); setError(null); setEmailError(null); setSuccessMessage(null);
     try {
-      await companyService.register(
-        {
-          name: data.companyName,
-          email: data.companyEmail,
-          tin: data.companyTin || undefined,
-          phone: data.companyPhone || undefined,
-          subscription_plan: data.subscriptionPlan || selectedPlan,
-        },
-        {
-          name: data.adminName,
-          email: data.adminEmail,
-          password: data.password,
-        },
-      );
-
+      await companyService.register({ name: data.companyName, email: data.companyEmail, tin: data.companyTin || undefined, phone: data.companyPhone || undefined, subscription_plan: data.subscriptionPlan || selectedPlan }, { name: data.adminName, email: data.adminEmail, password: data.password });
       setSuccessMessage('Registration submitted successfully. A platform administrator will review your company application.');
-      setTimeout(() => {
-        navigate(PUBLIC_ROUTES.LOGIN, {
-          state: { message: 'Registration submitted. Please wait for company approval before logging in.' },
-        });
-      }, 5000);
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.';
-      if (errorMessage.toLowerCase().includes('email')) {
-        setEmailError('This email is already registered. Please use a different email or contact support.');
-      } else {
-        setError(errorMessage);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+      setTimeout(() => navigate(PUBLIC_ROUTES.LOGIN, { state: { message: 'Registration submitted. Please wait for company approval before logging in.' } }), 5000);
+    } catch (err: unknown) { const errorMessage = err instanceof Error ? err.message : 'Registration failed. Please try again.'; if (errorMessage.toLowerCase().includes('email')) setEmailError('This email is already registered. Please use a different email or contact support.'); else setError(errorMessage); }
+    finally { setIsLoading(false); }
   };
 
-  const inputClass = 'h-12 w-full rounded-lg border border-slate-200 bg-white px-4 text-slate-950 outline-none transition focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 dark:border-white/10 dark:bg-white/[0.06] dark:text-white';
-  const iconInputClass = `${inputClass} pl-10`;
+  const helper = (field: keyof RegisterFormData) => errors[field]?.message as string | undefined;
+  const inputIcon = (icon: React.ReactNode) => <InputAdornment position="start">{icon}</InputAdornment>;
 
-  return (
-    <div className="min-h-screen bg-[#ecf5f2] text-slate-950 dark:bg-[#03110f] dark:text-white">
-      <div className="grid min-h-screen lg:grid-cols-[0.85fr_1.15fr]">
-        <aside className="hidden bg-slate-950 p-10 text-white dark:bg-white dark:text-slate-950 lg:flex lg:flex-col lg:justify-between">
-          <div>
-            <Link to={PUBLIC_ROUTES.HOME} className="inline-flex items-center gap-3 text-sm font-semibold tracking-[0.2em]">
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-slate-950 dark:bg-slate-950 dark:text-white">
-                <Building2 className="h-5 w-5" />
-              </span>
-              KUBIKA SYSTEM
-            </Link>
-            <h1 className="mt-20 max-w-xl text-6xl font-semibold leading-[0.98] tracking-tight">
-              Open a new operating workspace.
-            </h1>
-            <p className="mt-6 max-w-md text-sm leading-6 text-slate-300 dark:text-slate-600">
-              Company identity, admin ownership and approval workflow in one crisp onboarding surface.
-            </p>
-          </div>
-          <div className="grid gap-3">
-            {['Company approval queue', 'Admin owner creation', 'Tenant-ready setup'].map((item) => (
-              <div key={item} className="flex items-center gap-3 rounded-lg border border-white/10 bg-white/8 p-4 dark:border-slate-200 dark:bg-slate-50">
-                <CheckCircle2 className="h-5 w-5 text-emerald-300 dark:text-emerald-600" />
-                <span className="text-sm font-semibold">{item}</span>
-              </div>
-            ))}
-          </div>
-        </aside>
-
-        <main className="relative flex items-center justify-center overflow-hidden px-4 py-10 sm:px-6 lg:px-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(34,211,238,.22),transparent_28%),radial-gradient(circle_at_90%_20%,rgba(52,211,153,.22),transparent_22%)] dark:bg-[radial-gradient(circle_at_12%_12%,rgba(34,211,238,.12),transparent_28%),radial-gradient(circle_at_90%_20%,rgba(52,211,153,.12),transparent_22%)]" />
-          <div className="relative w-full max-w-2xl 2xl:max-w-[1100px]">
-            <Link to={PUBLIC_ROUTES.HOME} className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white">
-              <ArrowLeft className="h-4 w-4" />
-              Home
-            </Link>
-
-            <div className="overflow-hidden rounded-lg border border-white/80 bg-white/90 shadow-2xl shadow-slate-900/10 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
-              <div className="border-b border-slate-200 bg-slate-50 p-6 text-slate-950 dark:border-white/10 dark:bg-slate-950 dark:text-white">
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">New workspace</p>
-                <h2 className="mt-3 text-4xl font-semibold tracking-tight">{step === 1 ? 'Company setup console' : 'Admin owner console'}</h2>
-                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                  {step === 1 ? 'Capture the company record before approval.' : 'Create the first secure administrator for this workspace.'}
-                </p>
-              </div>
-              <div className="p-6 sm:p-8">
-      <div className="mb-8">
-        <div className="flex items-center justify-center">
-          <div className="flex items-center">
-            <div className="flex flex-col items-center">
-              <div className={`flex h-11 w-11 items-center justify-center rounded-lg text-sm font-semibold ${step > 1 ? 'bg-emerald-500 text-white' : 'bg-slate-950 text-white dark:bg-white dark:text-slate-950'}`}>
-                {step > 1 ? <CheckCircle2 className="h-5 w-5" /> : '1'}
-              </div>
-              <span className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Company</span>
-            </div>
-            <div className={`mx-3 h-0.5 w-16 ${step > 1 ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-white/10'}`} />
-            <div className="flex flex-col items-center">
-              <div className={`flex h-11 w-11 items-center justify-center rounded-lg text-sm font-semibold ${step === 2 ? 'bg-slate-950 text-white dark:bg-white dark:text-slate-950' : 'bg-slate-200 text-slate-500 dark:bg-white/10 dark:text-slate-400'}`}>
-                2
-              </div>
-              <span className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">Admin</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {error && <div className="mb-5 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-300">{error}</div>}
-      {successMessage && <div className="mb-5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">{successMessage}</div>}
-
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-        {step === 1 && (
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="companyName" className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Company name</label>
-              <div className="relative">
-                <Building2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input id="companyName" type="text" {...register('companyName')} className={iconInputClass} placeholder="Company Ltd" />
-              </div>
-              {errors.companyName && <p className="mt-1 text-sm text-red-500">{errors.companyName.message as string}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="companyEmail" className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Company email</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <input id="companyEmail" type="email" {...register('companyEmail')} className={iconInputClass} placeholder="finance@company.com" />
-              </div>
-              {errors.companyEmail && <p className="mt-1 text-sm text-red-500">{errors.companyEmail.message as string}</p>}
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label htmlFor="companyTin" className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">TIN</label>
-                <div className="relative">
-                  <ShieldCheck className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input id="companyTin" type="text" {...register('companyTin')} className={iconInputClass} placeholder="Tax ID" />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="companyPhone" className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Phone</label>
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input id="companyPhone" type="tel" {...register('companyPhone')} className={iconInputClass} placeholder="+250..." />
-                </div>
-              </div>
-            </div>
-
-            {/* Plan Selector */}
-            <div>
-              <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Select a plan</label>
-              {plansLoading ? (
-                <div className="flex h-20 items-center justify-center rounded-lg border border-slate-200 bg-white dark:border-white/10 dark:bg-white/[0.06]">
-                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                </div>
-              ) : plans.length === 0 ? (
-                <p className="text-sm text-slate-500 dark:text-slate-400">No plans available. You will be assigned the default starter plan.</p>
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {plans.map((plan) => (
-                    <button
-                      key={plan.key}
-                      type="button"
-                      onClick={() => handleSelectPlan(plan.key)}
-                      className={`relative rounded-xl border p-4 text-left transition-all ${
-                        selectedPlan === plan.key
-                          ? 'border-cyan-500 bg-cyan-50 ring-1 ring-cyan-500 dark:border-cyan-400 dark:bg-cyan-950/20'
-                          : 'border-slate-200 bg-white hover:border-slate-300 dark:border-white/10 dark:bg-white/[0.06] dark:hover:border-white/20'
-                      }`}
-                    >
-                      {selectedPlan === plan.key && (
-                        <span className="absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500 text-white">
-                          <Check className="h-3 w-3" />
-                        </span>
-                      )}
-                      {plan.badge && (
-                        <span className="mb-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                          {plan.badge}
-                        </span>
-                      )}
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">{plan.name}</p>
-                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{plan.description}</p>
-                      <p className="mt-2 text-xs font-semibold text-slate-700 dark:text-slate-300">
-                        {plan.default_billing_amount > 0 ? `RWF ${plan.default_billing_amount.toLocaleString()}` : 'Free'} / {plan.default_billing_cycle}
-                      </p>
-                      {plan.modules && plan.modules.length > 0 && (
-                        <p className="mt-1.5 text-[11px] text-slate-400 dark:text-slate-500">
-                          {plan.modules.slice(0, 3).join(', ')}{plan.modules.length > 3 ? '...' : ''}
-                        </p>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <input type="hidden" {...register('subscriptionPlan')} value={selectedPlan} />
-            </div>
-
-            <button type="button" onClick={handleContinue} className="flex h-12 w-full items-center justify-center rounded-lg bg-slate-950 px-4 font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-cyan-100">
-              Continue
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </button>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-4">
-            <button type="button" onClick={() => setStep(1)} className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-950 dark:text-slate-400 dark:hover:text-white">
-              <ArrowLeft className="h-4 w-4" />
-              Company details
-            </button>
-
-            <div>
-              <label htmlFor="adminName" className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Full name</label>
-              <input id="adminName" type="text" {...register('adminName')} className={inputClass} placeholder="Jane Operator" />
-              {errors.adminName && <p className="mt-1 text-sm text-red-500">{errors.adminName.message as string}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="adminEmail" className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Admin email</label>
-              <input id="adminEmail" type="email" {...register('adminEmail')} className={`${inputClass} ${emailError ? 'border-red-500' : ''}`} placeholder="admin@company.com" />
-              {errors.adminEmail && <p className="mt-1 text-sm text-red-500">{errors.adminEmail.message as string}</p>}
-              {emailError && <p className="mt-1 text-sm text-red-500">{emailError}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="password" className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Password</label>
-              <div className="relative">
-                <input id="password" type={showPassword ? 'text' : 'password'} {...register('password')} className={`${inputClass} pr-12`} placeholder="Minimum 8 characters" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white">
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-              {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password.message as string}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Confirm password</label>
-              <div className="relative">
-                <input id="confirmPassword" type={showConfirmPassword ? 'text' : 'password'} {...register('confirmPassword')} className={`${inputClass} pr-12`} placeholder="Repeat password" />
-                <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white">
-                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-              {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword.message as string}</p>}
-            </div>
-
-            <button type="submit" disabled={isLoading} className="flex h-12 w-full items-center justify-center rounded-lg bg-slate-950 px-4 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-white dark:text-slate-950 dark:hover:bg-cyan-100">
-              {isLoading ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" />Submitting...</> : <><UserPlus className="mr-2 h-5 w-5" />Complete registration</>}
-            </button>
-          </div>
-        )}
+  return <AuthFrame eyebrow="NEW WORKSPACE / 01" title={step === 1 ? 'Open an operating workspace.' : 'Assign the first operator.'} subtitle={step === 1 ? 'Start with the company record. We will route the request through a controlled approval workflow.' : 'Create the administrator who will own the first secure session.'} sideTitle="Make the operating record official." sideCopy="KUBIKA gives the company record, operating teams and approval chain a single place to start." sideItems={['Company approval queue', 'Admin owner creation', 'Tenant-ready setup']}>
+    <Stack spacing={3}>
+      <div className="flex items-center gap-3 border-b border-white/10 pb-5"><div className="flex items-center gap-3"><span className={`grid h-8 w-8 place-items-center border font-mono text-xs ${step >= 1 ? 'border-[var(--industrial-copper)] bg-[var(--industrial-copper)] text-[var(--industrial-bg)]' : 'border-white/10 text-[var(--industrial-muted)]'}`}>{step > 1 ? <Check className="h-4 w-4" /> : '01'}</span><span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--industrial-muted)]">Company</span></div><span className={`h-px w-12 ${step > 1 ? 'bg-[var(--industrial-copper)]' : 'bg-white/15'}`} /><div className="flex items-center gap-3"><span className={`grid h-8 w-8 place-items-center border font-mono text-xs ${step === 2 ? 'border-[var(--industrial-copper)] bg-[var(--industrial-copper)] text-[var(--industrial-bg)]' : 'border-white/10 text-[var(--industrial-muted)]'}`}>02</span><span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--industrial-muted)]">Admin</span></div></div>
+      {error && <Alert severity="error" variant="outlined" className="!border-[var(--industrial-danger)]/50 !bg-[var(--industrial-danger)]/10 !text-[var(--industrial-ink)]">{error}</Alert>}
+      {successMessage && <Alert severity="success" variant="outlined" className="!border-[var(--industrial-olive)]/50 !bg-[var(--industrial-olive)]/10 !text-[var(--industrial-ink)]">{successMessage}</Alert>}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        {step === 1 && <Stack spacing={3}><TextField label="Company name" placeholder="Company Ltd" error={Boolean(errors.companyName)} helperText={helper('companyName')} fullWidth variant="standard" sx={fieldSx} {...register('companyName')} InputProps={{ startAdornment: inputIcon(<Building2 className="h-4 w-4 text-[var(--industrial-muted)]" />) }} /><TextField label="Company email" placeholder="finance@company.com" error={Boolean(errors.companyEmail)} helperText={helper('companyEmail')} fullWidth variant="standard" sx={fieldSx} {...register('companyEmail')} InputProps={{ startAdornment: inputIcon(<Mail className="h-4 w-4 text-[var(--industrial-muted)]" />) }} /><Stack direction={{ xs: 'column', sm: 'row' }} spacing={3}><TextField label="TIN" placeholder="Tax ID" fullWidth variant="standard" sx={fieldSx} {...register('companyTin')} InputProps={{ startAdornment: inputIcon(<ShieldCheck className="h-4 w-4 text-[var(--industrial-muted)]" />) }} /><TextField label="Phone" placeholder="+250..." fullWidth variant="standard" sx={fieldSx} {...register('companyPhone')} InputProps={{ startAdornment: inputIcon(<Phone className="h-4 w-4 text-[var(--industrial-muted)]" />) }} /></Stack><div><div className="mb-3 flex items-center justify-between"><span className="font-mono text-[10px] uppercase tracking-[0.1em] text-[var(--industrial-muted)]">Select operating tier</span><span className="font-mono text-[9px] uppercase text-[var(--industrial-copper)]">{plansLoading ? 'LOADING' : `${plans.length || 1} AVAILABLE`}</span></div>{plansLoading ? <div className="h-16 animate-pulse border border-white/10 bg-white/5" /> : plans.length === 0 ? <p className="border border-white/10 p-4 font-mono text-[10px] text-[var(--industrial-muted)]">No plans available. The starter tier will be assigned by default.</p> : <ToggleButtonGroup value={selectedPlan} exclusive onChange={handleSelectPlan} fullWidth orientation="vertical" className="!gap-2">{plans.map((plan) => <ToggleButton key={plan.key} value={plan.key} className="!justify-between !border !border-white/10 !px-4 !py-3 !text-left !normal-case !text-[var(--industrial-muted)] data-[selected=true]:!border-[var(--industrial-copper)] data-[selected=true]:!bg-[var(--industrial-copper)]/10 data-[selected=true]:!text-[var(--industrial-ink)]"><span><span className="block font-mono text-[10px] font-bold uppercase tracking-[0.1em]">{plan.name}</span><span className="mt-1 block font-sans text-xs normal-case text-[var(--industrial-muted)]">{plan.description}</span></span><span className="font-mono text-[10px] text-[var(--industrial-copper)]">{plan.default_billing_amount > 0 ? `RWF ${plan.default_billing_amount.toLocaleString()}` : 'FREE'}</span></ToggleButton>)}</ToggleButtonGroup>}<input type="hidden" {...register('subscriptionPlan')} value={selectedPlan} /></div><Button type="button" onClick={handleContinue} variant="contained" color="primary" fullWidth endIcon={<ArrowRight className="h-4 w-4" />} className="!min-h-12 !justify-between !px-5 !text-[10px] sm:!justify-center">CONTINUE TO ADMIN</Button></Stack>}
+        {step === 2 && <Stack spacing={3}><Button type="button" onClick={() => setStep(1)} variant="text" color="inherit" startIcon={<ArrowLeft className="h-4 w-4" />} className="!justify-start !px-0 !text-[10px] !text-[var(--industrial-muted)] hover:!text-[var(--industrial-copper)]">BACK TO COMPANY</Button><TextField label="Full name" placeholder="Jane Operator" error={Boolean(errors.adminName)} helperText={helper('adminName')} fullWidth variant="standard" sx={fieldSx} {...register('adminName')} /><TextField label="Admin email" placeholder="admin@company.com" error={Boolean(errors.adminEmail) || Boolean(emailError)} helperText={helper('adminEmail') || emailError} fullWidth variant="standard" sx={fieldSx} {...register('adminEmail')} /><TextField label="Password" placeholder="Minimum 8 characters" type={showPassword ? 'text' : 'password'} error={Boolean(errors.password)} helperText={helper('password')} fullWidth variant="standard" sx={fieldSx} {...register('password')} InputProps={{ endAdornment: <InputAdornment position="end"><Button type="button" onClick={() => setShowPassword((value) => !value)} color="inherit" className="!min-w-0 !p-1 !text-[var(--industrial-muted)] hover:!text-[var(--industrial-copper)]">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></InputAdornment> }} /><TextField label="Confirm password" placeholder="Repeat password" type={showConfirmPassword ? 'text' : 'password'} error={Boolean(errors.confirmPassword)} helperText={helper('confirmPassword')} fullWidth variant="standard" sx={fieldSx} {...register('confirmPassword')} InputProps={{ endAdornment: <InputAdornment position="end"><Button type="button" onClick={() => setShowConfirmPassword((value) => !value)} color="inherit" className="!min-w-0 !p-1 !text-[var(--industrial-muted)] hover:!text-[var(--industrial-copper)]">{showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button></InputAdornment> }} /><Button type="submit" variant="contained" color="primary" fullWidth disabled={isLoading} startIcon={isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} endIcon={!isLoading ? <ArrowRight className="h-4 w-4" /> : undefined} className="!min-h-12 !justify-between !px-5 !text-[10px] sm:!justify-center">{isLoading ? 'SUBMITTING' : 'COMPLETE REGISTRATION'}</Button></Stack>}
       </form>
-
-      <p className="mt-6 text-center text-sm text-slate-600 dark:text-slate-300">
-        Already approved?{' '}
-        <Link to={PUBLIC_ROUTES.LOGIN} className="font-semibold text-cyan-700 hover:text-cyan-600 dark:text-cyan-300">Sign in</Link>
-      </p>
-              </div>
-            </div>
-          </div>
-        </main>
-      </div>
-    </div>
-  );
+      <p className="border-t border-white/10 pt-5 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--industrial-muted)]">Already approved? <Link to={PUBLIC_ROUTES.LOGIN} className="text-[var(--industrial-copper)] hover:text-[var(--industrial-ink)]">Sign in</Link></p>
+    </Stack>
+  </AuthFrame>;
 }

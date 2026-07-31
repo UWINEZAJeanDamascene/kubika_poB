@@ -1,5 +1,15 @@
 :root {
   --font-size: 16px;
+  --industrial-bg: #F3F2EE;
+  --industrial-panel: #EBE9E4;
+  --industrial-panel-raised: #E1DED6;
+  --industrial-ink: #1C1C1A;
+  --industrial-muted: #6E6D68;
+  --industrial-copper: #A84F24;
+  --industrial-olive: #62763D;
+  --industrial-danger: #9B4A40;
+  --industrial-rule: rgba(28, 28, 26, 0.14);
+  --industrial-rule-strong: rgba(28, 28, 26, 0.22);
   --background: #f6f8fb;
   --foreground: #0f172a;
   --card: #ffffff;
@@ -40,6 +50,16 @@
 }
 
 .dark {
+  --industrial-bg: #18191A;
+  --industrial-panel: #222325;
+  --industrial-panel-raised: #2A2B2D;
+  --industrial-ink: #F0F0F0;
+  --industrial-muted: #A3A39B;
+  --industrial-copper: #D97743;
+  --industrial-olive: #7A8F51;
+  --industrial-danger: #B45E52;
+  --industrial-rule: rgba(240, 240, 240, 0.14);
+  --industrial-rule-strong: rgba(240, 240, 240, 0.22);
   --background: #0f172a;
   --foreground: #f8fafc;
   --card: #172033;
@@ -243,6 +263,118 @@
 }
 
 @layer components {
+  .industrial-display {
+    font-family: 'Staatliches', Impact, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+
+  .industrial-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .industrial-grid {
+    background-image: linear-gradient(color-mix(in srgb, var(--industrial-ink) 7%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--industrial-ink) 7%, transparent) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .industrial-frame {
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+  }
+
+  .industrial-telemetry {
+    background: color-mix(in srgb, var(--industrial-panel) 88%, var(--industrial-bg));
+    box-shadow: inset 0 1px 0 rgba(240, 240, 240, 0.04), inset 0 -1px 0 rgba(0, 0, 0, 0.22);
+  }
+
+  .industrial-telemetry__track {
+    will-change: transform;
+  }
+
+  .industrial-telemetry__item {
+    min-height: 1.25rem;
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 0.625rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: 0.11em;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .industrial-telemetry__label {
+    color: var(--industrial-muted);
+  }
+
+  .industrial-telemetry__value {
+    color: var(--industrial-ink);
+  }
+
+  .industrial-telemetry__dot {
+    display: inline-block;
+    height: 0.3rem;
+    width: 0.3rem;
+    flex: 0 0 auto;
+  }
+
+  .industrial-telemetry__dot--healthy {
+    background: var(--industrial-olive);
+  }
+
+  .industrial-telemetry__dot--neutral {
+    background: var(--industrial-copper);
+  }
+
+  .industrial-telemetry__fade {
+    pointer-events: none;
+    position: absolute;
+    inset-block: 0;
+    z-index: 1;
+    width: 2.5rem;
+  }
+
+  .industrial-telemetry__fade--left {
+    left: 0;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--industrial-panel) 100%, transparent), transparent);
+  }
+
+  .industrial-telemetry__fade--right {
+    right: 0;
+    background: linear-gradient(270deg, color-mix(in srgb, var(--industrial-panel) 100%, transparent), transparent);
+  }
+
+  @keyframes industrial-marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  .industrial-public a,
+  .industrial-auth a {
+    text-decoration: none;
+  }
+
+  .industrial-public .MuiButton-root,
+  .industrial-auth .MuiButton-root {
+    border-radius: 2px;
+  }
+
+  .industrial-public .MuiButton-outlined,
+  .industrial-auth .MuiButton-outlined {
+    border-color: color-mix(in srgb, var(--industrial-copper) 65%, transparent);
+  }
+
+  .industrial-public .MuiButton-outlined:hover,
+  .industrial-auth .MuiButton-outlined:hover {
+    border-color: var(--industrial-copper);
+    background: color-mix(in srgb, var(--industrial-copper) 10%, transparent);
+  }
+
+  .industrial-public .MuiButton-contained,
+  .industrial-auth .MuiButton-contained {
+    box-shadow: none;
+  }
+
   [data-slot='card'] {
     border-color: var(--border);
     border-radius: var(--radius);
@@ -628,4 +760,231 @@
 .dark .text-gray-400,
 .dark .text-slate-400 {
   color: var(--muted-foreground) !important;
+}
+
+:root {
+  --dashboard-paper: #f8fafc;
+  --dashboard-surface: #ffffff;
+  --dashboard-surface-muted: #f1f5f9;
+  --dashboard-surface-soft: #f8fafc;
+  --dashboard-control-track: #e2e8f0;
+  --dashboard-ink: #0f172a;
+  --dashboard-rail: #0b1324;
+  --dashboard-rail-surface: #121e32;
+  --dashboard-rule: #d9e2ec;
+  --dashboard-rule-strong: #b8c6d5;
+  --dashboard-blue: #1e3a8a;
+  --dashboard-blue-2: #3b82f6;
+  --dashboard-blue-3: #93c5fd;
+  --dashboard-amber: #d97706;
+  --dashboard-amber-soft: #fff7ed;
+  --dashboard-green: #16734a;
+  --dashboard-green-soft: #ecfdf5;
+  --dashboard-red: #b42318;
+  --dashboard-red-soft: #fef2f2;
+  --dashboard-muted: #64748b;
+  --sidebar-rail-width: 340px;
+  --sidebar-rail-collapsed-width: 72px;
+  --sidebar-command-rule: rgba(255, 255, 255, 0.1);
+  --sidebar-command-active: #f0b900;
+}
+
+.dark {
+  --dashboard-paper: #05070b;
+  --dashboard-surface: #0a0f18;
+  --dashboard-surface-muted: #111827;
+  --dashboard-surface-soft: #0f172a;
+  --dashboard-control-track: #1f2937;
+  --dashboard-ink: #f8fafc;
+  --dashboard-rule: #263449;
+  --dashboard-rule-strong: #3a4a61;
+  --dashboard-blue: #5b8cff;
+  --dashboard-blue-2: #63a4ff;
+  --dashboard-blue-3: #a5c8ff;
+  --dashboard-amber: #f0b900;
+  --dashboard-amber-soft: #33240a;
+  --dashboard-green: #39b87a;
+  --dashboard-green-soft: #0b2b20;
+  --dashboard-red: #f06a63;
+  --dashboard-red-soft: #321517;
+  --dashboard-muted: #9fb0c4;
+  --sidebar-command-rule: rgba(255, 255, 255, 0.12);
+  --sidebar-command-active: #f0b900;
+}
+
+@layer components {
+  .industrial-dashboard {
+    min-height: 100%;
+    background: var(--dashboard-paper);
+    color: var(--dashboard-ink);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  }
+
+  .industrial-dashboard .industrial-mono,
+  .industrial-dashboard .industrial-value,
+  .industrial-dashboard .industrial-kpi-delta,
+  .industrial-dashboard .industrial-source-note {
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .industrial-dashboard .industrial-value {
+    color: var(--dashboard-ink);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.06em;
+  }
+
+  .industrial-dashboard .industrial-eyebrow {
+    color: var(--dashboard-muted);
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1.2;
+    text-transform: uppercase;
+  }
+
+  .industrial-dashboard .industrial-meta {
+    color: var(--dashboard-muted);
+    font-size: 0.625rem;
+    line-height: 1.4;
+  }
+
+  .industrial-dashboard .industrial-source-note {
+    color: var(--dashboard-muted);
+    font-size: 0.625rem;
+    line-height: 1.5;
+  }
+
+  .industrial-dashboard .industrial-kpi-delta {
+    font-size: 0.6875rem;
+    font-weight: 600;
+  }
+
+  .industrial-dashboard .industrial-tone-neutral { color: var(--dashboard-muted); }
+  .industrial-dashboard .industrial-tone-healthy { color: var(--dashboard-green); }
+  .industrial-dashboard .industrial-tone-warning { color: var(--dashboard-amber); }
+  .industrial-dashboard .industrial-tone-critical { color: var(--dashboard-red); }
+
+  .industrial-dashboard .industrial-section {
+    min-width: 0;
+  }
+
+  .industrial-dashboard .industrial-table-frame {
+    overflow-x: auto;
+    border: 1px solid var(--dashboard-rule-strong);
+    background: var(--dashboard-surface);
+  }
+
+  .industrial-dashboard .industrial-table-frame table {
+    min-width: 720px;
+    border-collapse: collapse;
+  }
+
+  .industrial-dashboard .industrial-table-frame th {
+    border-bottom: 2px solid var(--dashboard-ink);
+    background: var(--dashboard-surface-muted);
+    color: var(--dashboard-muted);
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    padding: 0.625rem 0.75rem;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .industrial-dashboard .industrial-table-frame td {
+    border-bottom: 1px solid var(--dashboard-rule);
+    color: var(--dashboard-ink);
+    font-size: 0.6875rem;
+    padding: 0.75rem;
+    vertical-align: middle;
+  }
+
+  .industrial-dashboard .industrial-table-frame tbody tr:hover {
+    background: var(--dashboard-surface-soft);
+  }
+
+  .industrial-dashboard .industrial-status-label {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 4px;
+  }
+
+  .industrial-dashboard .industrial-button {
+    border-radius: 2px;
+    min-height: 2rem;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    font-size: 0.6875rem;
+  }
+
+  .industrial-dashboard .industrial-button-primary {
+    border-color: var(--dashboard-ink);
+    background: var(--dashboard-ink);
+    color: var(--dashboard-paper);
+  }
+
+  .industrial-dashboard .industrial-button-primary:hover {
+    background: var(--dashboard-rail-surface);
+    color: var(--dashboard-paper);
+  }
+
+  .industrial-dashboard .recharts-cartesian-grid line {
+    stroke: color-mix(in srgb, var(--dashboard-muted) 18%, transparent);
+  }
+
+  .industrial-dashboard .recharts-text,
+  .industrial-dashboard .recharts-label {
+    fill: var(--dashboard-muted);
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 0.625rem;
+  }
+
+  @media (max-width: 1023px) {
+    .industrial-dashboard .industrial-kpi-cell { min-height: 7rem; }
+  }
+
+  @media (max-width: 639px) {
+    .industrial-dashboard .industrial-table-frame {
+      margin-inline: -0.25rem;
+      max-width: calc(100vw - 1.5rem);
+    }
+
+    .industrial-dashboard .industrial-table-frame td,
+    .industrial-dashboard .industrial-table-frame th {
+      padding: 0.625rem;
+    }
+  }
+}
+
+@layer utilities {
+  /* Industrial dashboard pages still contain a few legacy utility classes. Keep
+     those classes readable when the root theme switches to the dark palette. */
+  .dark .industrial-dashboard .bg-white {
+    background-color: var(--dashboard-surface);
+  }
+
+  .dark .industrial-dashboard .bg-slate-50 {
+    background-color: var(--dashboard-surface-muted);
+  }
+
+  .dark .industrial-dashboard .bg-slate-100 {
+    background-color: var(--dashboard-control-track);
+  }
+
+  .dark .industrial-dashboard .fill-slate-600,
+  .dark .industrial-dashboard .fill-slate-700 {
+    fill: var(--dashboard-muted);
+  }
+
+  .dark .industrial-dashboard .text-slate-300 {
+    color: var(--dashboard-rule-strong);
+  }
+
+  .dark .industrial-dashboard .text-slate-400 {
+    color: var(--dashboard-muted);
+  }
 }

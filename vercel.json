@@ -3,10 +3,6 @@
   "outputDirectory": "dist",
   "installCommand": "npm install --legacy-peer-deps",
   "framework": "vite",
-  "env": {
-    "VITE_API_URL": "https://kubikasystem-bnd.onrender.com/api",
-    "VITE_API_BASE_URL": "https://kubikasystem-bnd.onrender.com/api"
-  },
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

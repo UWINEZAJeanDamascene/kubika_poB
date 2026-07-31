@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router';
 import { quotationsApi, clientsApi, productsApi } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/apiBase';
 import { Layout } from '../../layout/Layout';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import DocumentCurrencySelect from '@/app/components/DocumentCurrencySelect';
@@ -517,7 +518,7 @@ export default function QuotationFormPage() {
                         variant="outline"
                         className="h-10 gap-2"
                         onClick={() => {
-                          const apiBase = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api';
+                          const apiBase = API_BASE_URL;
                           const token = quotation.publicAcceptToken || quotation.publicRejectToken;
                           const url = token
                             ? `${apiBase}/quotations/public/${token}/pdf`

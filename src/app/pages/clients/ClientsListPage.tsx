@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { clientsApi } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/apiBase';
 import { Layout } from '../../layout/Layout';
 import {
   Plus,
@@ -140,7 +141,7 @@ export default function ClientsListPage() {
 
   const handleStatement = (clientId: string) => {
     const token = localStorage.getItem('token');
-    const baseUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api';
+    const baseUrl = API_BASE_URL;
     fetch(`${baseUrl}/clients/${clientId}/statement`, {
       headers: { 'Authorization': `Bearer ${token}` },
     })

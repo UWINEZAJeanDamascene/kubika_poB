@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v5-local-api-auth-bypass';
 const STATIC_CACHE = `stock-mgt-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `stock-mgt-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `stock-mgt-api-${CACHE_VERSION}`;
@@ -81,6 +81,15 @@ async function removeFromQueue(id) {
   });
 }
 
+async function removeQueuedAuthRequests() {
+  const items = await getQueuedItems();
+  await Promise.all(
+    items
+      .filter((item) => new URL(item.url).pathname.startsWith('/api/auth/'))
+      .map((item) => removeFromQueue(item.id))
+  );
+}
+
 // ─── Cache helpers ──────────────────────────────────
 
 async function trimCache(cacheName, maxItems) {
@@ -128,6 +137,7 @@ self.addEventListener('activate', (event) => {
         );
       })
       .then(() => self.clients.claim())
+      .then(() => removeQueuedAuthRequests())
   );
 });
 
@@ -137,6 +147,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
   const isReportExport = /^\/api\/reports\/.+\/(pdf|excel)$/.test(url.pathname);
+
+  // Authentication must always be handled directly by the page. Do not cache
+  // or queue login, registration, or password requests for background sync.
+  if (url.pathname.startsWith('/api/auth/')) return;
 
   // Skip non-GET requests — queue mutating requests if offline
   if (request.method !== 'GET') {

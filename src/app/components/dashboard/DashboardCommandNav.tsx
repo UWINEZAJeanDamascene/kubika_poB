@@ -1,12 +1,6 @@
 import { Link, useLocation } from "react-router";
 import { useTranslation } from "react-i18next";
-import {
-  LayoutDashboard,
-  Boxes,
-  TrendingUp,
-  ShoppingCart,
-  PieChart,
-} from "lucide-react";
+import { LayoutDashboard, Boxes, TrendingUp, ShoppingCart, PieChart } from "lucide-react";
 import { cn } from "@/app/components/ui/utils";
 
 const COMMAND_DASHBOARDS = [
@@ -24,29 +18,27 @@ export function DashboardCommandNav({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "flex flex-wrap gap-1.5 rounded-xl border border-slate-200 bg-slate-50 p-1.5 shadow-sm dark:border-white/10 dark:bg-slate-950/90",
+        "industrial-command-nav flex min-w-max gap-0 border-b border-(--dashboard-rule) bg-(--dashboard-paper)",
         className,
       )}
       aria-label="Command dashboards"
     >
       {COMMAND_DASHBOARDS.map((item) => {
-        const active =
-          location.pathname === item.href ||
-          (item.href !== "/dashboard" && location.pathname.startsWith(`${item.href}/`));
+        const active = location.pathname === item.href || (item.href !== "/dashboard" && location.pathname.startsWith(`${item.href}/`));
         const Icon = item.icon;
         return (
           <Link
             key={item.href}
             to={item.href}
             title={t(item.nameKey)}
+            aria-current={active ? "page" : undefined}
             className={cn(
-              "inline-flex min-h-9 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-              active
-                ? "bg-white text-slate-900 shadow-sm dark:bg-white dark:text-slate-900"
-                : "text-slate-600 hover:bg-white/60 dark:text-slate-300 dark:hover:bg-white/10",
+              "relative inline-flex min-h-11 items-center gap-2 border-r border-(--dashboard-rule) px-3 text-xs font-semibold text-(--dashboard-muted) transition-colors first:border-l hover:bg-white hover:text-(--dashboard-ink) sm:px-4",
+              active && "bg-white text-(--dashboard-ink)",
             )}
           >
-            <Icon className="h-4 w-4 shrink-0" />
+            {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-(--dashboard-amber)" aria-hidden="true" />}
+            <Icon className={cn("h-4 w-4 shrink-0", active ? "text-(--dashboard-blue-2)" : "text-(--dashboard-muted)")} aria-hidden="true" />
             <span>{t(item.shortKey)}</span>
           </Link>
         );

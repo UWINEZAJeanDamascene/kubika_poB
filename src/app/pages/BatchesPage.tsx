@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '@/app/components/EmptyState';
 import { stockBatchApi, StockBatch, warehousesApi } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/apiBase';
 import { Layout } from '../layout/Layout';
 
 interface Product {
@@ -72,7 +73,7 @@ export default function BatchesPage() {
     const loadProducts = async () => {
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api'}/products?limit=1000`,
+          `${API_BASE_URL}/products?limit=1000`,
           { credentials: 'include' }
         );
         const data = await response.json();

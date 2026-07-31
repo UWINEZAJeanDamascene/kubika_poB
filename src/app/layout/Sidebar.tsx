@@ -92,6 +92,7 @@ interface NavSection {
   descriptionKey: string;
   accent: string;
   glow: string;
+  icon: React.ElementType;
   items: NavItem[];
 }
 
@@ -283,6 +284,7 @@ const inventoryNav: NavSection = {
   descriptionKey: "nav.descInventory",
   accent: "from-emerald-300 to-teal-200",
   glow: "bg-emerald-400/12",
+  icon: Package,
   items: [
     {
       nameKey: "nav.products",
@@ -365,6 +367,7 @@ const purchasingNav: NavSection = {
   descriptionKey: "nav.descPurchasing",
   accent: "from-amber-300 to-orange-200",
   glow: "bg-amber-300/12",
+  icon: ShoppingCart,
   items: [
     {
       nameKey: "nav.suppliers",
@@ -428,6 +431,7 @@ const salesNav: NavSection = {
   descriptionKey: "nav.descSales",
   accent: "from-sky-300 to-indigo-300",
   glow: "bg-sky-400/12",
+  icon: TrendingUp,
   items: [
     {
       nameKey: "nav.pos",
@@ -526,6 +530,7 @@ const financeNav: NavSection = {
   descriptionKey: "nav.descFinance",
   accent: "from-violet-300 to-cyan-200",
   glow: "bg-violet-400/12",
+  icon: Wallet,
   items: [
     {
       nameKey: "nav.bankAccounts",
@@ -648,6 +653,7 @@ const reportsNav: NavSection = {
   descriptionKey: "nav.descReports",
   accent: "from-lime-200 to-cyan-200",
   glow: "bg-lime-300/12",
+  icon: BarChart3,
   items: [
     {
       nameKey: "nav.dashboard",
@@ -715,6 +721,7 @@ const systemNav: NavSection = {
   descriptionKey: "nav.descSystem",
   accent: "from-rose-200 to-slate-200",
   glow: "bg-rose-300/12",
+  icon: Settings2,
   items: [
     {
       nameKey: "nav.userManagement",
@@ -828,6 +835,7 @@ export function Sidebar({
   const [loggingOut, setLoggingOut] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [companyProfileOpen, setCompanyProfileOpen] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [companyOptions, setCompanyOptions] = useState<
     Record<string, { name: string; logo_url?: string }>
   >({});
@@ -1010,6 +1018,22 @@ export function Sidebar({
       (item) => hasFeatureAccess(item.featureKey) && hasModuleAccess(item),
     );
 
+  const visibleSections = ALL_SECTIONS
+    .map((section) => ({ section, items: filterVisible(section.items) }))
+    .filter(({ items }) => items.length > 0);
+
+  const quickLaunchHrefs = [
+    "/dashboard",
+    "/products",
+    "/sales-legacy",
+    "/purchase-orders",
+    "/invoices",
+    "/reports",
+  ];
+  const quickLaunchItems = quickLaunchHrefs
+    .map((href) => visibleSections.flatMap(({ items }) => items).find((item) => item.href === href))
+    .filter((item): item is NavItem => Boolean(item));
+
   const handleNavigate = () => {
     if (onNavigate) onNavigate();
   };
@@ -1026,22 +1050,30 @@ export function Sidebar({
   const renderNavItem = (
     item: NavItem,
     active: boolean,
-    section: NavSection,
+    _section: NavSection,
     compact = false,
     disabled?: boolean,
+    compactLabel?: string,
   ) => {
+    const label = compactLabel || t(compact && item.shortNameKey ? item.shortNameKey : item.nameKey);
+    const sharedClassName = cn(
+      "group relative flex min-w-0 items-center gap-2 rounded-md border text-xs font-semibold transition-colors duration-200",
+      compact ? "min-h-12 px-3 py-2.5" : "min-h-10 px-3 py-2.5",
+      collapsed && "mx-auto h-10 w-10 justify-center px-0 py-0",
+      active
+        ? "border-(--sidebar-command-active)/70 bg-(--dashboard-rail-surface) text-white"
+        : "border-transparent text-slate-500 hover:border-white/10 hover:bg-white/[0.06] hover:text-slate-100",
+    );
+
     if (disabled) {
       return (
         <div
-          className={cn(
-            "flex items-center gap-2 rounded-lg text-xs font-medium transition-colors cursor-not-allowed opacity-40",
-            compact ? "px-2 py-2" : "px-2 py-2 md:px-3 md:py-2.5",
-            collapsed && "justify-center px-2 py-2 h-10 w-10",
-            "text-slate-500",
-          )}
+          aria-disabled="true"
+          title={collapsed ? label : undefined}
+          className={cn(sharedClassName, "cursor-not-allowed opacity-35")}
         >
-          <item.icon className="h-4 w-4 md:h-[18px] md:w-[18px] flex-shrink-0" />
-          {!collapsed && t(item.nameKey)}
+          <item.icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+          {!collapsed && <span className="truncate">{label}</span>}
         </div>
       );
     }
@@ -1050,119 +1082,71 @@ export function Sidebar({
       <Link
         to={item.href}
         onClick={handleNavigate}
-        title={collapsed ? t(item.nameKey) : undefined}
-        className={cn(
-          "group relative flex items-center overflow-hidden rounded-lg text-xs font-semibold transition-all duration-200",
-          compact
-            ? "min-h-12 flex-col justify-center gap-1 px-2 py-2 text-center"
-            : "gap-2 px-2 py-2 md:px-3 md:py-2.5",
-          collapsed && "mx-auto h-11 w-11 justify-center rounded-2xl px-0 py-0",
-          active
-            ? "bg-white text-slate-950 shadow-lg shadow-cyan-950/20"
-            : "text-slate-300 hover:bg-white/8 hover:text-white",
-        )}
+        title={collapsed ? label : undefined}
+        aria-current={active ? "page" : undefined}
+        className={sharedClassName}
       >
         {active && (
-          <span
-            className={cn(
-              "absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r",
-              section.accent,
-            )}
-          />
+          <span className="absolute inset-y-1 left-0 w-0.5 rounded-full bg-(--sidebar-command-active)" aria-hidden="true" />
         )}
         <item.icon
           className={cn(
-            "flex-shrink-0 h-4 w-4 md:h-[18px] md:w-[18px]",
-            compact && "h-4 w-4",
-            collapsed && "h-5 w-5",
-            active ? "text-slate-950" : "text-slate-400 group-hover:text-white",
+            "h-4 w-4 shrink-0",
+            collapsed && "h-[18px] w-[18px]",
+            active ? "text-(--sidebar-command-active)" : "text-slate-500 group-hover:text-slate-200",
           )}
+          aria-hidden="true"
         />
-        {!collapsed && (
-          <span
-            className={cn(
-              compact ? "text-center text-[11px] leading-tight" : "truncate",
-            )}
-            title={t(item.nameKey)}
-          >
-            {t(compact && item.shortNameKey ? item.shortNameKey : item.nameKey)}
-          </span>
-        )}
+        {!collapsed && <span className="truncate">{label}</span>}
+        {!collapsed && compact && <ArrowRight className="ml-auto h-3 w-3 shrink-0 text-slate-600 group-hover:text-amber-300" aria-hidden="true" />}
       </Link>
     );
   };
 
   // ── Render a whole section ─────────────────────────────────────────────────
 
-  const renderSection = (section: NavSection) => {
-    const visible = filterVisible(section.items);
-    if (visible.length === 0) return null;
-    const useGrid = !collapsed && visible.length > 4;
+  const renderSection = (section: NavSection, visible: NavItem[]) => {
+    const sectionIsActive = visible.some((item) => isPathActive(item.href));
+    const isOpen = collapsed || (openSections[section.labelKey] ?? sectionIsActive);
+    const SectionIcon = section.icon;
+
+    if (collapsed) {
+      return (
+        <div className="mb-1.5">
+          {visible.map((item) => (
+            <div key={item.href} className="mb-1">
+              {renderNavItem(item, isPathActive(item.href), section, false, !checkPermission(item.permission) || item.disabled)}
+            </div>
+          ))}
+        </div>
+      );
+    }
 
     return (
-      <div
-        className={cn(
-          "relative mb-3 overflow-hidden",
-          collapsed
-            ? "rounded-[1.4rem] border border-white/7 bg-white/[0.025] p-1.5"
-            : "rounded-xl border border-white/8 bg-white/[0.045] p-2 shadow-sm",
-        )}
-      >
-        {!collapsed && (
-          <div className="mb-2 flex items-start justify-between gap-2 px-1.5 pt-1">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full bg-gradient-to-r",
-                    section.accent,
-                  )}
-                />
-                <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-400">
-                  {t(section.labelKey)}
-                </span>
-              </div>
-              <p className="mt-0.5 truncate text-[11px] text-slate-500">
-                {t(section.descriptionKey)}
-              </p>
-            </div>
-            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
-              {visible.length}
-            </span>
-          </div>
-        )}
-        {collapsed && (
-          <div
-            className={cn(
-              "mx-auto mb-1.5 h-1 w-6 rounded-full bg-gradient-to-r",
-              section.accent,
-            )}
-          />
-        )}
-
-        <ul
-          className={cn(
-            useGrid ? "grid grid-cols-2 gap-1.5" : "space-y-1",
-            collapsed && "grid grid-cols-1 gap-1 space-y-0",
-          )}
+      <section className="border-b border-white/[0.07] last:border-b-0" aria-labelledby={`${section.labelKey}-heading`}>
+        <button
+          type="button"
+          onClick={() => setOpenSections((current) => ({ ...current, [section.labelKey]: !isOpen }))}
+          aria-expanded={isOpen}
+          className="group flex min-h-12 w-full items-center gap-2 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-white/[0.05]"
         >
-          {visible.map((item) => {
-            const active = isPathActive(item.href);
-            const disabled = !checkPermission(item.permission);
-            return (
+          <SectionIcon className="h-[18px] w-[18px] shrink-0 text-slate-500 group-hover:text-amber-300" aria-hidden="true" />
+          <span id={`${section.labelKey}-heading`} className="min-w-0 flex-1 truncate text-[13px] font-semibold uppercase tracking-[0.13em] text-slate-200">
+            {t(section.labelKey)}
+          </span>
+          <span className="font-mono text-[10px] text-slate-500">{visible.length}</span>
+          <ChevronDown className={cn("h-3.5 w-3.5 text-slate-600 transition-transform", isOpen && "rotate-180 text-(--sidebar-command-active)")} aria-hidden="true" />
+        </button>
+        <div className={cn("grid transition-[grid-template-rows,opacity] duration-200", isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0")}>
+          <ul className="min-h-0 overflow-hidden space-y-0.5 px-1 pb-1">
+            {isOpen && visible.map((item) => (
               <li key={item.href}>
-                {renderNavItem(
-                  item,
-                  active,
-                  section,
-                  useGrid,
-                  item.disabled || disabled,
-                )}
+                {renderNavItem(item, isPathActive(item.href), section, false, !checkPermission(item.permission) || item.disabled)}
               </li>
-            );
-          })}
-        </ul>
-      </div>
+            ))}
+          </ul>
+        </div>
+      </section>
     );
   };
 
@@ -1171,17 +1155,18 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "relative flex h-screen flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_28%),linear-gradient(180deg,#07111f_0%,#0f172a_42%,#070b13_100%)] transition-all duration-300",
-        collapsed ? "w-20" : "w-72",
+        "relative flex h-screen flex-col overflow-hidden border-r border-white/10 bg-(--dashboard-rail) font-sans transition-all duration-300",
+        collapsed ? "w-[72px]" : "w-[340px]",
       )}
     >
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.045)_1px,transparent_1px)] bg-[size:48px_48px] pointer-events-none" />
+      {/* Fine steel grid keeps the rail legible without competing with navigation. */}
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] bg-[size:32px_32px]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-cyan-400/[0.08] to-transparent" />
       {/* ── Logo / header ── */}
       <div
         className={cn(
-          "flex min-h-20 items-center justify-between gap-2 border-b border-white/10 bg-white/[0.035] flex-shrink-0",
-          collapsed ? "px-2 justify-center flex-col py-3" : "px-3",
+          "relative z-10 flex min-h-20 items-center justify-between gap-2 border-b border-white/10 bg-(--dashboard-rail) flex-shrink-0",
+          collapsed ? "px-2 justify-center flex-col py-3" : "px-3 py-2.5",
         )}
       >
         {/* ── Company Switcher / Profile Section ── */}
@@ -1325,15 +1310,30 @@ export function Sidebar({
       {/* ── Navigation ── */}
       <nav
         className={cn(
-          "flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent",
+          "relative z-10 flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent",
           collapsed
             ? "px-2 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            : "px-3 py-3",
+            : "px-3 py-2.5",
         )}
       >
+        {!collapsed && quickLaunchItems.length > 0 && (
+          <section className="mb-4" aria-label={t("nav.quickLaunch", "Quick launch")}>
+            <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-white/[0.1] bg-white/[0.1]">
+              {quickLaunchItems.map((item) => {
+                const section = ALL_SECTIONS.find((candidate) => candidate.items.some((candidateItem) => candidateItem.href === item.href)) || inventoryNav;
+                return (
+                  <div key={item.href} className="bg-(--dashboard-rail)">
+                    {renderNavItem(item, isPathActive(item.href), section, true, !checkPermission(item.permission) || item.disabled)}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Navigation sections */}
-        {ALL_SECTIONS.map((section) => (
-          <div key={section.labelKey}>{renderSection(section)}</div>
+        {visibleSections.map(({ section, items }) => (
+          <div key={section.labelKey}>{renderSection(section, items)}</div>
         ))}
 
         {/* Onboarding Guide */}

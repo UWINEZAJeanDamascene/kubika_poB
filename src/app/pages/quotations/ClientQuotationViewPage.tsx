@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { quotationsApi, clientsApi } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/apiBase';
 import { Layout } from '../../layout/Layout';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
@@ -183,7 +184,7 @@ export default function ClientQuotationViewPage() {
   const sendNotification = async (action: 'accepted' | 'rejected', reason?: string) => {
     try {
       // This will call the backend notification endpoint
-      await fetch(`${import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://kubikasystem-bnd.onrender.com/api'}/notifications/quotation-action`, {
+      await fetch(`${API_BASE_URL}/notifications/quotation-action`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

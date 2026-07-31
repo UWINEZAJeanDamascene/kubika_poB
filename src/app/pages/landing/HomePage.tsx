@@ -1,431 +1,225 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
-import { useTranslation } from "react-i18next";
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
+import { Button, Stack } from '@mui/material';
+import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
+import { createMuiTheme } from '@/theme/muiTheme';
 import {
+  Activity,
+  ArrowDownRight,
   ArrowRight,
-  BadgeCheck,
-  Banknote,
+  ArrowUpRight,
   BarChart3,
   Boxes,
-  Building2,
   Check,
   ChevronRight,
   CircleDollarSign,
-  ClipboardCheck,
-  Factory,
-  Facebook,
-  FileText,
-  Github,
-  Globe2,
-  Instagram,
+  ClipboardList,
+  Database,
+  Gauge,
   Layers3,
-  Linkedin,
-  LineChart,
   LockKeyhole,
-  Mail,
   Menu,
   Moon,
-  PackageCheck,
-  Phone,
-  Radar,
-  ReceiptText,
   ShieldCheck,
-  Sparkles,
   Sun,
-  TrendingUp,
-  Users2,
-  WalletCards,
   X,
-  Zap,
-} from "lucide-react";
-import { Button } from "@/app/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
-import { useTheme } from "@/contexts/ThemeContext";
-import { LanguageSelector } from "@/app/components/LanguageSelector";
-import { useChatPanelStore } from "@/store/chatPanelStore";
+} from 'lucide-react';
+import { LanguageSelector } from '@/app/components/LanguageSelector';
+import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
-const worldNodes = ["Kigali", "Musanze", "Rubavu", "Huye", "Nyagatare", "Muhanga"];
+const telemetry = [
+  { label: 'SYS.UPTIME', value: '99.99%', tone: 'healthy' },
+  { label: 'LATENCY', value: '12ms', tone: 'neutral' },
+  { label: 'STOCKOUTS', value: '-42%', tone: 'healthy' },
+  { label: 'RRA.READY', value: 'TRUE', tone: 'healthy' },
+  { label: 'BRANCHES', value: '06 ONLINE', tone: 'healthy' },
+] as const;
 
-const socialLinks = [
-  { label: "Instagram", icon: Instagram, href: "https://www.instagram.com/kubikasystem" },
-  { label: "Facebook", icon: Facebook, href: "https://www.facebook.com/kubikasystem" },
-  { label: "X", icon: X, href: "https://x.com/kubikasystem" },
-  { label: "GitHub", icon: Github, href: "https://github.com/kubikasystem" },
-  { label: "LinkedIn", icon: Linkedin, href: "https://www.linkedin.com/company/kubikasystem" },
+const signalRows = [
+  { label: 'On-hand value', value: 'RWF 1.84M', status: 'WATCHED', width: '62%', tone: 'bg-[var(--industrial-copper)]' },
+  { label: 'Supplier payments', value: '87.3%', status: 'ON TRACK', width: '74%', tone: 'bg-[var(--industrial-olive)]' },
+  { label: 'Payroll variance', value: '1.3%', status: 'CONTROLLED', width: '91%', tone: 'bg-[var(--industrial-olive)]' },
 ];
+
+const featureRows = [
+  {
+    index: '01',
+    code: 'SYS.INVENTORY',
+    title: 'Know what is moving before it becomes a problem.',
+    copy: 'Live stock, batches, serials, transfers and reorder thresholds across every warehouse — without another spreadsheet handoff.',
+    icon: Boxes,
+    status: 'STOCK POSITION / LIVE',
+  },
+  {
+    index: '02',
+    code: 'SYS.PURCHASING',
+    title: 'Turn purchase intent into accountable supply.',
+    copy: 'Approve purchase orders, receive goods, reconcile supplier bills and keep committed spend visible from request to settlement.',
+    icon: ClipboardList,
+    status: 'COMMITMENTS / TRACKED',
+  },
+  {
+    index: '03',
+    code: 'SYS.FINANCE',
+    title: 'Close the loop from transaction to decision.',
+    copy: 'Connect sales, expenses, bank activity, payroll and tax reporting in one operating record your team can trust at month-end.',
+    icon: CircleDollarSign,
+    status: 'CASH CONTROL / HEALTHY',
+  },
+];
+
+const metricRows = [
+  ['18+', 'CONNECTED MODULES', 'From stock control to payroll.'],
+  ['01', 'OPERATING RECORD', 'One version of the number.'],
+  ['06', 'BRANCHES ONLINE', 'Multi-company ready.'],
+  ['24/7', 'DECISION CONTEXT', 'Reports when you need them.'],
+];
+
+function BrandMark({ compact = false }: { compact?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-3">
+      <span className="grid h-10 w-10 place-items-center border border-[var(--industrial-copper)] bg-[var(--industrial-copper)] text-[var(--industrial-bg)]">
+        <Layers3 className="h-5 w-5" strokeWidth={1.8} />
+      </span>
+      {!compact && (
+        <span className="leading-none">
+          <span className="block font-mono text-sm font-bold tracking-[0.18em] text-[var(--industrial-ink)]">KUBIKA</span>
+          <span className="mt-1 block font-mono text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--industrial-muted)]">OPERATIONS SYSTEM</span>
+        </span>
+      )}
+    </span>
+  );
+}
+
+function TelemetryBand({ compact = false }: { compact?: boolean }) {
+  const items = [...telemetry, ...telemetry];
+
+  return (
+    <div className={`industrial-telemetry relative overflow-hidden border-y border-[var(--industrial-copper)]/35 ${compact ? 'py-2' : 'py-2.5'}`}>
+      <div className="industrial-telemetry__fade industrial-telemetry__fade--left" aria-hidden="true" />
+      <div className="industrial-telemetry__fade industrial-telemetry__fade--right" aria-hidden="true" />
+      <div className="industrial-telemetry__track flex min-w-max animate-[industrial-marquee_36s_linear_infinite] gap-0 pr-8 motion-reduce:animate-none">
+        {items.map((item, index) => (
+          <span key={`${item.label}-${index}`} aria-hidden={index >= telemetry.length} className="industrial-telemetry__item inline-flex items-center gap-3 border-r border-white/10 px-5 first:pl-1 sm:px-7 sm:first:pl-2">
+            <span className={`industrial-telemetry__dot industrial-telemetry__dot--${item.tone}`} aria-hidden="true" />
+            <span className="industrial-telemetry__label">{item.label}</span>
+            <span className="industrial-telemetry__value">{item.value}</span>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const { t } = useTranslation();
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { isAuthenticated, user } = useAuth();
-  const isDark = theme === "dark";
-  const systemHref = user?.role === "platform_admin" ? "/platform-admin" : "/dashboard";
-  const { open: chatOpen, toggle: toggleChat } = useChatPanelStore();
-
-  const navItems = useMemo(
-    () => [
-      { label: t("landing.home.nav.platform"), href: "/platform" },
-      { label: t("landing.home.nav.operations"), href: "/operations" },
-      { label: t("landing.home.nav.security"), href: "/trust" },
-      { label: t("landing.home.nav.pricing"), href: "/pricing" },
-    ],
-    [t],
-  );
-
-  const operatingMetrics = useMemo(
-    () => [
-      { value: t("landing.home.metrics.modules.value"), label: t("landing.home.metrics.modules.label"), detail: t("landing.home.metrics.modules.detail") },
-      { value: t("landing.home.metrics.platform.value"), label: t("landing.home.metrics.platform.label"), detail: t("landing.home.metrics.platform.detail") },
-      { value: t("landing.home.metrics.reports.value"), label: t("landing.home.metrics.reports.label"), detail: t("landing.home.metrics.reports.detail") },
-      { value: t("landing.home.metrics.company.value"), label: t("landing.home.metrics.company.label"), detail: t("landing.home.metrics.company.detail") },
-    ],
-    [t],
-  );
-
-  const commandModules = useMemo(
-    () => [
-      { icon: Boxes, name: t("landing.home.modules.inventory.name"), copy: t("landing.home.modules.inventory.copy") },
-      { icon: ReceiptText, name: t("landing.home.modules.sales.name"), copy: t("landing.home.modules.sales.copy") },
-      { icon: ClipboardCheck, name: t("landing.home.modules.purchasing.name"), copy: t("landing.home.modules.purchasing.copy") },
-      { icon: Banknote, name: t("landing.home.modules.finance.name"), copy: t("landing.home.modules.finance.copy") },
-      { icon: Users2, name: t("landing.home.modules.hr.name"), copy: t("landing.home.modules.hr.copy") },
-      { icon: ShieldCheck, name: t("landing.home.modules.admin.name"), copy: t("landing.home.modules.admin.copy") },
-    ],
-    [t],
-  );
-
-  const timeline = useMemo(
-    () => [
-      { title: t("landing.home.operations.timeline.record.title"), copy: t("landing.home.operations.timeline.record.copy") },
-      { title: t("landing.home.operations.timeline.connect.title"), copy: t("landing.home.operations.timeline.connect.copy") },
-      { title: t("landing.home.operations.timeline.decide.title"), copy: t("landing.home.operations.timeline.decide.copy") },
-    ],
-    [t],
-  );
-
-  const signalRows = useMemo(
-    () => [
-      { label: t("landing.home.signals.cashRunway.label"), value: "148 days", status: t("landing.home.signals.cashRunway.status"), width: "86%" },
-      { label: t("landing.home.signals.stockValue.label"), value: "RWF 1.84M", status: t("landing.home.signals.stockValue.status"), width: "62%" },
-      { label: t("landing.home.signals.paidSuppliers.label"), value: "12.7%", status: t("landing.home.signals.paidSuppliers.status"), width: "74%" },
-      { label: t("landing.home.signals.payrollVariance.label"), value: "1.3%", status: t("landing.home.signals.payrollVariance.status"), width: "91%" },
-    ],
-    [t],
-  );
-
-  const heroBadges = useMemo(
-    () => [
-      t("landing.home.badges.multiBranch"),
-      t("landing.home.badges.rraReady"),
-      t("landing.home.badges.payrollIncluded"),
-      t("landing.home.badges.worksOffline"),
-    ],
-    [t],
-  );
-
-  const securityFeatures = useMemo(
-    () =>
-      [
-        [Building2, t("landing.home.security.features.multiCompany")],
-        [Globe2, t("landing.home.security.features.multiBranch")],
-        [FileText, t("landing.home.security.features.auditReporting")],
-        [WalletCards, t("landing.home.security.features.bankControls")],
-        [CircleDollarSign, t("landing.home.security.features.budgetTracking")],
-        [BadgeCheck, t("landing.home.security.features.roleAccess")],
-      ] as const,
-    [t],
-  );
-
-  const pricingFeatures = useMemo(
-    () => [
-      t("landing.home.pricing.features.mobileDashboard"),
-      t("landing.home.pricing.features.stockAlerts"),
-      t("landing.home.pricing.features.vatReports"),
-      t("landing.home.pricing.features.whatsappSupport"),
-    ],
-    [t],
-  );
-
-  const priorityItems = useMemo(
-    () => [
-      [t("landing.home.operations.priorities.items.approvePo.title"), t("landing.home.operations.priorities.items.approvePo.copy")],
-      [t("landing.home.operations.priorities.items.lowStock.title"), t("landing.home.operations.priorities.items.lowStock.copy")],
-      [t("landing.home.operations.priorities.items.payroll.title"), t("landing.home.operations.priorities.items.payroll.copy")],
-      [t("landing.home.operations.priorities.items.reconcile.title"), t("landing.home.operations.priorities.items.reconcile.copy")],
-    ],
-    [t],
-  );
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const systemHref = user?.role === 'platform_admin' ? '/platform-admin' : '/dashboard';
+  const pageTheme = useMemo(() => createMuiTheme(theme), [theme]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      delete (window as any).openLoginModal;
-      delete (window as any).openRegisterModal;
-    }
-    const onScroll = () => setScrolled(window.scrollY > 18);
+    const onScroll = () => setScrolled(window.scrollY > 16);
     onScroll();
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  const navItems = [
+    { label: t('landing.home.nav.platform'), href: '#platform' },
+    { label: t('landing.home.nav.operations'), href: '#operations' },
+    { label: t('landing.home.nav.security'), href: '#security' },
+  ];
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#f7f9fb] text-slate-950 dark:bg-[#06080d] dark:text-white">
-      <style>{`
-        @keyframes home-drift { 0%, 100% { transform: translate3d(0, 0, 0); } 50% { transform: translate3d(0, -14px, 0); } }
-        @keyframes home-scan { 0% { transform: translateX(-115%); } 100% { transform: translateX(115%); } }
-        @keyframes home-pulse { 0%, 100% { opacity: .38; transform: scale(.96); } 50% { opacity: .9; transform: scale(1.04); } }
-        @keyframes home-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-        .home-drift { animation: home-drift 7s ease-in-out infinite; }
-        .home-scan { animation: home-scan 5.5s linear infinite; }
-        .home-pulse { animation: home-pulse 3.8s ease-in-out infinite; }
-        .home-marquee { animation: home-marquee 28s linear infinite; }
-        @media (prefers-reduced-motion: reduce) {
-          .home-drift, .home-scan, .home-pulse, .home-marquee { animation: none; }
-        }
-      `}</style>
-
-      <header
-        className={`fixed inset-x-0 top-0 z-50 border-b transition-all duration-300 ${
-          scrolled
-            ? "border-slate-200/80 bg-white/86 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-[#080b12]/84"
-            : "border-transparent bg-transparent"
-        }`}
-      >
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:h-20 lg:px-8">
-          <Link to="/" className="flex items-center gap-3" aria-label="KUBIKA system home">
-            <span className="grid h-10 w-10 place-items-center rounded-lg bg-slate-950 text-white shadow-lg shadow-cyan-500/10 dark:bg-white dark:text-slate-950">
-              <Layers3 className="h-5 w-5" />
-            </span>
-            <span className="flex flex-col leading-none">
-              <span className="text-base font-semibold tracking-[0.18em] text-slate-950 dark:text-white">KUBIKA SYSTEM</span>
-              <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">
-                {t("landing.home.brandTagline")}
-              </span>
-            </span>
-          </Link>
-
-          <nav className="hidden items-center gap-7 lg:flex">
+    <MuiThemeProvider theme={pageTheme}>
+      <div className="industrial-public min-h-screen overflow-x-hidden bg-[var(--industrial-bg)] text-[var(--industrial-ink)]">
+      <header className={`sticky top-0 z-50 border-b transition-colors ${scrolled ? 'border-[var(--industrial-copper)]/45 bg-[var(--industrial-bg)]/95 backdrop-blur' : 'border-white/10 bg-[var(--industrial-bg)]'}`}>
+        <div className="mx-auto flex min-h-[72px] max-w-[1440px] items-center justify-between gap-6 px-5 sm:px-8 lg:px-12">
+          <Link to="/" aria-label="KUBIKA home"><BrandMark /></Link>
+          <nav className="hidden items-center gap-8 lg:flex">
             {navItems.map((item) => (
-              <Link key={item.href} to={item.href} className="text-sm font-medium text-slate-600 transition hover:text-slate-950 dark:text-slate-300 dark:hover:text-white">
-                {item.label}
-              </Link>
+              <a key={item.href} href={item.href} className="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--industrial-muted)] transition-colors hover:text-[var(--industrial-ink)]">{item.label}</a>
             ))}
+            <Link to="/pricing" className="font-mono text-[10px] font-semibold uppercase tracking-[0.15em] text-[var(--industrial-muted)] transition-colors hover:text-[var(--industrial-ink)]">PRICING</Link>
           </nav>
-
-          <div className="hidden items-center gap-2 lg:flex">
-            <LanguageSelector variant="landing" />
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10">
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <div className="hidden sm:block"><LanguageSelector variant="landing" className="!text-[var(--industrial-muted)] hover:!bg-white/10 hover:!text-[var(--industrial-ink)]" /></div>
+            <Button aria-label="Toggle theme" onClick={toggleTheme} variant="text" color="inherit" className="!min-w-0 !p-2 !text-[var(--industrial-muted)] hover:!bg-white/10 hover:!text-[var(--industrial-ink)]">
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button
-              size="sm"
-              onClick={toggleChat}
-              className={`h-9 gap-2 rounded-xl px-3 transition-all ${
-                chatOpen
-                  ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg shadow-indigo-500/30 hover:brightness-110"
-                  : "bg-gradient-to-r from-indigo-50 to-violet-50 text-indigo-700 ring-1 ring-inset ring-indigo-200 hover:from-indigo-100 hover:to-violet-100 hover:shadow-md dark:from-indigo-500/15 dark:to-violet-500/15 dark:text-indigo-300 dark:ring-indigo-500/30 dark:hover:from-indigo-500/25 dark:hover:to-violet-500/25"
-              }`}
-              title={chatOpen ? t("landing.home.ai.close") : t("landing.home.ai.open")}
-            >
-              <span className="relative flex h-2 w-2">
-                <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${chatOpen ? "bg-white" : "bg-emerald-400"}`} />
-                <span className={`relative inline-flex h-2 w-2 rounded-full ${chatOpen ? "bg-white" : "bg-emerald-500"}`} />
-              </span>
-              <Sparkles className="h-4 w-4" />
-              <span className="text-sm font-semibold">{t("landing.home.ai.label")}</span>
+            <Button component={Link} to="/login" variant="outlined" color="primary" className="hidden !h-9 !px-3 !text-[10px] sm:inline-flex">LOG IN</Button>
+            <Button component={Link} to={isAuthenticated ? systemHref : '/register'} variant="contained" color="primary" endIcon={<ArrowUpRight className="h-4 w-4" />} className="!h-9 !px-3 !text-[10px]">
+              {isAuthenticated ? 'OPEN SYSTEM' : 'OPEN WORKSPACE'}
             </Button>
-            {isAuthenticated ? (
-              <Link to={systemHref}>
-                <Button className="bg-slate-950 px-5 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-cyan-100">
-                  {t("landing.home.backToDashboard")}
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </Link>
-            ) : (
-              <>
-                <Link to="/login">
-                  <Button variant="ghost" className="text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10">
-                    {t("landing.home.logIn")}
-                  </Button>
-                </Link>
-                <Link to="/register">
-                  <Button className="bg-slate-950 px-5 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-cyan-100">
-                    {t("landing.home.startNow")}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-              </>
-            )}
-          </div>
-
-          <div className="flex items-center gap-1 lg:hidden">
-            <Button variant="ghost" size="icon" onClick={toggleTheme} className="text-slate-800 dark:text-white">
-              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </Button>
-            <Button variant="ghost" size="icon" onClick={() => setMobileOpen((value) => !value)} className="text-slate-800 dark:text-white">
+            <Button aria-label="Toggle navigation" onClick={() => setMobileOpen((value) => !value)} variant="text" color="inherit" className="!min-w-0 !p-2 !text-[var(--industrial-muted)] lg:!hidden">
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
-          </div>
+          </Stack>
         </div>
-
         {mobileOpen && (
-          <div className="border-t border-slate-200 bg-white px-4 py-4 shadow-xl dark:border-white/10 dark:bg-[#080b12] lg:hidden">
-            <div className="grid gap-2">
-              {navItems.map((item) => (
-                <Link key={item.href} to={item.href} onClick={() => setMobileOpen(false)} className="rounded-lg px-3 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-white/10">
-                  {item.label}
-                </Link>
-              ))}
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                <LanguageSelector variant="landing" className="justify-center rounded-md border border-input bg-background px-3 py-2" />
-                <Button onClick={() => { toggleChat(); setMobileOpen(false); }} className={`gap-2 transition-all ${chatOpen ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md" : "bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200 hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300 dark:ring-indigo-500/30"}`}>
-                  <Sparkles className="h-4 w-4" />
-                  {t("landing.home.ai.label")}
-                </Button>
-                {isAuthenticated ? (
-                  <Link to={systemHref} onClick={() => setMobileOpen(false)} className="col-span-2">
-                    <Button className="w-full bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950">
-                      {t("landing.home.backToDashboard")}
-                    </Button>
-                  </Link>
-                ) : (
-                  <>
-                    <Link to="/login" onClick={() => setMobileOpen(false)}>
-                      <Button variant="outline" className="w-full">{t("landing.home.logIn")}</Button>
-                    </Link>
-                    <Link to="/register" onClick={() => setMobileOpen(false)} className="col-span-2">
-                      <Button className="w-full bg-slate-950 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950">
-                        {t("landing.home.createWorkspace")}
-                      </Button>
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
+          <div className="border-t border-white/10 px-5 py-4 lg:hidden">
+            <Stack spacing={1}>
+              {navItems.map((item) => <a key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className="border-b border-white/10 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--industrial-muted)]">{item.label}</a>)}
+              <Link to="/pricing" onClick={() => setMobileOpen(false)} className="border-b border-white/10 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--industrial-muted)]">PRICING</Link>
+              <Link to="/login" onClick={() => setMobileOpen(false)} className="pt-3 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--industrial-copper)]">LOG IN <ArrowRight className="ml-1 inline h-3.5 w-3.5" /></Link>
+            </Stack>
           </div>
         )}
       </header>
 
       <main>
-        <section className="relative min-h-[92vh] overflow-hidden pt-24 lg:pt-28">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_18%,rgba(14,165,233,0.22),transparent_28%),radial-gradient(circle_at_82%_8%,rgba(16,185,129,0.18),transparent_24%),linear-gradient(135deg,#f8fbff_0%,#edf7f4_45%,#f8fafc_100%)] dark:bg-[radial-gradient(circle_at_18%_18%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_82%_12%,rgba(74,222,128,0.13),transparent_24%),linear-gradient(135deg,#05070c_0%,#08111a_48%,#07100d_100%)]" />
-          <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#f7f9fb] to-transparent dark:from-[#06080d]" />
-          <div className="absolute left-0 right-0 top-24 overflow-hidden border-y border-slate-900/5 bg-white/40 py-2 backdrop-blur-sm dark:border-white/10 dark:bg-white/[0.03]">
-            <div className="home-marquee flex w-[200%] gap-8 text-xs font-semibold uppercase tracking-[0.22em] text-slate-500 dark:text-slate-400">
-              {[...worldNodes, ...worldNodes, ...worldNodes, ...worldNodes].map((node, index) => (
-                <span key={`${node}-${index}`} className="flex items-center gap-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
-                  {t("landing.home.branchOnline", { city: node })}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-4 pb-16 pt-20 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:px-8 lg:pb-20 lg:pt-24">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-white/70 px-3 py-1.5 text-sm font-semibold text-cyan-800 shadow-sm backdrop-blur dark:bg-white/8 dark:text-cyan-200">
-                <Sparkles className="h-4 w-4" />
-                {t("landing.home.badge")}
-              </div>
-              <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight text-slate-950 dark:text-white sm:text-6xl lg:text-7xl">
-                {t("landing.home.heroTitle")}
-              </h1>
-              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">{t("landing.home.heroSubtitle")}</p>
-              {isAuthenticated && (
-                <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                  <Check className="h-4 w-4" />
-                  {t("landing.home.signedIn", { name: user?.name ? t("landing.home.signedInAs", { name: user.name }) : "" })}
+        <section className="industrial-grid border-b border-white/10">
+          <div className="mx-auto max-w-[1440px] px-5 pb-14 pt-5 sm:px-8 lg:px-12 lg:pb-16 lg:pt-8">
+            <TelemetryBand />
+            <div className="grid gap-14 pt-16 lg:grid-cols-[0.75fr_1.25fr] lg:items-center lg:gap-12 lg:pt-24">
+              <div className="max-w-xl">
+                <p className="industrial-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--industrial-copper)]">KUBIKA / CONTROL LAYER 01</p>
+                <h1 className="industrial-display mt-5 text-[clamp(4.5rem,9vw,9.5rem)] leading-[0.82] text-[var(--industrial-ink)]">PRECISION<br />IN EVERY<br /><span className="text-[var(--industrial-copper)]">OPERATION.</span></h1>
+                <p className="mt-8 max-w-lg text-base leading-7 text-[var(--industrial-muted)] sm:text-lg">{t('landing.home.heroSubtitle')}</p>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} className="mt-9">
+                  <Button component={Link} to={isAuthenticated ? systemHref : '/register'} variant="contained" color="primary" endIcon={<ArrowRight className="h-4 w-4" />} className="!justify-between !px-5 !py-3 !text-[10px] sm:!justify-center">{isAuthenticated ? 'RETURN TO SYSTEM' : 'INITIATE WORKSPACE'}</Button>
+                  {!isAuthenticated && <Button component={Link} to="/login" variant="outlined" color="primary" endIcon={<ChevronRight className="h-4 w-4" />} className="!justify-between !px-5 !py-3 !text-[10px] sm:!justify-center">ACCESS CONSOLE</Button>}
+                </Stack>
+                <div className="mt-10 flex flex-wrap gap-x-5 gap-y-3 border-t border-white/10 pt-5 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--industrial-muted)]">
+                  {['Multi-branch', 'RRA-ready', 'Offline capable'].map((item) => <span key={item} className="inline-flex items-center gap-2"><Check className="h-3.5 w-3.5 text-[var(--industrial-olive)]" />{item}</span>)}
                 </div>
-              )}
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link to={isAuthenticated ? systemHref : "/register"}>
-                  <Button className="h-12 bg-slate-950 px-6 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950 dark:hover:bg-cyan-100">
-                    {isAuthenticated ? t("landing.home.returnToDashboard") : t("landing.home.startFreeTrial")}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                {!isAuthenticated && (
-                  <Link to="/login">
-                    <Button variant="outline" className="h-12 border-slate-300 bg-white/70 px-6 text-slate-900 hover:bg-white dark:border-white/15 dark:bg-white/8 dark:text-white dark:hover:bg-white/12">
-                      {t("landing.home.signIn")}
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                )}
               </div>
-              <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-600 dark:text-slate-300">
-                {heroBadges.map((item) => (
-                  <span key={item} className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-3 py-1.5 dark:border-white/10 dark:bg-white/6">
-                    <Check className="h-3.5 w-3.5 text-emerald-500" />
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </div>
 
-            <div className="home-drift relative">
-              <div className="absolute -inset-6 rounded-[8px] bg-cyan-500/10 blur-3xl dark:bg-cyan-400/10" />
-              <div className="relative overflow-hidden rounded-lg border border-white/70 bg-slate-950 p-3 shadow-2xl shadow-slate-900/20 dark:border-white/10">
-                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent home-scan" />
-                <div className="rounded-lg border border-white/10 bg-[#071018] p-4">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-4">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300">{t("landing.home.preview.businessOverview")}</p>
-                      <h2 className="mt-1 text-xl font-semibold text-white">{t("landing.home.preview.liveDashboard")}</h2>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                      <span className="home-pulse h-2 w-2 rounded-full bg-emerald-300" />
-                      {t("landing.home.preview.live")}
-                    </div>
+              <div className="relative lg:pl-8">
+                <div className="absolute -left-3 top-10 hidden h-px w-20 bg-[var(--industrial-copper)] lg:block" />
+                <div className="industrial-frame overflow-hidden border border-white/15 bg-[var(--industrial-panel)] shadow-2xl shadow-black/30">
+                  <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.13em] text-[var(--industrial-muted)] sm:px-5">
+                    <span className="inline-flex items-center gap-2"><span className="h-2 w-2 bg-[var(--industrial-olive)]" />LIVE / BUSINESS OVERVIEW</span>
+                    <span>07:42:18 UTC</span>
                   </div>
-                  <div className="grid gap-3 py-4 sm:grid-cols-3">
-                    {[
-                      [t("landing.home.preview.netCash"), "RWF 4.82M", "+12.4%"],
-                      [t("landing.home.preview.sales"), "1,284", "+8.1%"],
-                      [t("landing.home.preview.monthEnd"), t("landing.home.preview.onTrack"), t("landing.home.preview.itemsPending", { count: 2 })],
-                    ].map(([label, value, delta]) => (
-                      <div key={String(label)} className="rounded-lg border border-white/10 bg-white/[0.04] p-3">
-                        <p className="text-xs text-slate-400">{label}</p>
-                        <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
-                        <p className="mt-1 text-xs font-medium text-emerald-300">{delta}</p>
+                  <div className="grid gap-5 p-4 sm:p-6">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {[['NET CASH', 'RWF 4.82M', '+12.4%'], ['SALES / 30D', '1,284', '+8.1%'], ['MONTH END', 'ON TRACK', '02 ACTIONS']].map(([label, value, delta]) => (
+                        <div key={label} className="border border-white/10 bg-[var(--industrial-panel-raised)] p-4">
+                          <p className="industrial-mono text-[9px] uppercase tracking-[0.13em] text-[var(--industrial-muted)]">{label}</p>
+                          <p className="mt-3 font-mono text-xl font-semibold tracking-tight text-[var(--industrial-ink)] sm:text-2xl">{value}</p>
+                          <p className="mt-2 font-mono text-[10px] text-[var(--industrial-olive)]">{delta}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
+                      <div className="border border-white/10 p-4">
+                        <div className="mb-5 flex items-center justify-between"><p className="font-mono text-[10px] uppercase tracking-[0.13em] text-[var(--industrial-ink)]">OPERATING SIGNALS</p><BarChart3 className="h-4 w-4 text-[var(--industrial-copper)]" /></div>
+                        <Stack spacing={2.5}>
+                          {signalRows.map((row) => <div key={row.label}><div className="mb-2 flex items-center justify-between gap-4 font-mono text-[10px]"><span className="text-[var(--industrial-muted)]">{row.label}</span><span className="text-[var(--industrial-ink)]">{row.value}</span></div><div className="h-1.5 bg-white/10"><div className={`h-full ${row.tone}`} style={{ width: row.width }} /></div><p className="mt-1.5 font-mono text-[9px] text-[var(--industrial-muted)]">{row.status}</p></div>)}
+                        </Stack>
                       </div>
-                    ))}
-                  </div>
-                  <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-                    <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
-                      <div className="mb-4 flex items-center justify-between">
-                        <p className="text-sm font-semibold text-white">{t("landing.home.preview.operatingSignals")}</p>
-                        <BarChart3 className="h-4 w-4 text-cyan-300" />
-                      </div>
-                      <div className="space-y-4">
-                        {signalRows.map((row) => (
-                          <div key={row.label}>
-                            <div className="mb-1.5 flex items-center justify-between text-xs">
-                              <span className="text-slate-300">{row.label}</span>
-                              <span className="font-semibold text-white">{row.value}</span>
-                            </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                              <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-emerald-300 to-amber-200" style={{ width: row.width }} />
-                            </div>
-                            <p className="mt-1 text-[11px] font-medium text-slate-400">{row.status}</p>
-                          </div>
-                        ))}
+                      <div className="border border-white/10 p-4">
+                        <div className="mb-5 flex items-center justify-between"><p className="font-mono text-[10px] uppercase tracking-[0.13em] text-[var(--industrial-ink)]">CONTROL MESH</p><Gauge className="h-4 w-4 text-[var(--industrial-copper)]" /></div>
+                        <div className="relative mx-auto aspect-square max-w-[230px] border border-[var(--industrial-copper)]/35 p-5"><div className="flex h-full items-center justify-center border border-white/15"><div className="flex h-24 w-24 items-center justify-center border border-[var(--industrial-copper)] bg-[var(--industrial-bg)] font-mono text-xs text-[var(--industrial-copper)]">SYNC<br />OK</div></div><span className="absolute -left-1 top-1/2 h-2 w-2 bg-[var(--industrial-copper)]" /><span className="absolute -right-1 top-1/2 h-2 w-2 bg-[var(--industrial-olive)]" /></div>
                       </div>
                     </div>
-                    <div className="rounded-lg border border-white/10 bg-white/[0.04] p-4">
-                      <div className="mb-4 flex items-center justify-between">
-                        <p className="text-sm font-semibold text-white">{t("landing.home.preview.controlMesh")}</p>
-                        <Radar className="h-4 w-4 text-emerald-300" />
-                      </div>
-                      <div className="relative mx-auto aspect-square max-w-[230px] rounded-full border border-cyan-300/20 bg-[radial-gradient(circle,rgba(34,211,238,.18)_0%,rgba(34,211,238,.06)_34%,transparent_35%),conic-gradient(from_30deg,rgba(34,211,238,.34),rgba(16,185,129,.32),rgba(250,204,21,.24),rgba(34,211,238,.34))]">
-                        <div className="absolute inset-[17%] rounded-full border border-white/15" />
-                        <div className="absolute inset-[34%] rounded-full border border-white/15 bg-slate-950/70" />
-                        {[0, 1, 2, 3, 4, 5].map((node) => (
-                          <span key={node} className="home-pulse absolute h-3 w-3 rounded-full bg-cyan-200 shadow-lg shadow-cyan-300/40" style={{ left: `${50 + 42 * Math.cos((node * Math.PI) / 3)}%`, top: `${50 + 42 * Math.sin((node * Math.PI) / 3)}%` }} />
-                        ))}
-                      </div>
-                    </div>
+                    <div className="border-t border-white/10 pt-4"><p className="font-mono text-[9px] uppercase tracking-[0.13em] text-[var(--industrial-muted)]">CURRENTLY MONITORING</p><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[470px] text-left font-mono text-[10px]"><thead className="text-[var(--industrial-muted)]"><tr><th className="pb-2 font-medium">ENTITY</th><th className="pb-2 font-medium">STATE</th><th className="pb-2 font-medium">OWNER</th><th className="pb-2 text-right font-medium">DELTA</th></tr></thead><tbody className="divide-y divide-white/10 text-[var(--industrial-ink)]"><tr><td className="py-2.5">WAREHOUSE / KGL-01</td><td className="py-2.5"><span className="text-[var(--industrial-olive)]">● HEALTHY</span></td><td className="py-2.5 text-[var(--industrial-muted)]">OPS</td><td className="py-2.5 text-right text-[var(--industrial-olive)]">+4.2%</td></tr><tr><td className="py-2.5">PO / PO-1048</td><td className="py-2.5"><span className="text-[var(--industrial-copper)]">● REVIEW</span></td><td className="py-2.5 text-[var(--industrial-muted)]">PROCURE</td><td className="py-2.5 text-right text-[var(--industrial-copper)]">RWF 240K</td></tr></tbody></table></div></div>
                   </div>
                 </div>
               </div>
@@ -433,209 +227,45 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="relative -mt-8 px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-7xl gap-3 rounded-lg border border-slate-200 bg-white/90 p-3 shadow-xl shadow-slate-900/5 backdrop-blur dark:border-white/10 dark:bg-white/[0.05] md:grid-cols-4">
-            {operatingMetrics.map((metric) => (
-              <div key={metric.label} className="rounded-lg border border-slate-100 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/[0.04]">
-                <p className="text-3xl font-semibold tracking-tight text-slate-950 dark:text-white">{metric.value}</p>
-                <p className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{metric.label}</p>
-                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">{metric.detail}</p>
-              </div>
-            ))}
+        <section className="border-b border-white/10 bg-[var(--industrial-panel)]">
+          <div className="mx-auto grid max-w-[1440px] sm:grid-cols-2 lg:grid-cols-4">
+            {metricRows.map(([value, label, detail], index) => <div key={label} className={`border-white/10 p-6 lg:p-8 ${index > 0 ? 'border-t sm:border-l sm:border-t-0' : ''} ${index === 2 ? 'lg:border-l' : ''}`}><p className="font-mono text-4xl text-[var(--industrial-copper)]">{value}</p><p className="mt-3 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--industrial-ink)]">{label}</p><p className="mt-2 text-sm leading-6 text-[var(--industrial-muted)]">{detail}</p></div>)}
           </div>
         </section>
 
-        <section id="platform" className="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <div className="mx-auto max-w-7xl">
-            <div className="grid gap-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-700 dark:text-cyan-300">{t("landing.home.platform.eyebrow")}</p>
-                <h2 className="mt-3 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-5xl">{t("landing.home.platform.title")}</h2>
-              </div>
-              <p className="text-lg leading-8 text-slate-600 dark:text-slate-300">{t("landing.home.platform.subtitle")}</p>
+        <section id="platform" className="mx-auto max-w-[1440px] scroll-mt-20 px-5 pb-20 pt-14 sm:px-8 sm:pb-24 sm:pt-16 lg:px-12 lg:pb-28 lg:pt-16">
+          <div className="grid gap-10 lg:grid-cols-[0.34fr_0.66fr] lg:gap-12">
+            <div className="lg:sticky lg:top-28 lg:self-start">
+              <p className="industrial-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--industrial-copper)]">02 / OPERATING LAYERS</p>
+              <h2 className="industrial-display mt-5 text-6xl leading-[0.85] text-[var(--industrial-ink)] sm:text-8xl">ONE<br />RECORD.<br /><span className="text-[var(--industrial-muted)]">EVERY<br />TEAM.</span></h2>
+              <p className="mt-7 max-w-xs text-sm leading-6 text-[var(--industrial-muted)]">{t('landing.home.platform.subtitle')}</p>
+              <div className="mt-9 hidden border-l border-[var(--industrial-copper)] pl-4 lg:block"><p className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--industrial-copper)]">SCROLL TO INSPECT</p><p className="mt-2 font-mono text-[10px] text-[var(--industrial-muted)]">Inventory / Purchasing / Finance</p></div>
             </div>
-            <div className="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {commandModules.map((module) => (
-                <article key={module.name} className="group rounded-lg border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-cyan-300 hover:shadow-xl hover:shadow-cyan-900/5 dark:border-white/10 dark:bg-white/[0.04] dark:hover:border-cyan-300/40">
-                  <div className="mb-5 grid h-11 w-11 place-items-center rounded-lg bg-slate-950 text-white dark:bg-white dark:text-slate-950">
-                    <module.icon className="h-5 w-5" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-950 dark:text-white">{module.name}</h3>
-                  <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">{module.copy}</p>
-                  <div className="mt-5 flex items-center gap-2 text-sm font-semibold text-cyan-700 opacity-0 transition group-hover:opacity-100 dark:text-cyan-300">
-                    {t("landing.home.platform.seeModule")}
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-                </article>
-              ))}
+            <div className="border-l border-white/10 lg:pl-12">
+              <Stack spacing={4}>
+                {featureRows.map((feature) => { const Icon = feature.icon; return <article key={feature.code} id={feature.code.toLowerCase()} className="industrial-frame border border-white/12 bg-[var(--industrial-panel)] p-5 transition-colors duration-300 hover:border-[var(--industrial-copper)]/45 sm:p-7"><div className="flex flex-wrap items-start justify-between gap-5 border-b border-white/10 pb-4"><div className="flex items-center gap-4"><span className="font-mono text-3xl text-[var(--industrial-copper)]">{feature.index}</span><span className="font-mono text-[10px] font-bold uppercase tracking-[0.15em] text-[var(--industrial-muted)]">{feature.code}</span></div><Icon aria-hidden="true" className="h-5 w-5 text-[var(--industrial-copper)]" strokeWidth={1.5} /></div><div className="grid gap-7 pt-6 md:grid-cols-[0.75fr_1.25fr] md:items-end"><div><h3 className="industrial-display text-4xl leading-[0.92] text-[var(--industrial-ink)] sm:text-5xl">{feature.title}</h3><p className="mt-4 text-sm leading-7 text-[var(--industrial-muted)]">{feature.copy}</p></div><div className="border border-white/10 bg-[var(--industrial-bg)] p-4"><div className="flex items-center justify-between font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--industrial-muted)]"><span>{feature.status}</span><span className="text-[var(--industrial-olive)]">NOMINAL</span></div>{feature.index === '01' && <div className="mt-5 flex h-24 items-end gap-2 border-b border-l border-white/10 px-3 pb-0">{[42, 65, 54, 78, 61, 86, 72, 94].map((height, index) => <div key={index} className={`flex-1 ${index === 7 ? 'bg-[var(--industrial-copper)]' : 'bg-[var(--industrial-olive)]/70'}`} style={{ height: `${height}%` }} />)}</div>}{feature.index === '02' && <div className="mt-5 space-y-3 font-mono text-[10px]"><div className="flex items-center justify-between border-b border-white/10 pb-2"><span className="text-[var(--industrial-muted)]">PO-1048</span><span className="text-[var(--industrial-copper)]">AWAITING APPROVAL</span></div><div className="flex items-center justify-between border-b border-white/10 pb-2"><span className="text-[var(--industrial-muted)]">GRN-7721</span><span className="text-[var(--industrial-olive)]">RECEIVED</span></div><div className="flex items-center justify-between"><span className="text-[var(--industrial-muted)]">BILL-2990</span><span className="text-[var(--industrial-ink)]">MATCHED</span></div></div>}{feature.index === '03' && <div className="mt-5 grid grid-cols-2 gap-3 font-mono text-[10px]"><div className="border border-white/10 p-3"><p className="text-[var(--industrial-muted)]">CASH RUNWAY</p><p className="mt-3 text-xl text-[var(--industrial-ink)]">148D</p></div><div className="border border-white/10 p-3"><p className="text-[var(--industrial-muted)]">AR COLLECTED</p><p className="mt-3 text-xl text-[var(--industrial-olive)]">92%</p></div></div>}</div></div></article>; })}
+              </Stack>
             </div>
           </div>
         </section>
 
-        <section id="operations" className="bg-slate-100 px-4 py-20 text-slate-950 dark:bg-slate-950 dark:text-white sm:px-6 lg:px-8 lg:py-28">
-          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-emerald-700 dark:text-emerald-300">{t("landing.home.operations.eyebrow")}</p>
-              <h2 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">{t("landing.home.operations.title")}</h2>
-              <p className="mt-5 text-lg leading-8 text-slate-600 dark:text-slate-300">{t("landing.home.operations.subtitle")}</p>
-              <div className="mt-8 grid gap-4">
-                {timeline.map((item, index) => (
-                  <div key={item.title} className="grid grid-cols-[44px_1fr] gap-4">
-                    <div className="grid h-11 w-11 place-items-center rounded-lg border border-slate-200 bg-slate-200 text-sm font-bold text-emerald-700 dark:border-white/10 dark:bg-white/8 dark:text-emerald-300">{index + 1}</div>
-                    <div>
-                      <h3 className="text-lg font-semibold">{item.title}</h3>
-                      <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">{item.copy}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-900/10 dark:border-white/10 dark:bg-white/[0.04] dark:shadow-black/20">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-lg bg-white p-5 text-slate-950">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold">{t("landing.home.operations.priorities.title")}</p>
-                    <Zap className="h-4 w-4 text-amber-500" />
-                  </div>
-                  <div className="mt-5 space-y-3">
-                    {priorityItems.map(([title, copy]) => (
-                      <div key={title} className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-sm font-semibold">{title}</p>
-                        <p className="mt-1 text-xs text-slate-500">{copy}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid gap-4">
-                  <div className="rounded-lg border border-slate-200 bg-cyan-300 p-5 text-slate-950 dark:border-white/10">
-                    <LineChart className="h-5 w-5" />
-                    <p className="mt-8 text-3xl font-semibold">RWF 850K</p>
-                    <p className="mt-2 text-sm font-medium">{t("landing.home.operations.cashUnlocked")}</p>
-                  </div>
-                  <div className="rounded-lg border border-slate-200 bg-emerald-300 p-5 text-slate-950 dark:border-white/10">
-                    <PackageCheck className="h-5 w-5" />
-                    <p className="mt-8 text-3xl font-semibold">37%</p>
-                    <p className="mt-2 text-sm font-medium">{t("landing.home.operations.fewerStockouts")}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+        <section id="operations" className="border-y border-[var(--industrial-copper)]/35 bg-[var(--industrial-panel)]">
+          <TelemetryBand compact />
+          <div className="mx-auto grid max-w-[1440px] gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[0.45fr_0.55fr] lg:px-12 lg:py-28">
+            <div><p className="industrial-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--industrial-copper)]">03 / COMMAND SIGNAL</p><h2 className="industrial-display mt-5 text-6xl leading-[0.84] text-[var(--industrial-ink)] sm:text-8xl">THE<br /><span className="text-[var(--industrial-copper)]">NUMBER</span><br />IS THE<br />MESSAGE.</h2><p className="mt-7 max-w-md text-base leading-7 text-[var(--industrial-muted)]">Record once. Connect everything. Decide with the same operating context across warehouse, office and leadership.</p><Button component={Link} to="/operations" variant="outlined" color="primary" endIcon={<ArrowRight className="h-4 w-4" />} className="mt-8 !px-5 !py-3 !text-[10px]">VIEW OPERATING MODEL</Button></div>
+            <div className="grid gap-px border border-white/10 bg-white/10 sm:grid-cols-2"><div className="bg-[var(--industrial-bg)] p-6 sm:p-8"><Activity className="h-5 w-5 text-[var(--industrial-copper)]" /><p className="mt-12 font-mono text-4xl text-[var(--industrial-ink)]">12ms</p><p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--industrial-muted)]">Average response time</p><p className="mt-7 font-mono text-[10px] text-[var(--industrial-olive)]">● SYSTEM NOMINAL</p></div><div className="bg-[var(--industrial-bg)] p-6 sm:p-8"><Database className="h-5 w-5 text-[var(--industrial-copper)]" /><p className="mt-12 font-mono text-4xl text-[var(--industrial-ink)]">99.99%</p><p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--industrial-muted)]">Platform availability</p><p className="mt-7 font-mono text-[10px] text-[var(--industrial-olive)]">● DATA PROTECTED</p></div><div className="bg-[var(--industrial-bg)] p-6 sm:p-8"><ArrowDownRight className="h-5 w-5 text-[var(--industrial-copper)]" /><p className="mt-12 font-mono text-4xl text-[var(--industrial-ink)]">-42%</p><p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--industrial-muted)]">Reported stockouts</p><p className="mt-7 font-mono text-[10px] text-[var(--industrial-olive)]">● REORDER CONTROL</p></div><div className="bg-[var(--industrial-bg)] p-6 sm:p-8"><ShieldCheck className="h-5 w-5 text-[var(--industrial-copper)]" /><p className="mt-12 font-mono text-4xl text-[var(--industrial-ink)]">RRA</p><p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--industrial-muted)]">Ready reporting layer</p><p className="mt-7 font-mono text-[10px] text-[var(--industrial-olive)]">● AUDIT READY</p></div></div>
           </div>
         </section>
 
-        <section id="security" className="px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
-          <div className="mx-auto max-w-7xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] lg:p-10">
-            <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-              <div>
-                <div className="inline-grid h-12 w-12 place-items-center rounded-lg bg-slate-950 text-white dark:bg-white dark:text-slate-950">
-                  <LockKeyhole className="h-5 w-5" />
-                </div>
-                <h2 className="mt-5 text-4xl font-semibold tracking-tight text-slate-950 dark:text-white">{t("landing.home.security.title")}</h2>
-                <p className="mt-4 text-lg leading-8 text-slate-600 dark:text-slate-300">{t("landing.home.security.subtitle")}</p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {securityFeatures.map(([Icon, label]) => (
-                  <div key={label} className="flex items-center gap-3 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
-                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-300">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+        <section id="security" className="mx-auto max-w-[1440px] px-5 py-20 sm:px-8 lg:px-12 lg:py-32">
+          <div className="grid gap-12 border-t border-white/10 pt-10 lg:grid-cols-[0.62fr_0.38fr] lg:gap-20"><div><p className="industrial-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--industrial-copper)]">04 / CONTROL BY DESIGN</p><h2 className="industrial-display mt-5 max-w-4xl text-6xl leading-[0.84] text-[var(--industrial-ink)] sm:text-8xl">BUILT FOR<br /><span className="text-[var(--industrial-copper)]">ACCOUNTABILITY.</span></h2><p className="mt-8 max-w-2xl text-base leading-7 text-[var(--industrial-muted)]">Role-based access, company boundaries, approval trails and resilient backups are part of the operating model — not a late-stage add-on.</p></div><div className="border-l border-[var(--industrial-copper)]/60 pl-6 sm:pl-8"><LockKeyhole className="h-6 w-6 text-[var(--industrial-copper)]" /><Stack spacing={2} className="mt-8">{['Tenant-aware security', 'Role-based permissions', 'Audit-ready sessions', 'Offline-ready workflows'].map((item) => <div key={item} className="flex items-center gap-3 border-b border-white/10 pb-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--industrial-muted)]"><Check className="h-4 w-4 text-[var(--industrial-olive)]" />{item}</div>)}</Stack></div></div>
         </section>
 
-        <section id="pricing" className="px-4 pb-20 sm:px-6 lg:px-8 lg:pb-28">
-          <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1fr_0.8fr]">
-            <div className="rounded-lg bg-gradient-to-br from-slate-950 via-[#0d2430] to-[#123323] p-8 text-white shadow-2xl shadow-slate-900/20 lg:p-12">
-              <p className="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-200">{t("landing.home.pricing.eyebrow")}</p>
-              <h2 className="mt-4 text-4xl font-semibold tracking-tight sm:text-5xl">{t("landing.home.pricing.title")}</h2>
-              <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-300">{t("landing.home.pricing.subtitle")}</p>
-              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                <Link to="/register">
-                  <Button className="h-12 bg-white px-6 text-slate-950 hover:bg-cyan-100">
-                    {t("landing.home.startFreeTrial")}
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
-                <Link to="/dashboard">
-                  <Button variant="outline" className="h-12 border-white/20 bg-white/8 px-6 text-white hover:bg-white/14">
-                    {t("landing.home.pricing.seeDashboard")}
-                  </Button>
-                </Link>
-              </div>
-            </div>
-            <div className="rounded-lg border border-slate-200 bg-white p-8 dark:border-white/10 dark:bg-white/[0.04]">
-              <Factory className="h-8 w-8 text-cyan-700 dark:text-cyan-300" />
-              <h3 className="mt-5 text-2xl font-semibold text-slate-950 dark:text-white">{t("landing.home.pricing.builtForRwanda")}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">{t("landing.home.pricing.builtForRwandaCopy")}</p>
-              <div className="mt-6 space-y-3">
-                {pricingFeatures.map((item) => (
-                  <div key={item} className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-200">
-                    <Check className="h-4 w-4 text-emerald-500" />
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+        <section className="border-t border-white/10 bg-[var(--industrial-copper)] text-[var(--industrial-bg)]"><div className="mx-auto flex max-w-[1440px] flex-col gap-8 px-5 py-14 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-12 lg:py-20"><div><p className="industrial-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--industrial-bg)]/70">05 / NEXT ACTION</p><h2 className="industrial-display mt-4 text-6xl leading-[0.84] sm:text-8xl">MAKE THE<br />NEXT DECISION<br />VISIBLE.</h2></div><div className="max-w-sm"><p className="text-base leading-7 text-[var(--industrial-bg)]/80">Start with one workspace. Give every department the same number, the same context, and a faster way to act.</p><Button component={Link} to={isAuthenticated ? systemHref : '/register'} variant="contained" color="inherit" endIcon={<ArrowUpRight className="h-4 w-4" />} className="mt-7 !bg-[var(--industrial-bg)] !px-5 !py-3 !text-[10px] !text-[var(--industrial-ink)] hover:!bg-[var(--industrial-panel)]">{isAuthenticated ? 'OPEN SYSTEM' : 'OPEN WORKSPACE'}</Button></div></div></section>
       </main>
 
-      <footer className="border-t border-slate-200 bg-white px-4 py-10 dark:border-white/10 dark:bg-[#080b12] sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[1fr_auto] lg:items-start">
-          <div>
-            <Link to="/" className="inline-flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-slate-950 text-white dark:bg-white dark:text-slate-950">
-                <Layers3 className="h-5 w-5" />
-              </span>
-              <span className="text-base font-semibold tracking-[0.18em] text-slate-950 dark:text-white">KUBIKA SYSTEM</span>
-            </Link>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">{t("landing.home.footer.tagline")}</p>
-            <div className="mt-5 grid gap-2 text-sm text-slate-600 dark:text-slate-300 sm:grid-cols-2">
-              <a href="mailto:hello@kubika.rw" className="inline-flex items-center gap-2 hover:text-slate-950 dark:hover:text-white">
-                <Mail className="h-4 w-4" />
-                jayfcode@gmail.com
-              </a>
-              <a href="tel:+250780936645" className="inline-flex items-center gap-2 hover:text-slate-950 dark:hover:text-white">
-                <Phone className="h-4 w-4" />
-                +250 780 936 645
-              </a>
-            </div>
-          </div>
-          <div className="grid gap-4">
-            <div className="flex flex-wrap gap-3 text-sm font-medium text-slate-600 dark:text-slate-300 lg:justify-end">
-              {navItems.map((item) => (
-                <Link key={item.href} to={item.href} className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white">
-                  {item.label}
-                </Link>
-              ))}
-              <Link to="/login" className="rounded-lg px-3 py-2 hover:bg-slate-100 hover:text-slate-950 dark:hover:bg-white/10 dark:hover:text-white">
-                {t("landing.home.footer.login")}
-              </Link>
-            </div>
-            <div className="flex flex-wrap gap-2 lg:justify-end">
-              {socialLinks.map((link) => {
-                const Icon = link.icon;
-                return (
-                  <a key={link.label} href={link.href} target="_blank" rel="noreferrer" aria-label={link.label} className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 text-slate-600 transition hover:border-cyan-300 hover:text-cyan-700 dark:border-white/10 dark:text-slate-300 dark:hover:border-cyan-300/40 dark:hover:text-cyan-300">
-                    <Icon className="h-4 w-4" />
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-        <div className="mx-auto mt-8 flex max-w-7xl flex-col gap-3 border-t border-slate-200 pt-6 text-xs text-slate-500 dark:border-white/10 sm:flex-row sm:items-center sm:justify-between">
-          <span>{t("landing.home.footer.copyright", { year: new Date().getFullYear() })}</span>
-          <span className="flex items-center gap-2">
-            <TrendingUp className="h-3.5 w-3.5" />
-            {t("landing.home.footer.builtInRwanda")}
-          </span>
-        </div>
-      </footer>
-    </div>
+      <footer className="border-t border-white/10 bg-[var(--industrial-bg)]"><div className="mx-auto flex max-w-[1440px] flex-col gap-8 px-5 py-10 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-12"><Link to="/" aria-label="KUBIKA home"><BrandMark /></Link><div className="flex flex-wrap items-center gap-x-6 gap-y-3 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--industrial-muted)]"><Link to="/trust" className="hover:text-[var(--industrial-ink)]">Trust & security</Link><Link to="/pricing" className="hover:text-[var(--industrial-ink)]">Pricing</Link><a href="mailto:jayfcode@gmail.com" className="hover:text-[var(--industrial-ink)]">jayfcode@gmail.com</a><span>© {new Date().getFullYear()} KUBIKA</span></div></div></footer>
+      </div>
+    </MuiThemeProvider>
   );
 }
