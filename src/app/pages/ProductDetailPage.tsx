@@ -300,7 +300,7 @@ export default function ProductDetailPage() {
   }, [product, initialTab]);
 
   useEffect(() => {
-    if (initialTab === 'movements') {
+    if (initialTab === 'movements' && movementPagination.currentPage !== 1) {
       loadMovements();
     }
   }, [movementPagination.currentPage]);

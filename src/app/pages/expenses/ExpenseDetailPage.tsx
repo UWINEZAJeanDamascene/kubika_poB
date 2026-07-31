@@ -255,15 +255,7 @@ export default function ExpenseDetailPage() {
       }
     } catch (error: any) {
       console.error('[ExpenseDetailPage] Approve error:', error);
-      // Handle segregation of duties error specifically
-      if (error.response?.data?.code === 'SEGREGATION_OF_DUTIES') {
-        toast.error(error.response.data.message, {
-          duration: 5000,
-          icon: '⚠️',
-        });
-      } else {
-        toast.error(error.response?.data?.message || 'Failed to approve expense');
-      }
+      toast.error(error.response?.data?.message || 'Failed to approve expense');
     } finally {
       setSubmitting(false);
     }
