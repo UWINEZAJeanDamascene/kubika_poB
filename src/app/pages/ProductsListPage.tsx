@@ -390,6 +390,25 @@ export default function ProductsListPage() {
     return { label: t('products.inStock'), color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' };
   };
 
+  const inventorySummary = useMemo(() => products.reduce(
+    (summary, product) => {
+      const stock = Number(product.currentStock) || 0;
+      const avgCost = Number(product.averageCost) || 0;
+      const costPrice = Number(product.costPrice) || 0;
+      const effectiveCost = avgCost > 0 ? avgCost : costPrice;
+      const threshold = product.lowStockThreshold || 10;
+
+      summary.stockValue += stock * effectiveCost;
+      summary.units += stock;
+      if (stock === 0) summary.outOfStock += 1;
+      if (stock > 0 && stock <= threshold) summary.lowStock += 1;
+      if (product.isActive && !product.isArchived) summary.active += 1;
+      if (product.category && product.unit && product.costingMethod) summary.complete += 1;
+      return summary;
+    },
+    { stockValue: 0, units: 0, lowStock: 0, outOfStock: 0, active: 0, complete: 0 }
+  ), [products]);
+
   // Loading state
   if (loading) {
     return (
@@ -421,24 +440,6 @@ export default function ProductsListPage() {
     );
   }
 
-  const inventorySummary = useMemo(() => products.reduce(
-    (summary, product) => {
-      const stock = Number(product.currentStock) || 0;
-      const avgCost = Number(product.averageCost) || 0;
-      const costPrice = Number(product.costPrice) || 0;
-      const effectiveCost = avgCost > 0 ? avgCost : costPrice;
-      const threshold = product.lowStockThreshold || 10;
-
-      summary.stockValue += stock * effectiveCost;
-      summary.units += stock;
-      if (stock === 0) summary.outOfStock += 1;
-      if (stock > 0 && stock <= threshold) summary.lowStock += 1;
-      if (product.isActive && !product.isArchived) summary.active += 1;
-      if (product.category && product.unit && product.costingMethod) summary.complete += 1;
-      return summary;
-    },
-    { stockValue: 0, units: 0, lowStock: 0, outOfStock: 0, active: 0, complete: 0 }
-  ), [products]);
   const riskCount = inventorySummary.lowStock + inventorySummary.outOfStock;
   const dataReadiness = products.length ? Math.round((inventorySummary.complete / products.length) * 100) : 0;
   const hasFilters = Boolean(searchTerm || categoryFilter || supplierFilter || statusFilter);

@@ -167,11 +167,11 @@ interface RequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   params?: Record<string, any>;
-  /** Abort the request after this many milliseconds (auth endpoints default to 30s). */
+  /** Abort the request after this many milliseconds (auth endpoints default to 1 minute). */
   timeoutMs?: number;
 }
 
-const AUTH_REQUEST_TIMEOUT_MS = 30_000;
+const AUTH_REQUEST_TIMEOUT_MS = 60_000;
 
 class ApiError extends Error {
   constructor(
