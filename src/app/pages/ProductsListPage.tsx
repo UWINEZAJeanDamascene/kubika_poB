@@ -1,7 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { productsApi, categoriesApi, suppliersApi } from '@/lib/api';
-import { API_BASE_URL } from '@/lib/apiBase';
 import { Layout } from '../layout/Layout';
 import { 
   Plus, 
@@ -145,6 +144,16 @@ export default function ProductsListPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedSetSearchTerm = (value: string) => {
+    setSearchTerm(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearchTerm(value);
+    }, 350);
+  };
   const [pagination, setPagination] = useState<PaginationInfo>({
     currentPage: 1,
     totalPages: 1,
@@ -197,8 +206,8 @@ export default function ProductsListPage() {
         page: pagination.currentPage,
         limit: pagination.limit,
       };
-      
-      if (searchTerm) params.search = searchTerm;
+
+      if (debouncedSearchTerm) params.search = debouncedSearchTerm;
       if (categoryFilter) params.category = categoryFilter;
       if (supplierFilter) params.supplier = supplierFilter;
       // Status filter: 'active', 'archived', or stock status 'in_stock', 'low_stock', 'out_of_stock'
@@ -231,17 +240,23 @@ export default function ProductsListPage() {
     } finally {
       setLoading(false);
     }
-  }, [pagination.currentPage, pagination.limit, searchTerm, categoryFilter, supplierFilter, statusFilter]);
+  }, [pagination.currentPage, pagination.limit, debouncedSearchTerm, categoryFilter, supplierFilter, statusFilter]);
 
   // Load products on mount and when page/limit/filters change
   useEffect(() => {
     loadProducts();
   }, [loadProducts]);
 
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    setDebouncedSearchTerm(searchTerm);
     setPagination(prev => ({ ...prev, currentPage: 1 }));
-    loadProducts();
   };
 
   const handlePageChange = (page: number) => {
@@ -406,7 +421,7 @@ export default function ProductsListPage() {
     );
   }
 
-  const inventorySummary = products.reduce(
+  const inventorySummary = useMemo(() => products.reduce(
     (summary, product) => {
       const stock = Number(product.currentStock) || 0;
       const avgCost = Number(product.averageCost) || 0;
@@ -419,11 +434,13 @@ export default function ProductsListPage() {
       if (stock === 0) summary.outOfStock += 1;
       if (stock > 0 && stock <= threshold) summary.lowStock += 1;
       if (product.isActive && !product.isArchived) summary.active += 1;
+      if (product.category && product.unit && product.costingMethod) summary.complete += 1;
       return summary;
     },
-    { stockValue: 0, units: 0, lowStock: 0, outOfStock: 0, active: 0 }
-  );
+    { stockValue: 0, units: 0, lowStock: 0, outOfStock: 0, active: 0, complete: 0 }
+  ), [products]);
   const riskCount = inventorySummary.lowStock + inventorySummary.outOfStock;
+  const dataReadiness = products.length ? Math.round((inventorySummary.complete / products.length) * 100) : 0;
   const hasFilters = Boolean(searchTerm || categoryFilter || supplierFilter || statusFilter);
   const clearFilters = () => {
     setSearchTerm('');
@@ -499,7 +516,7 @@ export default function ProductsListPage() {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('products.dataReadiness')}</p>
-                <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{products.length ? Math.round((products.filter(p => p.category && p.unit && p.costingMethod).length / products.length) * 100) : 0}%</p>
+                <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{dataReadiness}%</p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-md bg-violet-50 text-violet-600 dark:bg-violet-950/60 dark:text-violet-300">
                 <ShieldCheck className="h-5 w-5" />
@@ -519,7 +536,7 @@ export default function ProductsListPage() {
                   type="text"
                   placeholder={t('products.searchPlaceholder') || 'Search by name or SKU...'}
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => debouncedSetSearchTerm(e.target.value)}
                   className="pl-10"
                 />
               </div>

@@ -455,6 +455,14 @@ export default function PayrollListPage() {
     fetchRecords();
   }, [fetchRecords]);
 
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden) fetchRecords();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [fetchRecords]);
+
   const handleCreate = async () => {
     if (selectedEmployeeId && !createManualMode) {
       // Employee master mode: send full salary so backend can use it as fallback

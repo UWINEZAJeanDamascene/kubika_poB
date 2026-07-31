@@ -152,13 +152,16 @@ self.addEventListener('fetch', (event) => {
   // or queue login, registration, or password requests for background sync.
   if (url.pathname.startsWith('/api/auth/')) return;
 
-  // Skip non-GET requests — queue mutating requests if offline
-  if (request.method !== 'GET') {
-    if (url.pathname.startsWith('/api/') && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(request.method)) {
-      event.respondWith(
-        fetch(request.clone(), { credentials: 'include', mode: 'cors' }).catch(async (err) => {
-          console.error('[SW] Network error while forwarding mutating request:', err);
-          // Queue the request for background sync
+  if (request.method === 'POST' || request.method === 'PUT' || request.method === 'DELETE' || request.method === 'PATCH') {
+    const isAuth = /\/api\/auth\//.test(url.pathname);
+    if (isAuth) {
+      event.respondWith(fetch(request));
+      return;
+    }
+    event.respondWith(
+      fetch(request.clone(), { credentials: 'include', mode: 'cors' })
+        .then(async (response) => response.ok ? response : fetch(request))
+        .catch(async () => {
           try {
             const body = await request.clone().text();
             await addToQueue({
@@ -167,43 +170,31 @@ self.addEventListener('fetch', (event) => {
               headers: Object.fromEntries(request.headers.entries()),
               body: body
             });
-
-            // Notify the client
             const clients = await self.clients.matchAll();
             clients.forEach(client => {
               client.postMessage({
                 type: 'OFFLINE_QUEUED',
-                message: 'Action saved offline. It will sync when you\'re back online.',
+                message: "Action saved offline. It will sync when you're back online.",
                 url: request.url,
                 method: request.method
               });
             });
-
-            // Register background sync
             if (self.registration.sync) {
               await self.registration.sync.register('sync-offline-queue');
             }
-
             return new Response(
               JSON.stringify({
                 success: true,
                 offline: true,
                 message: 'Saved offline. Will sync when back online.'
               }),
-              {
-                status: 202,
-                headers: { 'Content-Type': 'application/json' }
-              }
+              { status: 202, headers: { 'Content-Type': 'application/json' } }
             );
-          } catch (err) {
-            return new Response(
-              JSON.stringify({ success: false, message: 'Offline and failed to queue request' }),
-              { status: 503, headers: { 'Content-Type': 'application/json' } }
-            );
+          } catch {
+            return fetch(request);
           }
         })
-      );
-    }
+    );
     return;
   }
 

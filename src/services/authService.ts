@@ -21,6 +21,16 @@ export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   userId: string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+    company?: unknown;
+    permissions?: string[];
+    lastLogin?: string | null;
+    mustChangePassword?: boolean;
+  };
   memberships: Membership[];
 }
 
@@ -60,14 +70,11 @@ const authService = {
         return { success: false, error: 'Login failed' };
       }
       
-      // Backend returns: { success, token, access_token, refresh_token, userId, memberships }
-      // Use access_token as the primary token
       return {
         success: true,
         token: response.access_token || response.token,
         refreshToken: response.refresh_token,
         userId: response.userId,
-        user: response.user as UserData | undefined,
         memberships: response.memberships,
       };
     } catch (error: unknown) {
