@@ -57,6 +57,7 @@ export default function LoginPage() {
         } else { toast.error(t('auth.login.userDetailsFailed')); }
       } else if (response.errorCode === 'INVALID_CREDENTIALS') { setErrorCode('INVALID_CREDENTIALS'); toast.error(t('auth.login.invalidCredentials')); }
       else if (response.errorCode === 'ACCOUNT_LOCKED') { setErrorCode('ACCOUNT_LOCKED'); const minutesLeft = response.lockedUntil ? Math.ceil((response.lockedUntil - Date.now()) / 60000) : 30; toast.error(t('auth.login.accountLockedToast', { minutes: minutesLeft })); }
+      else if (response.errorCode === 'REQUEST_TIMEOUT') { setErrorCode('REQUEST_TIMEOUT'); toast.error(t('auth.login.loginTimeout')); }
       else { setErrorCode('LOGIN_FAILED'); toast.error(response.error || t('auth.login.loginFailed')); }
     } catch (error) { console.error('Login error:', error); setErrorCode('LOGIN_FAILED'); toast.error(t('auth.login.loginError')); }
     finally { setIsLoading(false); }

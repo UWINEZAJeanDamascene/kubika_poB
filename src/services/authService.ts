@@ -72,6 +72,13 @@ const authService = {
       };
     } catch (error: unknown) {
       const err = error as { code?: string; message?: string; lockedUntil?: number };
+      if (err.code === 'REQUEST_TIMEOUT') {
+        return {
+          success: false,
+          error: 'Login timed out. The server may be waking up — please try again.',
+          errorCode: 'REQUEST_TIMEOUT',
+        };
+      }
       // Handle specific error codes from backend
       if (err.code === 'INVALID_CREDENTIALS') {
         return { success: false, error: 'Invalid email or password', errorCode: 'INVALID_CREDENTIALS' };

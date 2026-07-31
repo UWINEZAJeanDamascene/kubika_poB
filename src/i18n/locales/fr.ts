@@ -4945,6 +4945,7 @@ const fr = {
       accountLocked: "Ce compte est temporairement verrouillé.",
       accountLockedToast: "Compte verrouillé. Réessayez dans {{minutes}} minutes.",
       loginFailed: "Échec de la connexion",
+      loginTimeout: "Connexion expirée. Le serveur se réveille peut-être — veuillez réessayer.",
       loginError: "Une erreur s'est produite lors de la connexion",
     },
     register: {

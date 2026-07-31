@@ -4941,6 +4941,7 @@ const rw = {
       accountLocked: "Iyi konti ifunze by'agateganyo.",
       accountLockedToast: "Konti is locked. Please try again in {{minutes}} minutes.",
       loginFailed: "Kwinjira byanze",
+      loginTimeout: "Kwinjira byarenze igihe. Seriveri irashobora gukanguka — ongera ugerageze.",
       loginError: "Habaye ikosa mu gihe cyo kwinjira",
     },
     register: {

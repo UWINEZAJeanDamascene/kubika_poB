@@ -5066,6 +5066,7 @@ const en = {
       accountLocked: "This account is temporarily locked.",
       accountLockedToast: "Account is locked. Please try again in {{minutes}} minutes.",
       loginFailed: "Login failed",
+      loginTimeout: "Login timed out. The server may be waking up — please try again.",
       loginError: "An error occurred during login",
     },
     register: {

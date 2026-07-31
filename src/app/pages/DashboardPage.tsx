@@ -66,14 +66,19 @@ export default function DashboardPage() {
   const fetchDashboard = useCallback(async () => {
     try {
       setError(null);
-      const [executive, inventory, purchase, finance] = await Promise.allSettled([
-        dashboardApi.getExecutive(),
+      // Load the executive dashboard first so the page renders without waiting
+      // for inventory, purchase, and finance aggregations.
+      const executive = await dashboardApi.getExecutive();
+      setData(executive);
+      setLoading(false);
+      setRefreshing(false);
+
+      // Load support panels in the background.
+      const [inventory, purchase, finance] = await Promise.allSettled([
         dashboardApi.getInventory(),
         dashboardApi.getPurchase(),
         dashboardApi.getFinance(),
       ]);
-      if (executive.status === "rejected") throw executive.reason;
-      setData(executive.value);
       setSupport({
         inventory: inventory.status === "fulfilled" ? inventory.value : null,
         purchase: purchase.status === "fulfilled" ? purchase.value : null,
@@ -81,7 +86,6 @@ export default function DashboardPage() {
       });
     } catch (err: any) {
       setError(formatDashboardError(err?.message || "Failed to load executive dashboard"));
-    } finally {
       setLoading(false);
       setRefreshing(false);
     }

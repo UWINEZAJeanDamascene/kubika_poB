@@ -167,7 +167,11 @@ interface RequestOptions {
   body?: unknown;
   headers?: Record<string, string>;
   params?: Record<string, any>;
+  /** Abort the request after this many milliseconds (auth endpoints default to 30s). */
+  timeoutMs?: number;
 }
+
+const AUTH_REQUEST_TIMEOUT_MS = 30_000;
 
 class ApiError extends Error {
   constructor(
@@ -207,33 +211,61 @@ async function request<T>(
   const queryString = buildQuery(options.params);
   const url = queryString ? `${endpoint}?${queryString}` : endpoint;
 
-  const response = await fetch(`${API_BASE_URL}${url}`, {
-    method: options.method || "GET",
-    headers,
-    body: isFormData ? (options.body as FormData) : (options.body ? JSON.stringify(options.body) : undefined),
-  });
+  const isAuthEndpoint = endpoint.startsWith("/auth/");
+  const timeoutMs =
+    options.timeoutMs ?? (isAuthEndpoint ? AUTH_REQUEST_TIMEOUT_MS : undefined);
 
-  let data: any;
+  const controller = timeoutMs ? new AbortController() : null;
+  const timeoutId =
+    timeoutMs && controller
+      ? setTimeout(() => controller.abort(), timeoutMs)
+      : null;
+
   try {
-    data = await response.json();
-  } catch {
-    // Body is empty or not valid JSON
-    throw new ApiError(
-      response.status,
-      `${response.status} ${response.statusText || "Server Error"}`,
-    );
-  }
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      method: options.method || "GET",
+      headers,
+      body: isFormData
+        ? (options.body as FormData)
+        : options.body
+          ? JSON.stringify(options.body)
+          : undefined,
+      signal: controller?.signal,
+    });
 
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      data.error || data.message || "An error occurred",
-      data.code,
-      data,
-    );
-  }
+    let data: any;
+    try {
+      data = await response.json();
+    } catch {
+      // Body is empty or not valid JSON
+      throw new ApiError(
+        response.status,
+        `${response.status} ${response.statusText || "Server Error"}`,
+      );
+    }
 
-  return data;
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        data.error || data.message || "An error occurred",
+        data.code,
+        data,
+      );
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new ApiError(
+        408,
+        "Request timed out. The server may be waking up — please try again.",
+        "REQUEST_TIMEOUT",
+      );
+    }
+    throw error;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
 }
 
 // Auth API - matching backend response

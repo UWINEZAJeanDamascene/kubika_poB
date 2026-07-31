@@ -846,12 +846,11 @@ export function Sidebar({
   const activeRole = useAuthStore((state) => state.activeRole);
   const setActiveCompany = useAuthStore((state) => state.setActiveCompany);
 
-  // Fetch company data on mount
+  // Fetch company data on mount — profile and multi-company lookups are deferred
+  // so the layout can paint immediately after login.
   useEffect(() => {
-    // Clear any old localStorage company data
     localStorage.removeItem("company-storage");
 
-    // Always fetch fresh company profile from DB
     companyApi
       .getMe()
       .then((response) => {
@@ -884,44 +883,59 @@ export function Sidebar({
         }
       });
 
-    // Fetch user profile for latest avatar
-    usersApi
-      .getProfile()
-      .then((response) => {
-        if (response.success && response.data) {
-          const profile = response.data as any;
-          if (profile.avatar) {
-            updateUser?.({ avatar: profile.avatar });
+    const defer = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 100));
+    const cancelDefer =
+      window.cancelIdleCallback ?? ((id: number) => clearTimeout(id));
+
+    const idleId = defer(() => {
+      usersApi
+        .getProfile()
+        .then((response) => {
+          if (response.success && response.data) {
+            const profile = response.data as any;
+            if (profile.avatar) {
+              updateUser?.({ avatar: profile.avatar });
+            }
           }
-        }
-      })
-      .catch(() => {
-        // Ignore profile fetch errors
-      });
+        })
+        .catch(() => {
+          // Ignore profile fetch errors
+        });
+    });
+
+    return () => cancelDefer(idleId);
   }, []);
 
   useEffect(() => {
     if (!companies?.length) return;
 
-    Promise.all(
-      companies.map(async (membership) => {
-        try {
-          const response = await companyApi.getById(membership.companyId);
-          if (response.success && response.data) {
-            const data = response.data as any;
-            return [
-              membership.companyId,
-              { name: data.name || t("nav.company"), logo_url: data.logo_url },
-            ] as const;
+    const defer = window.requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 250));
+    const cancelDefer =
+      window.cancelIdleCallback ?? ((id: number) => clearTimeout(id));
+
+    const idleId = defer(() => {
+      Promise.all(
+        companies.map(async (membership) => {
+          try {
+            const response = await companyApi.getById(membership.companyId);
+            if (response.success && response.data) {
+              const data = response.data as any;
+              return [
+                membership.companyId,
+                { name: data.name || t("nav.company"), logo_url: data.logo_url },
+              ] as const;
+            }
+          } catch (error) {
+            return [membership.companyId, { name: t("nav.company") }] as const;
           }
-        } catch (error) {
           return [membership.companyId, { name: t("nav.company") }] as const;
-        }
-        return [membership.companyId, { name: t("nav.company") }] as const;
-      }),
-    ).then((entries) => {
-      setCompanyOptions(Object.fromEntries(entries));
+        }),
+      ).then((entries) => {
+        setCompanyOptions(Object.fromEntries(entries));
+      });
     });
+
+    return () => cancelDefer(idleId);
   }, [companies]);
 
   const handleCompanySwitch = async (companyId: string, role: string) => {
