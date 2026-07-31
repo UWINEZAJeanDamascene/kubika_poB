@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-export function useLiveRefresh(refresh: () => void | Promise<void>, intervalMs = 15000) {
+export function useLiveRefresh(refresh: () => void | Promise<void>, intervalMs = 120000) {
   useEffect(() => {
     const run = () => {
       if (typeof document !== "undefined" && document.visibilityState === "hidden") return;

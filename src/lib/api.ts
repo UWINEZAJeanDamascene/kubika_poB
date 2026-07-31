@@ -147,46 +147,7 @@ export interface ReconciliationSummary {
   difference: number;
 }
 
-// Simple in-memory cache for GET requests (survives component re-renders)
-const memoryCache = new Map<string, { data: unknown; expiry: number }>();
-const CACHE_TTL_MS = 60_000;
-
-function getCachedResponse<T>(key: string): T | null {
-  const entry = memoryCache.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiry) {
-    memoryCache.delete(key);
-    return null;
-  }
-  return entry.data as T;
-}
-
-function setCachedResponse<T>(key: string, data: T): void {
-  memoryCache.set(key, { data, expiry: Date.now() + CACHE_TTL_MS });
-}
-
-function clearCache(prefix?: string): void {
-  if (prefix) {
-    for (const key of memoryCache.keys()) {
-      if (key.startsWith(prefix)) {
-        memoryCache.delete(key);
-      }
-    }
-  } else {
-    memoryCache.clear();
-  }
-}
-
-// Debounce utility
-function debounce<T extends (...args: unknown[]) => void>(fn: T, delay: number): (...args: Parameters<T>) => void {
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  return (...args: Parameters<T>) => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
-  };
-}
-
-export { clearCache, debounce };
+// Helper: build query string while skipping undefined/null values
 function buildQuery(params?: Record<string, any>) {
   if (!params) return "";
   const qp = new URLSearchParams();
@@ -228,16 +189,6 @@ async function request<T>(
   endpoint: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const isGetMethod = (options.method || "GET") === "GET";
-  const cacheKey = isGetMethod ? `${endpoint}:${JSON.stringify(options.params || {})}` : null;
-
-  if (isGetMethod && cacheKey) {
-    const cached = getCachedResponse<T>(cacheKey);
-    if (cached !== null) {
-      return cached;
-    }
-  }
-
   const authState = useAuthStore.getState();
   const token = authState.accessToken || localStorage.getItem("token");
   const companyId = authState.activeCompanyId || localStorage.getItem("companyId");
@@ -282,25 +233,25 @@ async function request<T>(
       signal: controller?.signal,
     });
 
-  let data: any;
-  try {
-    data = await response.json();
-  } catch {
-    // Body is empty or not valid JSON
-    throw new ApiError(
-      response.status,
-      `${response.status} ${response.statusText || "Server Error"}`,
-    );
-  }
+    let data: any;
+    try {
+      data = await response.json();
+    } catch {
+      // Body is empty or not valid JSON
+      throw new ApiError(
+        response.status,
+        `${response.status} ${response.statusText || "Server Error"}`,
+      );
+    }
 
-  if (!response.ok) {
-    throw new ApiError(
-      response.status,
-      data.error || data.message || "An error occurred",
-      data.code,
-      data,
-    );
-  }
+    if (!response.ok) {
+      throw new ApiError(
+        response.status,
+        data.error || data.message || "An error occurred",
+        data.code,
+        data,
+      );
+    }
 
     return data;
   } catch (error) {
