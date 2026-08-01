@@ -92,7 +92,12 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchDashboard({ bustCache: true });
+    // Use the cached dashboard (if fresh) on first load — the explicit
+    // "Refresh" button and the live-refresh poll are the intentional
+    // cache-busting paths. Forcing a full recompute on every mount defeated
+    // the Redis dashboard cache and made every navigation to this page pay
+    // the full aggregation cost again.
+    fetchDashboard();
   }, [fetchDashboard]);
   useLiveRefresh(() => fetchDashboard());
 
