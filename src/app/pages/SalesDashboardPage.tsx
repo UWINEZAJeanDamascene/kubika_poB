@@ -69,7 +69,10 @@ export default function SalesDashboardPage() {
   const creditNotes = data?.credit_notes;
   const invoiced = invoices?.total_invoiced ?? summary?.total_invoiced_mtd ?? 0;
   const collected = invoices?.total_collected ?? 0;
-  const outstanding = invoices?.total_outstanding ?? summary?.total_outstanding_ar ?? 0;
+  // Total outstanding AR is always-current (not month-scoped) — prefer it over
+  // the MTD invoice summary, which is legitimately 0 in months with no new
+  // invoices even though older invoices may still have an open balance.
+  const outstanding = aging?.total_ar_outstanding ?? summary?.total_outstanding_ar ?? invoices?.total_outstanding ?? 0;
   const overdue = aging?.total_overdue ?? 0;
   const collectionRate = data?.collection_rate.collection_rate_pct ?? summary?.collection_rate_pct ?? 0;
   const overdueRate = outstanding > 0 ? (overdue / outstanding) * 100 : 0;

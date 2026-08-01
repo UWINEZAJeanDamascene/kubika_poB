@@ -196,13 +196,11 @@ export default function ExpensesListPage() {
       });
 
       if (response.success) {
-        console.log('[ExpensesListPage] Fetched expenses:', response.data);
-        console.log('[ExpensesListPage] First expense department:', response.data[0]?.department);
         setExpenses(response.data);
-        if (response.pagination) {
-          setTotalCount(response.pagination?.total || 0);
-          setTotalPages(response.pagination?.pages || 1);
-        }
+        const total = response.pagination?.total ?? response.total ?? response.data?.length ?? 0;
+        const pages = response.pagination?.pages ?? response.pages ?? Math.max(1, Math.ceil(total / limit));
+        setTotalCount(total);
+        setTotalPages(pages || 1);
       }
     } catch (error) {
       console.error('[ExpensesListPage] Failed to fetch expenses:', error);
@@ -838,7 +836,7 @@ export default function ExpensesListPage() {
                   {/* Pagination */}
                   <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3 dark:border-slate-800">
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      Showing <span className="font-medium text-slate-900 dark:text-white">{((currentPage - 1) * limit) + 1}</span> to <span className="font-medium text-slate-900 dark:text-white">{Math.min(currentPage * limit, totalCount)}</span> of <span className="font-medium text-slate-900 dark:text-white">{totalCount}</span> expenses
+                      Showing <span className="font-medium text-slate-900 dark:text-white">{totalCount === 0 ? 0 : ((currentPage - 1) * limit) + 1}</span> to <span className="font-medium text-slate-900 dark:text-white">{Math.min(currentPage * limit, totalCount)}</span> of <span className="font-medium text-slate-900 dark:text-white">{totalCount}</span> expenses
                     </div>
                     <div className="flex items-center gap-2">
                       <Button

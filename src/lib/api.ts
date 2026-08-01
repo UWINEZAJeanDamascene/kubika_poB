@@ -172,6 +172,8 @@ interface RequestOptions {
 }
 
 const AUTH_REQUEST_TIMEOUT_MS = 60_000;
+/** Default timeout for non-auth requests. Long enough for a cold-start DB wake-up, but short enough that the UI never spins indefinitely. */
+const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
 
 class ApiError extends Error {
   constructor(
@@ -213,7 +215,8 @@ async function request<T>(
 
   const isAuthEndpoint = endpoint.startsWith("/auth/");
   const timeoutMs =
-    options.timeoutMs ?? (isAuthEndpoint ? AUTH_REQUEST_TIMEOUT_MS : undefined);
+    options.timeoutMs ??
+    (isAuthEndpoint ? AUTH_REQUEST_TIMEOUT_MS : DEFAULT_REQUEST_TIMEOUT_MS);
 
   const controller = timeoutMs ? new AbortController() : null;
   const timeoutId =
@@ -899,6 +902,15 @@ export interface ExecutiveCashBalance {
   label: string;
 }
 
+export interface ExecutivePeriodMetrics {
+  label: string;
+  start: string;
+  end: string;
+  revenue: number;
+  expenses: number;
+  net_profit: number;
+}
+
 export interface ExecutiveDashboardData {
   company_id: string;
   generated_at: string;
@@ -907,6 +919,10 @@ export interface ExecutiveDashboardData {
     expenses: ExecutiveMetric;
     net_profit: ExecutiveMetric;
     cash_balance: ExecutiveCashBalance;
+  };
+  period_comparison?: {
+    prior_month: ExecutivePeriodMetrics;
+    current_month: ExecutivePeriodMetrics;
   };
   accounts_receivable: {
     outstanding_total: number;
@@ -940,6 +956,10 @@ export interface ExecutiveDashboardData {
   date_context: {
     this_month_start: string;
     this_month_end: string;
+    selected_period_start?: string;
+    selected_period_end?: string;
+    selected_period_is_fallback?: boolean;
+    selected_period_kind?: "current_month" | "prior_month" | "fiscal_ytd" | string;
     fiscal_year_start: string;
     fiscal_year_end: string;
   };
@@ -1301,8 +1321,10 @@ export const dashboardApi = {
 
   // Executive Dashboard (Phase 3)
   // Phase 3 routes return raw service payload (no { success, data } wrapper)
-  getExecutive: async () => {
-    return request<ExecutiveDashboardData>("/dashboard/executive");
+  getExecutive: async (opts?: { refresh?: boolean }) => {
+    return request<ExecutiveDashboardData>("/dashboard/executive", {
+      params: opts?.refresh ? { refresh: "1" } : undefined,
+    });
   },
   clearCache: () =>
     request<{ success: boolean; message: string }>("/dashboard/cache/clear", {

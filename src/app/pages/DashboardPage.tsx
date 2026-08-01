@@ -13,8 +13,8 @@ import { formatDashboardError, formatDashboardDate, formatJournalDescription, fo
 import { Button } from "@/app/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/app/components/ui/chart";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
-import { ArrowRight, FileText, RefreshCw } from "lucide-react";
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { ArrowRight, FileText } from "lucide-react";
 import {
   IndustrialDashboardHeader,
   IndustrialKpiStrip,
@@ -63,12 +63,12 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboard = useCallback(async () => {
+  const fetchDashboard = useCallback(async (opts?: { bustCache?: boolean }) => {
     try {
       setError(null);
       // Load the executive dashboard first so the page renders without waiting
       // for inventory, purchase, and finance aggregations.
-      const executive = await dashboardApi.getExecutive();
+      const executive = await dashboardApi.getExecutive({ refresh: Boolean(opts?.bustCache) });
       setData(executive);
       setLoading(false);
       setRefreshing(false);
@@ -92,9 +92,9 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    fetchDashboard();
+    fetchDashboard({ bustCache: true });
   }, [fetchDashboard]);
-  useLiveRefresh(fetchDashboard);
+  useLiveRefresh(() => fetchDashboard());
 
   const metrics = data?.key_metrics;
   const ar = data?.accounts_receivable;
@@ -112,23 +112,57 @@ export default function DashboardPage() {
   const debtCoverage = debt?.totalAmount ? (cash / debt.totalAmount) * 100 : 100;
   const score = Math.max(0, Math.min(100, 50 + Math.min(margin, 40) * 0.7 + Math.min(arCurrentPct, 100) * 0.2 + Math.min(debtCoverage, 200) * 0.05 - (cash < 0 ? 30 : 0)));
   const statusTone: DashboardTone = cash < 0 || score < 50 ? "critical" : score < 75 ? "warning" : "healthy";
+  const periodKind = data?.date_context?.selected_period_kind;
+  const selectedPeriodLabel = (() => {
+    if (periodKind === "fiscal_ytd") return "Fiscal year to date";
+    if (data?.date_context?.selected_period_is_fallback && periodKind === "prior_month") {
+      return data.date_context.selected_period_start
+        ? `Prior month · ${formatDashboardDate(data.date_context.selected_period_start)} - ${formatDashboardDate(data.date_context.selected_period_end)}`
+        : "Prior month";
+    }
+    if (data?.date_context?.selected_period_start) {
+      return `${formatDashboardDate(data.date_context.selected_period_start)} - ${formatDashboardDate(data.date_context.selected_period_end)}`;
+    }
+    return "Current month";
+  })();
 
   const pulseData = useMemo(() => {
-    const previous = (current: number, change: number | null | undefined) => {
-      if (change === null || change === undefined || change <= -99.99) return 0;
-      return current / (1 + change / 100);
+    const prior = data?.period_comparison?.prior_month;
+    const current = data?.period_comparison?.current_month;
+    if (prior && current) {
+      return [
+        {
+          period: "Prior",
+          revenue: Math.max(prior.revenue, 0),
+          expenses: Math.abs(prior.expenses),
+          profit: prior.net_profit,
+        },
+        {
+          period: "Current",
+          revenue: Math.max(current.revenue, 0),
+          expenses: Math.abs(current.expenses),
+          profit: current.net_profit,
+        },
+      ];
+    }
+    // Legacy fallback if absolute series is missing from an older cached payload.
+    const previous = (currentValue: number, change: number | null | undefined) => {
+      if (change === null || change === undefined) return 0;
+      if (Math.abs(currentValue) < 0.005 && change <= -99.99) return 0;
+      const denom = 1 + change / 100;
+      if (Math.abs(denom) < 0.0001) return 0;
+      return currentValue / denom;
     };
     return [
-      { period: "Prior month", revenue: Math.max(previous(revenue, metrics?.revenue.vs_last_month), 0), expenses: Math.abs(previous(expenses, metrics?.expenses.vs_last_month)), profit: previous(profit, metrics?.net_profit.vs_last_month) },
-      { period: "Current month", revenue: Math.max(revenue, 0), expenses: Math.abs(expenses), profit },
+      { period: "Prior", revenue: Math.max(previous(revenue, metrics?.revenue.vs_last_month), 0), expenses: Math.abs(previous(expenses, metrics?.expenses.vs_last_month)), profit: previous(profit, metrics?.net_profit.vs_last_month) },
+      { period: "Current", revenue: Math.max(revenue, 0), expenses: Math.abs(expenses), profit },
     ];
-  }, [expenses, metrics?.expenses.vs_last_month, metrics?.net_profit.vs_last_month, metrics?.revenue.vs_last_month, profit, revenue]);
+  }, [data?.period_comparison, expenses, metrics?.expenses.vs_last_month, metrics?.net_profit.vs_last_month, metrics?.revenue.vs_last_month, profit, revenue]);
 
-  const bridgeData = [
-    { name: "Revenue", amount: Math.max(revenue, 0), fill: "#3b82f6" },
-    { name: "Expenses", amount: Math.abs(expenses), fill: "#d97706" },
-    { name: "Net profit", amount: profit, fill: profit >= 0 ? "#16734a" : "#b42318" },
-  ];
+  const paymentsDue = debt?.totalAmount ?? 0;
+  const openingCash = Math.max(cash - profit, 0);
+  const bridgeScale = Math.max(openingCash, Math.abs(profit), paymentsDue, cash, 1);
+  const bridgePct = (amount: number) => Math.max(0, Math.min(100, (Math.abs(amount) / bridgeScale) * 100));
 
   const priorityRows = useMemo<PriorityRow[]>(() => {
     const rows: PriorityRow[] = [];
@@ -148,11 +182,27 @@ export default function DashboardPage() {
     return rows.slice(0, 6);
   }, [ar, arOverdue, debt, support.inventory, support.purchase]);
 
+  const revenueDelta = metrics?.revenue.vs_last_month;
+  const profitDelta = metrics?.net_profit.vs_last_month;
   const kpis = [
-    { label: "Revenue / MTD", value: formatCompactRwf(revenue), delta: metrics?.revenue.vs_last_month == null ? undefined : `${metrics.revenue.vs_last_month >= 0 ? "+" : ""}${metrics.revenue.vs_last_month.toFixed(1)}%`, meta: "RWF · vs last month", tone: "healthy" as const, sparkline: [2, 3, 3, 5, 6, 8, 10] },
-    { label: "Net profit / MTD", value: formatCompactRwf(profit), delta: metrics?.net_profit.vs_last_month == null ? undefined : `${metrics.net_profit.vs_last_month >= 0 ? "+" : ""}${metrics.net_profit.vs_last_month.toFixed(1)}%`, meta: `${formatPercent(margin, 1)} margin`, tone: profit >= 0 ? "healthy" as const : "critical" as const, sparkline: [2, 3, 4, 5, 5, 7, 9] },
-    { label: "Cash position", value: formatCompactRwf(cash), delta: undefined, meta: "RWF · available liquidity", tone: cash >= 0 ? "healthy" as const : "critical" as const, sparkline: [5, 5, 6, 6, 7, 7, 8] },
-    { label: "Overdue AR", value: formatCompactRwf(arOverdue), delta: arOverdue > 0 ? "Action" : "Clear", meta: `${formatPercent(ar?.overdue_pct_of_outstanding ?? 0)} of outstanding`, tone: arOverdue > 0 ? "warning" as const : "healthy" as const, sparkline: [9, 8, 8, 7, 6, 5, 4] },
+    {
+      label: periodKind === "fiscal_ytd" ? "Revenue / FYTD" : periodKind === "prior_month" ? "Revenue / prior month" : "Revenue / MTD",
+      value: formatCompactRwf(revenue),
+      delta: revenueDelta == null ? undefined : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta.toFixed(1)}%`,
+      meta: "RWF · vs last month",
+      tone: (revenueDelta != null && revenueDelta < 0 ? "critical" : "healthy") as DashboardTone,
+      sparkline: pulseData.map((p) => Math.max(p.revenue, 0)),
+    },
+    {
+      label: periodKind === "fiscal_ytd" ? "Net profit / FYTD" : periodKind === "prior_month" ? "Net profit / prior month" : "Net profit / MTD",
+      value: formatCompactRwf(profit),
+      delta: profitDelta == null ? undefined : `${profitDelta >= 0 ? "+" : ""}${profitDelta.toFixed(1)}%`,
+      meta: `${formatPercent(margin, 1)} margin`,
+      tone: (profit >= 0 ? "healthy" : "critical") as DashboardTone,
+      sparkline: pulseData.map((p) => p.profit),
+    },
+    { label: "Cash position", value: formatCompactRwf(cash), delta: undefined, meta: "RWF · available liquidity", tone: cash >= 0 ? "healthy" as const : "critical" as const, sparkline: [openingCash, cash] },
+    { label: "Overdue AR", value: formatCompactRwf(arOverdue), delta: arOverdue > 0 ? "Action" : "Clear", meta: `${formatPercent(ar?.overdue_pct_of_outstanding ?? 0)} of outstanding`, tone: arOverdue > 0 ? "warning" as const : "healthy" as const, sparkline: [arOutstanding, arOverdue] },
   ];
 
   return (
@@ -166,9 +216,9 @@ export default function DashboardPage() {
             generatedAt={data?.generated_at}
             loading={loading}
             refreshing={refreshing}
-            onRefresh={async () => { setRefreshing(true); await fetchDashboard(); }}
+            onRefresh={async () => { setRefreshing(true); await fetchDashboard({ bustCache: true }); }}
             tone={loading ? "neutral" : statusTone}
-            context={<div className="industrial-filter"><span>Period</span><strong>Current month</strong></div>}
+            context={<div className="industrial-filter"><span>Period</span><strong>{selectedPeriodLabel}</strong></div>}
             actions={<Button type="button" variant="outline" size="sm" className="industrial-button" onClick={() => window.print()}><FileText className="h-3.5 w-3.5" /> Export report</Button>}
           />
 
@@ -183,17 +233,17 @@ export default function DashboardPage() {
                   <ChartContainer config={chartConfig} className="h-[300px] w-full">
                     <AreaChart accessibilityLayer data={pulseData} margin={{ left: 8, right: 18, top: 18, bottom: 8 }}>
                       <CartesianGrid strokeDasharray="2 4" vertical />
-                      <XAxis dataKey="period" axisLine={false} tickLine={false} />
+                      <XAxis dataKey="period" axisLine={false} tickLine={false} interval={0} />
                       <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => formatCompactRwf(Number(value)).replace("RWF ", "")} width={52} />
                       <ChartTooltip content={<ChartTooltipContent formatter={(value, name) => <span className="industrial-mono">{name}: {formatRwf(Number(value))}</span>} />} />
-                      <Area type="stepAfter" dataKey="revenue" stroke="var(--dashboard-blue-2)" fill="var(--dashboard-blue-2)" fillOpacity={0.08} strokeWidth={2} name="Revenue" />
-                      <Area type="stepAfter" dataKey="expenses" stroke="var(--dashboard-amber)" fill="var(--dashboard-amber)" fillOpacity={0.08} strokeWidth={2} name="Expenses" />
-                      <Area type="stepAfter" dataKey="profit" stroke="var(--dashboard-green)" fill="var(--dashboard-green)" fillOpacity={0.06} strokeWidth={2} name="Profit" />
+                      <Area type="monotone" dataKey="revenue" stroke="var(--dashboard-blue-2)" fill="var(--dashboard-blue-2)" fillOpacity={0.08} strokeWidth={2} name="Revenue" />
+                      <Area type="monotone" dataKey="expenses" stroke="var(--dashboard-amber)" fill="var(--dashboard-amber)" fillOpacity={0.08} strokeWidth={2} name="Expenses" />
+                      <Area type="monotone" dataKey="profit" stroke="var(--dashboard-green)" fill="var(--dashboard-green)" fillOpacity={0.06} strokeWidth={2} name="Profit" />
                     </AreaChart>
                   </ChartContainer>
                 )}
                 <div className="flex flex-wrap items-center justify-between gap-3 border-t border-(--dashboard-rule) pt-2 text-[10px] text-(--dashboard-muted)">
-                  <span>Two-period comparison from executive metrics</span>
+                  <span>Two-period comparison from executive metrics{data?.date_context?.selected_period_is_fallback ? " · KPI cards use prior period with activity" : ""}</span>
                   <span className="industrial-mono">Revenue {formatCompactRwf(revenue)} · Expense {formatCompactRwf(expenses)}</span>
                 </div>
               </div>
@@ -203,9 +253,9 @@ export default function DashboardPage() {
                   <IndustrialStatusLabel label={debtCoverage >= 100 ? "Coverage healthy" : "Coverage short"} tone={debtCoverage >= 100 ? "healthy" : "critical"} />
                 </div>
                 <div className="mt-4 space-y-4">
-                  <IndustrialProgress label="Opening cash" value={Math.min(100, cash > 0 ? 82 : 12)} detail={formatCompactRwf(Math.max(cash - (data?.key_metrics.net_profit.this_month ?? 0), 0))} tone="neutral" />
-                  <IndustrialProgress label="Net inflow" value={Math.min(100, cash > 0 ? 54 : 15)} detail={formatCompactRwf(profit)} tone={profit >= 0 ? "healthy" : "critical"} />
-                  <IndustrialProgress label="Payments due" value={Math.min(100, debtCoverage > 0 ? 24 : 0)} detail={formatCompactRwf(debt?.totalAmount ?? 0)} tone="warning" />
+                  <IndustrialProgress label="Opening cash" value={bridgePct(openingCash)} detail={formatCompactRwf(openingCash)} tone="neutral" />
+                  <IndustrialProgress label="Net inflow" value={bridgePct(profit)} detail={formatCompactRwf(profit)} tone={profit >= 0 ? "healthy" : "critical"} />
+                  <IndustrialProgress label="Payments due" value={bridgePct(paymentsDue)} detail={formatCompactRwf(paymentsDue)} tone="warning" />
                 </div>
                 <div className="mt-5 border-t-2 border-(--dashboard-ink) pt-3">
                   <div className="flex items-end justify-between gap-4">
