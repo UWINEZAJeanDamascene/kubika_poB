@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { productsApi, stockApi, ebmApi } from '@/lib/api';
 import { Layout } from '../layout/Layout';
@@ -261,6 +261,8 @@ export default function ProductDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
+  const [barcodeMediaReady, setBarcodeMediaReady] = useState(false);
+  const ebmCodesLoadedForRef = useRef<string | null>(null);
   const [registeringEbm, setRegisteringEbm] = useState(false);
   const [ebmTaxTypes, setEbmTaxTypes] = useState<EBMCodeOption[]>([]);
   const [ebmPackagingUnits, setEbmPackagingUnits] = useState<EBMCodeOption[]>([]);
@@ -283,9 +285,22 @@ export default function ProductDetailPage() {
   const [lifecycleLoading, setLifecycleLoading] = useState(false);
 
   useEffect(() => {
+    ebmCodesLoadedForRef.current = null;
+    setBarcodeMediaReady(false);
     loadProduct();
-    loadEbmCodes();
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !product || ebmCodesLoadedForRef.current === id) return;
+    ebmCodesLoadedForRef.current = id;
+    loadEbmCodes();
+  }, [id, product]);
+
+  useEffect(() => {
+    if (!product) return;
+    const timer = window.setTimeout(() => setBarcodeMediaReady(true), 600);
+    return () => window.clearTimeout(timer);
+  }, [product?._id]);
 
   useEffect(() => {
     if (product && initialTab === 'movements') {
@@ -719,12 +734,16 @@ export default function ProductDetailPage() {
                       <div className={productMutedPanelClass}>
                         <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{tr('products.barcode', 'Barcode')}</span>
                         <div className="mt-3 flex items-center gap-4">
-                        <BarcodeDisplay 
-                          productId={product._id} 
-                          type="barcode"
-                          barcodeParams={{ type: barcodeType, height: 80 }}
-                          className="h-20"
-                        />
+                        {barcodeMediaReady ? (
+                          <BarcodeDisplay
+                            productId={product._id}
+                            type="barcode"
+                            barcodeParams={{ type: barcodeType, height: 80 }}
+                            className="h-20"
+                          />
+                        ) : (
+                          <div className="flex h-20 items-center rounded border border-dashed border-slate-300 px-4 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">{product.barcode}</div>
+                        )}
                           <div>
                             <p className="text-sm font-semibold text-slate-900 dark:text-white">{barcodeType}</p>
                             <code className="mt-2 inline-flex rounded bg-white px-2 py-1 text-xs dark:bg-slate-900">{product.barcode}</code>
@@ -746,12 +765,16 @@ export default function ProductDetailPage() {
                     <div className={productMutedPanelClass}>
                       <span className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{tr('products.qrCode', 'QR Code')}</span>
                       <div className="mt-3 inline-flex rounded-md bg-white p-3 dark:bg-slate-950">
-                      <BarcodeDisplay 
-                        productId={product._id} 
-                        type="qrcode"
-                        qrParams={{ width: 150 }}
-                        className="h-[150px] w-[150px]"
-                      />
+                      {barcodeMediaReady ? (
+                        <BarcodeDisplay
+                          productId={product._id}
+                          type="qrcode"
+                          qrParams={{ width: 150 }}
+                          className="h-[150px] w-[150px]"
+                        />
+                      ) : (
+                        <div className="flex h-[150px] w-[150px] items-center justify-center rounded border border-dashed border-slate-300 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">QR</div>
+                      )}
                       </div>
                       <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                         QR payload resolves in POS by {product.barcode ? 'barcode' : 'SKU'}.

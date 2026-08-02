@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Paper,
@@ -77,6 +77,7 @@ export default function StockMovementsPage() {
   const { t } = useTranslation();
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [warehouses, setWarehouses] = useState<Record<string, string>>({});
+  const warehouseLookupLoadedRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -128,8 +129,10 @@ export default function StockMovementsPage() {
   };
 
   useEffect(() => {
-    fetchWarehouses();
-  }, []);
+    if (loading || warehouseLookupLoadedRef.current) return;
+    warehouseLookupLoadedRef.current = true;
+    window.setTimeout(fetchWarehouses, 0);
+  }, [loading]);
 
   // Fetch stock movements
   const fetchMovements = async () => {

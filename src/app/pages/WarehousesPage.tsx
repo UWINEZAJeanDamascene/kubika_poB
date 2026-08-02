@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Plus, 
@@ -116,6 +116,7 @@ export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
   
   // Dialog state
@@ -138,11 +139,17 @@ export default function WarehousesPage() {
   const [insuranceRows, setInsuranceRows] = useState<BranchInsurance[]>([]);
   const [savingInsurance, setSavingInsurance] = useState(false);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearchTerm(searchTerm), 400);
+    return () => window.clearTimeout(timer);
+  }, [searchTerm]);
+
+
   const fetchWarehouses = useCallback(async () => {
     try {
       setLoading(true);
       const response = await warehousesApi.getAll({
-        search: searchTerm,
+        search: debouncedSearchTerm,
         isActive: filterActive,
         page: 1,
         limit: 100,
@@ -159,7 +166,7 @@ export default function WarehousesPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, filterActive, t]);
+  }, [debouncedSearchTerm, filterActive, t]);
 
   useEffect(() => {
     fetchWarehouses();

@@ -82,16 +82,12 @@ export default function ClientsListPage() {
   const fetchClients = useCallback(async () => {
     setLoading(true);
     try {
-      console.log('[ClientsListPage] Fetching clients with params:', { search, page });
-      
       // Use getWithStats to get outstanding balances
       const response = await clientsApi.getWithStats({ 
         search: search || undefined,
         page,
         limit: 20
       });
-      console.log('[ClientsListPage] Clients response:', response);
-      
       if (response.success) {
         const clientData = Array.isArray(response.data) 
           ? response.data 

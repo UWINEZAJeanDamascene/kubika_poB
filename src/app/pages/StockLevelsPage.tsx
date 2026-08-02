@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   Table, 
@@ -106,6 +106,7 @@ export default function StockLevelsPage() {
         page: page + 1,
         limit: rowsPerPage,
         isArchived: false,
+        forStockLevels: '1',
       };
 
       if (debouncedSearch) {

@@ -142,6 +142,7 @@ export default function SalesLegacyPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('walk-in');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer' | 'mobile_money' | 'cheque'>('cash');
@@ -150,6 +151,7 @@ export default function SalesLegacyPage() {
   const [notes, setNotes] = useState('');
   const [walkInName, setWalkInName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [initialProductsLoaded, setInitialProductsLoaded] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [showCart, setShowCart] = useState(false);
@@ -169,6 +171,7 @@ export default function SalesLegacyPage() {
   const scanBufferRef = useRef('');
   const lastScanKeyAtRef = useRef(0);
   const scanFlushTimerRef = useRef<number | null>(null);
+  const secondaryDataLoadedRef = useRef(false);
   
   const fetchActiveTill = useCallback(async () => {
     setTillLoading(true);
@@ -196,11 +199,9 @@ export default function SalesLegacyPage() {
     }
   }, []);
 
-  // Load initial data
+  // Load only data needed to show products first. Customer and bank pickers load after first product fetch.
   useEffect(() => {
     loadWarehouses();
-    loadClients();
-    loadBankAccounts();
     fetchActiveTill();
     const storedHeldSales = localStorage.getItem('pos-held-sales');
     if (storedHeldSales) {
@@ -211,6 +212,21 @@ export default function SalesLegacyPage() {
       }
     }
   }, [fetchActiveTill]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!initialProductsLoaded || secondaryDataLoadedRef.current) return;
+    secondaryDataLoadedRef.current = true;
+    const timer = window.setTimeout(() => {
+      loadClients();
+      loadBankAccounts();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [initialProductsLoaded]);
 
   useEffect(() => {
     localStorage.setItem('pos-held-sales', JSON.stringify(heldSales));
@@ -233,7 +249,7 @@ export default function SalesLegacyPage() {
     if (selectedWarehouseId) {
       loadProducts();
     }
-  }, [selectedWarehouseId, searchQuery]);
+  }, [selectedWarehouseId, debouncedSearchQuery]);
   
   const loadWarehouses = async () => {
     try {
@@ -252,7 +268,7 @@ export default function SalesLegacyPage() {
   
   const loadClients = async () => {
     try {
-      const response = await clientsApi.getAll({ limit: 100 });
+      const response = await clientsApi.getAll({ limit: 100, isActive: true, forPicker: '1' });
       if (response.success && Array.isArray(response.data)) {
         setClients(response.data as Client[]);
       }
@@ -265,12 +281,13 @@ export default function SalesLegacyPage() {
     setIsLoading(true);
     try {
       const response = await salesLegacyApi.getProducts({
-        search: searchQuery || undefined,
+        search: debouncedSearchQuery || undefined,
         warehouseId: selectedWarehouseId,
         limit: 50
       });
       if (response.success && Array.isArray(response.data)) {
         setProducts(response.data);
+        setInitialProductsLoaded(true);
       }
     } catch (error) {
       console.error('Failed to load products:', error);

@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./apiBase";
+﻿import { API_BASE_URL } from "./apiBase";
 import { useAuthStore } from "@/store/authStore";
 export { API_BASE_URL };
 
@@ -1378,6 +1378,7 @@ export const productsApi = {
     order?: "asc" | "desc";
     refresh?: string;
     forPicker?: string;
+    forStockLevels?: string;
   }) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown; pagination?: unknown }>(
@@ -1468,7 +1469,10 @@ type CategoryResponse = { success: boolean; data: unknown; message?: string };
 type CategoryDeleteResponse = { success: boolean; message: string };
 
 export const categoriesApi = {
-  getAll: () => request<CategoryResponse>("/categories"),
+  getAll: (params?: { isActive?: boolean; forPicker?: string }) => {
+    const query = buildQuery(params as Record<string, any>);
+    return request<CategoryResponse>(`/categories${query ? `?${query}` : ""}`);
+  },
   getById: (id: string) => request<CategoryResponse>(`/categories/${id}`),
   create: (category: unknown) =>
     request<CategoryResponse>("/categories", {
@@ -1786,6 +1790,7 @@ export const suppliersApi = {
     page?: number;
     limit?: number;
     isActive?: boolean;
+    forPicker?: string;
   }) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
@@ -1837,6 +1842,7 @@ export const clientsApi = {
     limit?: number;
     type?: string;
     isActive?: boolean;
+    forPicker?: string;
   }) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
@@ -1849,6 +1855,7 @@ export const clientsApi = {
     limit?: number;
     type?: string;
     isActive?: boolean;
+    forPicker?: string;
   }) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(

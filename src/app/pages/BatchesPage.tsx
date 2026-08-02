@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -24,8 +24,7 @@ import {
   Boxes,
 } from 'lucide-react';
 import { EmptyState } from '@/app/components/EmptyState';
-import { stockBatchApi, StockBatch, warehousesApi } from '@/lib/api';
-import { API_BASE_URL } from '@/lib/apiBase';
+import { stockBatchApi, StockBatch, warehousesApi, productsApi } from '@/lib/api';
 import { Layout } from '../layout/Layout';
 
 interface Product {
@@ -57,6 +56,8 @@ export default function BatchesPage() {
 
   // Filters
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const filterOptionsLoadedRef = useRef(false);
   const [productFilter, setProductFilter] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
   const [quarantinedFilter, setQuarantinedFilter] = useState<'' | 'true' | 'false'>('');
@@ -68,42 +69,37 @@ export default function BatchesPage() {
     return () => observer.disconnect();
   }, []);
 
-  // Load products for filter
   useEffect(() => {
-    const loadProducts = async () => {
-      try {
-        const response = await fetch(
-          `${API_BASE_URL}/products?limit=1000`,
-          { credentials: 'include' }
-        );
-        const data = await response.json();
-        if (data.success && data.data) {
-          setProducts(data.data);
-        }
-      } catch (err) {
-        console.error('Failed to load products:', err);
-      }
-    };
-    loadProducts();
-  }, []);
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 400);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
-  // Load warehouses for filter
-  useEffect(() => {
-    const loadWarehouses = async () => {
-      try {
-        const response = await warehousesApi.getAll({});
-        if (response.success && (response as any).data) {
-          const warehousesData = Array.isArray((response as any).data)
-            ? (response as any).data
-            : [];
-          setWarehouses(warehousesData);
-        }
-      } catch (err) {
-        console.error('Failed to load warehouses:', err);
+  const loadFilterOptions = async () => {
+    try {
+      const [productsResponse, warehousesResponse] = await Promise.all([
+        productsApi.getAll({ limit: 200, forPicker: '1' }),
+        warehousesApi.getAll({ limit: 200 }),
+      ]);
+
+      if (productsResponse.success && productsResponse.data) {
+        setProducts(Array.isArray(productsResponse.data) ? productsResponse.data as Product[] : []);
       }
-    };
-    loadWarehouses();
-  }, []);
+      if (warehousesResponse.success && (warehousesResponse as any).data) {
+        const warehousesData = Array.isArray((warehousesResponse as any).data)
+          ? (warehousesResponse as any).data
+          : [];
+        setWarehouses(warehousesData);
+      }
+    } catch (err) {
+      console.error('Failed to load batch filter options:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (loading || filterOptionsLoadedRef.current) return;
+    filterOptionsLoadedRef.current = true;
+    window.setTimeout(loadFilterOptions, 0);
+  }, [loading]);
 
   // Load batches
   const fetchBatches = async () => {
@@ -114,7 +110,7 @@ export default function BatchesPage() {
         limit,
       };
 
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (productFilter) params.product = productFilter;
       if (warehouseFilter) params.warehouse = warehouseFilter;
 
@@ -151,7 +147,7 @@ export default function BatchesPage() {
 
   useEffect(() => {
     fetchBatches();
-  }, [page, limit, search, productFilter, warehouseFilter]);
+  }, [page, limit, debouncedSearch, productFilter, warehouseFilter]);
 
   // Handle page change
   const handleChangePage = (_: unknown, newPage: number) => {

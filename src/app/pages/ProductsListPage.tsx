@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { productsApi, categoriesApi, suppliersApi } from '@/lib/api';
+import { API_BASE_URL, productsApi, categoriesApi, suppliersApi } from '@/lib/api';
 import { Layout } from '../layout/Layout';
 import { 
   Plus, 
@@ -146,6 +146,7 @@ export default function ProductsListPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filterOptionsLoadedRef = useRef(false);
 
   const debouncedSetSearchTerm = (value: string) => {
     setSearchTerm(value);
@@ -170,15 +171,19 @@ export default function ProductsListPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // Load categories and suppliers on mount
   useEffect(() => {
-    loadCategories();
-    loadSuppliers();
-  }, []);
+    if (loading || filterOptionsLoadedRef.current) return;
+    filterOptionsLoadedRef.current = true;
+    const timer = window.setTimeout(() => {
+      loadCategories();
+      loadSuppliers();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loading]);
 
   const loadCategories = async () => {
     try {
-      const response = await categoriesApi.getAll();
+      const response = await categoriesApi.getAll({ isActive: true, forPicker: '1' });
       if (response.success && response.data) {
         setCategories(response.data as Category[]);
       }
@@ -189,7 +194,7 @@ export default function ProductsListPage() {
 
   const loadSuppliers = async () => {
     try {
-      const response = await suppliersApi.getAll({ limit: 100 });
+      const response = await suppliersApi.getAll({ limit: 100, isActive: true, forPicker: '1' });
       if (response.success && response.data) {
         setSuppliers(response.data as Supplier[]);
       }
@@ -499,7 +504,7 @@ export default function ProductsListPage() {
                 <Layers className="h-5 w-5" />
               </div>
             </div>
-            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('products.unitsRepresented', { count: inventorySummary.units.toLocaleString() })}</p>
+            <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{t('products.unitsRepresented', { count: inventorySummary.units })}</p>
           </div>
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-3">
@@ -889,4 +894,3 @@ export default function ProductsListPage() {
     </Layout>
   );
 }
-

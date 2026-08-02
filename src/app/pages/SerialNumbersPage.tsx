@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Box,
@@ -63,6 +63,8 @@ export default function SerialNumbersPage() {
 
   // Filters
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const filterOptionsLoadedRef = useRef(false);
   const [productFilter, setProductFilter] = useState('');
   const [warehouseFilter, setWarehouseFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -99,28 +101,36 @@ export default function SerialNumbersPage() {
   const [deleteName, setDeleteName] = useState('');
 
   useEffect(() => {
-    const loadFilters = async () => {
-      try {
-        const [pRes, wRes] = await Promise.all([
-          productsApi.getAll({ limit: 1000 }),
-          warehousesApi.getAll({}),
-        ]);
-        if (pRes.success) setProducts(Array.isArray(pRes.data) ? pRes.data : []);
-        if (wRes.success) {
-          const warehouseData = (wRes as any).data;
-          setWarehouses(Array.isArray(warehouseData) ? warehouseData : []);
-        }
-      } catch { /* ignore */ }
-    };
-    loadFilters();
-  }, []);
+    const timer = window.setTimeout(() => setDebouncedSearch(search), 400);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const loadFilters = async () => {
+    try {
+      const [pRes, wRes] = await Promise.all([
+        productsApi.getAll({ limit: 200, forPicker: '1' }),
+        warehousesApi.getAll({ limit: 200 }),
+      ]);
+      if (pRes.success) setProducts(Array.isArray(pRes.data) ? pRes.data : []);
+      if (wRes.success) {
+        const warehouseData = (wRes as any).data;
+        setWarehouses(Array.isArray(warehouseData) ? warehouseData : []);
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => {
+    if (loading || filterOptionsLoadedRef.current) return;
+    filterOptionsLoadedRef.current = true;
+    window.setTimeout(loadFilters, 0);
+  }, [loading]);
 
   const fetchSerials = async () => {
     setLoading(true);
     setError(null);
     try {
       const params: any = { page: page + 1, limit };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (productFilter) params.product = productFilter;
       if (warehouseFilter) params.warehouse = warehouseFilter;
       if (statusFilter) params.status = statusFilter;
@@ -137,7 +147,7 @@ export default function SerialNumbersPage() {
     }
   };
 
-  useEffect(() => { fetchSerials(); }, [page, limit, search, productFilter, warehouseFilter, statusFilter]);
+  useEffect(() => { fetchSerials(); }, [page, limit, debouncedSearch, productFilter, warehouseFilter, statusFilter]);
 
   const handleCreate = async () => {
     setSaving(true);
