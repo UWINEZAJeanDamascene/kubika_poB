@@ -262,6 +262,7 @@ export default function ProductDetailPage() {
   const [loading, setLoading] = useState(true);
   const [product, setProduct] = useState<Product | null>(null);
   const [barcodeMediaReady, setBarcodeMediaReady] = useState(false);
+  const [ebmCodesLoading, setEbmCodesLoading] = useState(false);
   const ebmCodesLoadedForRef = useRef<string | null>(null);
   const [registeringEbm, setRegisteringEbm] = useState(false);
   const [ebmTaxTypes, setEbmTaxTypes] = useState<EBMCodeOption[]>([]);
@@ -287,22 +288,22 @@ export default function ProductDetailPage() {
   useEffect(() => {
     ebmCodesLoadedForRef.current = null;
     setBarcodeMediaReady(false);
+    setEbmTaxTypes([]);
+    setEbmPackagingUnits([]);
+    setEbmQuantityUnits([]);
+    setEbmItemClasses([]);
     loadProduct();
   }, [id]);
 
   useEffect(() => {
-    if (!id || !product || ebmCodesLoadedForRef.current === id) return;
-    ebmCodesLoadedForRef.current = id;
-    loadEbmCodes();
-  }, [id, product]);
-
-  useEffect(() => {
     if (!product) return;
-    const timer = window.setTimeout(() => setBarcodeMediaReady(true), 600);
-    return () => window.clearTimeout(timer);
+    setBarcodeMediaReady(true);
   }, [product?._id]);
 
   useEffect(() => {
+    if (product && initialTab === 'details') {
+      ensureEbmCodesLoaded();
+    }
     if (product && initialTab === 'movements') {
       loadMovements();
     }
@@ -338,11 +339,18 @@ export default function ProductDetailPage() {
     }
   };
 
-  const loadEbmCodes = async () => {
+  const loadEbmCodes = async (productData?: Product | null) => {
+    const target = productData ?? product;
+    if (!target || ebmCodesLoadedForRef.current === target._id) return;
+    ebmCodesLoadedForRef.current = target._id;
+    setEbmCodesLoading(true);
     try {
+      const itemClassCode = target.ebm?.itemClassCd;
       const [codesResponse, itemClassResponse] = await Promise.all([
         ebmApi.getCodes(),
-        ebmApi.getItemClasses({ limit: 5000 }),
+        itemClassCode
+          ? ebmApi.getItemClasses({ search: itemClassCode, limit: 5 })
+          : Promise.resolve({ success: true, data: [] as EBMItemClassOption[] }),
       ]);
       const groups = codesResponse.success ? codesResponse.data : {};
       setEbmTaxTypes(findCodeGroup(groups, [/tax.*type/, /^tax$/]));
@@ -351,7 +359,14 @@ export default function ProductDetailPage() {
       setEbmItemClasses(itemClassResponse.success ? itemClassResponse.data : []);
     } catch (error) {
       console.error('Failed to load EBM codes:', error);
+      ebmCodesLoadedForRef.current = null;
+    } finally {
+      setEbmCodesLoading(false);
     }
+  };
+
+  const ensureEbmCodesLoaded = () => {
+    if (product) void loadEbmCodes(product);
   };
 
   const loadMovements = async () => {
@@ -464,8 +479,73 @@ export default function ProductDetailPage() {
   if (loading) {
     return (
       <Layout>
-        <div className="flex items-center justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+        <div className="container mx-auto py-6 px-4 max-w-7xl 2xl:max-w-[2200px]">
+          <div className="mb-6 rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/products')} className="mb-3 -ml-2">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              {t('common.back') || 'Back'}
+            </Button>
+            <div className="space-y-3">
+              <div className="h-8 w-64 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+              <div className="flex gap-2">
+                <div className="h-6 w-20 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+                <div className="h-6 w-24 animate-pulse rounded-full bg-slate-200 dark:bg-slate-700" />
+              </div>
+              <div className="h-4 w-full max-w-xl animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-4 mb-6">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Card key={index} className="border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <CardContent className="pt-4">
+                  <div className="h-4 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                  <div className="mt-3 h-8 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Tabs defaultValue="details" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 sm:grid-cols-5 lg:max-w-4xl">
+              <TabsTrigger value="details">
+                <Package className="h-4 w-4 mr-2" />
+                {tr('products.details', 'Details')}
+              </TabsTrigger>
+              <TabsTrigger value="stock">
+                <Warehouse className="h-4 w-4 mr-2" />
+                {tr('products.stock', 'Stock')}
+              </TabsTrigger>
+              <TabsTrigger value="movements">
+                <History className="h-4 w-4 mr-2" />
+                {tr('products.movements', 'Movements')}
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                <Clock className="h-4 w-4 mr-2" />
+                {tr('products.history', 'History')}
+              </TabsTrigger>
+              <TabsTrigger value="lifecycle">
+                <FileText className="h-4 w-4 mr-2" />
+                {tr('products.lifecycle', 'Lifecycle')}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="details" className="mt-6">
+              <div className="grid gap-5 lg:grid-cols-2">
+                {Array.from({ length: 2 }).map((_, index) => (
+                  <Card key={index} className="border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <CardHeader className="pb-3">
+                      <div className="h-5 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {Array.from({ length: 6 }).map((__, row) => (
+                        <div key={row} className="h-4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                      ))}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </Layout>
     );
@@ -627,7 +707,7 @@ export default function ProductDetailPage() {
         {/* Tabs */}
         <Tabs defaultValue={initialTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 sm:grid-cols-5 lg:max-w-4xl">
-            <TabsTrigger value="details">
+            <TabsTrigger value="details" onClick={ensureEbmCodesLoaded}>
               <Package className="h-4 w-4 mr-2" />
               {tr('products.details', 'Details')}
             </TabsTrigger>
@@ -635,7 +715,7 @@ export default function ProductDetailPage() {
               <Warehouse className="h-4 w-4 mr-2" />
               {tr('products.stock', 'Stock')}
             </TabsTrigger>
-            <TabsTrigger value="movements">
+            <TabsTrigger value="movements" onClick={() => { if (movements.length === 0) loadMovements(); }}>
               <History className="h-4 w-4 mr-2" />
               {tr('products.movements', 'Movements')}
             </TabsTrigger>
@@ -679,6 +759,9 @@ export default function ProductDetailPage() {
               </DetailCard>
 
               <DetailCard title={t('products.ebmRegistration')} description={t('products.ebmRegistrationDesc')}>
+                {ebmCodesLoading && (
+                  <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">{tr('common.loading', 'Loading EBM reference data...')}</p>
+                )}
                 {!product.ebm?.isRegisteredWithEBM && (
                   <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
                     {t('products.ebmNotRegisteredWarning')}

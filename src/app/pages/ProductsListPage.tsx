@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { API_BASE_URL, productsApi, categoriesApi, suppliersApi } from '@/lib/api';
 import { Layout } from '../layout/Layout';
@@ -172,14 +172,10 @@ export default function ProductsListPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   useEffect(() => {
-    if (loading || filterOptionsLoadedRef.current) return;
+    if (filterOptionsLoadedRef.current) return;
     filterOptionsLoadedRef.current = true;
-    const timer = window.setTimeout(() => {
-      loadCategories();
-      loadSuppliers();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [loading]);
+    void Promise.all([loadCategories(), loadSuppliers()]);
+  }, []);
 
   const loadCategories = async () => {
     try {
@@ -232,10 +228,10 @@ export default function ProductsListPage() {
           const pg = response.pagination as Record<string, any>;
           setPagination(prev => ({
             ...prev,
-            currentPage: pg.currentPage || prev.currentPage,
-            totalPages: pg.totalPages || prev.totalPages,
-            total: pg.total || prev.total,
-            limit: pg.limit || prev.limit
+            currentPage: pg.currentPage ?? pg.page ?? (response as Record<string, any>).currentPage ?? prev.currentPage,
+            totalPages: pg.totalPages ?? pg.pages ?? (response as Record<string, any>).pages ?? prev.totalPages,
+            total: pg.total ?? (response as Record<string, any>).total ?? prev.total,
+            limit: pg.limit ?? prev.limit
           }));
         }
       }
@@ -414,34 +410,22 @@ export default function ProductsListPage() {
     { stockValue: 0, units: 0, lowStock: 0, outOfStock: 0, active: 0, complete: 0 }
   ), [products]);
 
-  // Loading state
-  if (loading) {
-    return (
-      <Layout>
-        <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 2xl:max-w-[2200px]">
-          <PageHeader
-            title={t('products.title') || 'Products'}
-            subtitle={t('products.subtitle') || 'Manage your product inventory'}
-            icon={Package}
-          />
-          <LoadingState title={t('products.loadingProducts')} description={t('products.loadingProductsDesc')} />
-        </div>
-      </Layout>
-    );
-  }
+  // Error state — keep shell visible so navigation stays responsive
+  const pageShell = (content: React.ReactNode) => (
+    <Layout>
+      <div className="container mx-auto py-4 sm:py-6 px-3 sm:px-4 max-w-7xl 2xl:max-w-[2200px]">
+        {content}
+      </div>
+    </Layout>
+  );
 
-  // Error state
-  if (error) {
-    return (
-      <Layout>
-        <div className="mx-auto max-w-7xl px-3 py-4 sm:px-4 sm:py-6 2xl:max-w-[2200px]">
-          <ErrorState
-            title={t('products.loadFailed')}
-            description={error}
-            onRetry={() => loadProducts()}
-          />
-        </div>
-      </Layout>
+  if (error && !loading && products.length === 0) {
+    return pageShell(
+      <ErrorState
+        title={t('products.loadFailed')}
+        description={error}
+        onRetry={() => loadProducts()}
+      />
     );
   }
 
@@ -602,9 +586,33 @@ export default function ProductsListPage() {
         {/* Products Table */}
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
           {loading ? (
-            <div className="flex items-center justify-center p-12">
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-            </div>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-100/80 dark:bg-slate-800/80">
+                  <TableHead className="font-semibold">{t('products.code') || 'Code'}</TableHead>
+                  <TableHead className="font-semibold">{t('products.name') || 'Name'}</TableHead>
+                  <TableHead className="font-semibold">{t('products.category') || 'Category'}</TableHead>
+                  <TableHead className="font-semibold">{t('products.unit') || 'Unit'}</TableHead>
+                  <TableHead className="font-semibold text-right">{t('products.averageCost') || 'Avg Cost'}</TableHead>
+                  <TableHead className="font-semibold text-right">{t('products.costPrice') || 'Cost Price'}</TableHead>
+                  <TableHead className="font-semibold text-right">{t('products.sellingPrice') || 'Selling Price'}</TableHead>
+                  <TableHead className="font-semibold text-right">{t('products.stock') || 'Stock'}</TableHead>
+                  <TableHead className="font-semibold">{t('products.status') || 'Status'}</TableHead>
+                  <TableHead className="font-semibold text-right">{t('common.actions') || 'Actions'}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <TableRow key={index}>
+                    {Array.from({ length: 10 }).map((__, cellIndex) => (
+                      <TableCell key={cellIndex}>
+                        <div className="h-4 animate-pulse rounded bg-slate-200 dark:bg-slate-700" />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : products.length === 0 ? (
             <EmptyState
               icon={Package}
