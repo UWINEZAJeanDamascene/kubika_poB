@@ -201,7 +201,20 @@ async function request<T>(
     ...options.headers,
   };
 
-  if (token) {
+  // Public authentication endpoints must never inherit an old access token.
+  // In particular, logout revokes that token and a subsequent login would be
+  // rejected by session middleware before its credentials are processed.
+  const isPublicAuthEndpoint = new Set([
+    '/auth/login',
+    '/auth/register',
+    '/auth/refresh',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+    '/auth/platform-admin-status',
+    '/auth/setup-platform-admin',
+  ]).has(endpoint);
+
+  if (token && !isPublicAuthEndpoint) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 

@@ -112,15 +112,22 @@ export const useAuthStore = create<AuthState>()(
         });
       },
       
-      logout: () => set({
-        user: null,
-        accessToken: null,
-        refreshToken: null,
-        isAuthenticated: false,
-        companies: [],
-        activeCompanyId: null,
-        activeRole: null,
-      }),
+      logout: () => {
+        // Older pages used this standalone key before Zustand persistence.
+        // Leaving it behind makes the next public login carry the revoked
+        // access token in its Authorization header.
+        localStorage.removeItem('token');
+        localStorage.removeItem('companyId');
+        set({
+          user: null,
+          accessToken: null,
+          refreshToken: null,
+          isAuthenticated: false,
+          companies: [],
+          activeCompanyId: null,
+          activeRole: null,
+        });
+      },
       
       refreshTokens: (newAccessToken, newRefreshToken) => set({
         accessToken: newAccessToken,
