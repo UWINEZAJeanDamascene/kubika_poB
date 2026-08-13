@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Button, IconButton, InputAdornment, Stack, TextField } from '@mui/material';
@@ -28,7 +28,15 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [needsPlatformAdminSetup, setNeedsPlatformAdminSetup] = useState(false);
   const from = (location.state as { from?: string })?.from || '/dashboard';
+
+  useEffect(() => {
+    // The API only exposes this entry while the first owner does not exist.
+    void authService.checkPlatformAdminStatus().then((result) => {
+      setNeedsPlatformAdminSetup(result.success && result.needsSetup === true);
+    });
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -70,6 +78,7 @@ export default function LoginPage() {
       <div><div className="mb-1 flex items-center justify-between gap-4"><span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--industrial-muted)]">{t('auth.login.passwordLabel')}</span><Link to="/forgot-password" className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--industrial-copper)] hover:text-[var(--industrial-ink)]">{t('auth.login.forgotPassword')}</Link></div><TextField id="password" type={showPassword ? 'text' : 'password'} placeholder={t('auth.login.passwordPlaceholder')} value={password} onChange={(event) => setPassword(event.target.value)} disabled={isLoading} fullWidth variant="standard" sx={fieldSx} InputProps={{ startAdornment: <InputAdornment position="start"><LockKeyhole className="h-4 w-4 text-[var(--industrial-muted)]" /></InputAdornment>, endAdornment: <InputAdornment position="end"><IconButton aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((value) => !value)} edge="end" size="small" className="!text-[var(--industrial-muted)] hover:!text-[var(--industrial-copper)]">{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</IconButton></InputAdornment> }} /></div>
       <Button type="submit" variant="contained" color="primary" fullWidth disabled={isLoading} endIcon={isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />} className="!mt-3 !min-h-12 !justify-between !px-5 !text-[10px] sm:!justify-center">{isLoading ? t('auth.login.signingIn') : t('auth.login.signIn')}</Button>
       <p className="border-t border-white/10 pt-5 text-center font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--industrial-muted)]">{t('auth.login.newWorkspace')} <Link to="/register" className="text-[var(--industrial-copper)] hover:text-[var(--industrial-ink)]">{t('auth.login.createAccount')}</Link></p>
+      {needsPlatformAdminSetup && <p className="text-center font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--industrial-muted)]">Hosting this platform? <Link to="/setup-platform-admin" className="text-[var(--industrial-copper)] hover:text-[var(--industrial-ink)]">Set up platform control room</Link></p>}
     </Stack>
   </AuthFrame>;
 }

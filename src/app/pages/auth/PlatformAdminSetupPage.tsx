@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { authService } from '@/services';
+import { useAuthStore } from '@/store/authStore';
 import { Loader2, Eye, EyeOff, ShieldCheck, ArrowRight, KeyRound, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { AuthFrame } from './AuthFrame';
 
 export default function PlatformAdminSetupPage() {
   const navigate = useNavigate();
+  const { login } = useAuthStore();
 
   const [isChecking, setIsChecking] = useState(true);
   const [setupKey, setSetupKey] = useState('');
@@ -56,8 +58,32 @@ export default function PlatformAdminSetupPage() {
       const result = await authService.setupPlatformAdmin(setupKey, name, email, password);
 
       if (result.success) {
-        toast.success('Platform administrator created successfully');
-        navigate('/login', { replace: true });
+        // A first deployment should arrive in the control room without a
+        // second, unnecessary sign-in step.
+        const signIn = await authService.login({ email, password });
+        const userResponse = signIn.user
+          ? { success: true, data: signIn.user }
+          : await authService.getMe();
+
+        if (signIn.success && signIn.token && userResponse.success && userResponse.data) {
+          const user = userResponse.data;
+          localStorage.setItem('token', signIn.token);
+          login({
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            company: user.company,
+            permissions: user.permissions,
+            lastLogin: user.lastLogin,
+            mustChangePassword: user.mustChangePassword,
+          }, signIn.token, signIn.refreshToken || '', signIn.memberships || []);
+          toast.success('Platform administrator created. Welcome to the control room.');
+          navigate('/platform-admin', { replace: true });
+        } else {
+          toast.success('Platform administrator created. Please sign in to continue.');
+          navigate('/login', { replace: true });
+        }
       } else if (result.errorCode === 'INVALID_SETUP_KEY') {
         setError('Invalid setup key. Please check with your deployment administrator.');
       } else if (result.errorCode === 'PASSWORD_TOO_SHORT') {
