@@ -102,7 +102,7 @@ export default function QuotationsListPage() {
 
   const fetchClients = useCallback(async () => {
     try {
-      const response = await clientsApi.getAll({ limit: 100 });
+      const response = await clientsApi.getAll({ limit: 100, forPicker: '1' });
       if (response.success && response.data) {
         const clientData = Array.isArray(response.data) 
           ? response.data 

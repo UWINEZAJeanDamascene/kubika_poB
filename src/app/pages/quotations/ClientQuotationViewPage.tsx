@@ -104,7 +104,9 @@ export default function ClientQuotationViewPage() {
       if (response.success && response.data) {
         const data = response.data as Quotation;
         setQuotation(data);
-        if (data.client?._id) {
+        if (data.client?.name) {
+          setClientName(data.client.name);
+        } else if (data.client?._id) {
           fetchClientName(data.client._id);
         }
       }

@@ -129,17 +129,18 @@ export default function SalesOrderDetailPage() {
   const fetchSalesOrder = async () => {
     try {
       setLoading(true);
-      const response = await salesOrdersApi.getById(id as string);
-      if (response.success) {
-        setOrder(response.data as SalesOrder);
-        try {
-          const workflowResponse = await salesOrdersApi.getWorkflow(id!);
-          if (workflowResponse.success) {
-            setWorkflow(workflowResponse.data);
-          }
-        } catch (e) {
+      const [orderResponse, workflowResponse] = await Promise.all([
+        salesOrdersApi.getById(id as string),
+        salesOrdersApi.getWorkflow(id!).catch((e) => {
           console.error('Error fetching workflow:', e);
-        }
+          return null;
+        }),
+      ]);
+      if (orderResponse.success) {
+        setOrder(orderResponse.data as SalesOrder);
+      }
+      if (workflowResponse?.success) {
+        setWorkflow(workflowResponse.data);
       }
     } catch (error) {
       console.error('Error fetching sales order:', error);

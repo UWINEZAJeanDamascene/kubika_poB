@@ -84,6 +84,7 @@ interface SalesOrder {
   expectedDate?: string;
   status: 'draft' | 'confirmed' | 'picking' | 'packed' | 'delivered' | 'invoiced' | 'closed' | 'cancelled';
   lines: SalesOrderLine[];
+  lineCount?: number;
   subtotal: number;
   taxTotal: number;
   grandTotal: number;
@@ -164,13 +165,15 @@ export default function SalesOrdersListPage() {
       const response = await salesOrdersApi.getAll(params);
       if (response.success) {
         setSalesOrders(response.data as SalesOrder[]);
-        if (response.pagination) {
-          setPagination(prev => ({
-            ...prev,
-            total: (response.pagination as any).total || 0,
-            pages: (response.pagination as any).pages || 1,
-          }));
-        }
+        const paginationMeta = (response as any).pagination || {
+          total: (response as any).total || 0,
+          pages: (response as any).pages || 1,
+        };
+        setPagination(prev => ({
+          ...prev,
+          total: paginationMeta.total || 0,
+          pages: paginationMeta.pages || 1,
+        }));
       }
     } catch (error) {
       console.error('Error fetching sales orders:', error);
@@ -182,7 +185,7 @@ export default function SalesOrdersListPage() {
 
   const fetchClients = useCallback(async () => {
     try {
-      const response = await clientsApi.getAll({ limit: 1000 });
+      const response = await clientsApi.getAll({ limit: 200, forPicker: '1' });
       if (response.success) {
         setClients(response.data as Client[]);
       }
@@ -573,7 +576,7 @@ export default function SalesOrdersListPage() {
                                     <Badge variant="outline" className="border-red-200 bg-red-50 text-red-700 text-[10px] dark:border-red-800 dark:bg-red-950/30 dark:text-red-400">{t('salesOrders.backorder', 'Backorder')}</Badge>
                                   )}
                                 </div>
-                                <p className="text-xs text-slate-500 dark:text-slate-400">{order.lines.length} {t(order.lines.length !== 1 ? 'salesOrders.lines' : 'salesOrders.line', order.lines.length !== 1 ? 'lines' : 'line')}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400">{(order.lineCount ?? order.lines?.length ?? 0)} {t((order.lineCount ?? order.lines?.length ?? 0) !== 1 ? 'salesOrders.lines' : 'salesOrders.line', (order.lineCount ?? order.lines?.length ?? 0) !== 1 ? 'lines' : 'line')}</p>
                               </div>
                             </div>
                           </TableCell>
