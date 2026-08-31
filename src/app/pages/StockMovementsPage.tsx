@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useRef } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { 
   Paper,
@@ -75,11 +76,8 @@ interface PaginationInfo {
 
 export default function StockMovementsPage() {
   const { t } = useTranslation();
-  const [movements, setMovements] = useState<StockMovement[]>([]);
   const [warehouses, setWarehouses] = useState<Record<string, string>>({});
   const warehouseLookupLoadedRef = useRef(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   
   const isDark = () => document.documentElement.classList.contains('dark');
   const [dark, setDark] = useState(isDark());
@@ -89,12 +87,9 @@ export default function StockMovementsPage() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    total: 0,
-    page: 1,
-    limit: 50,
-    pages: 0
-  });
+  // Inputs only; totals come from the query result.
+  const [pageNum, setPageNum] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
   
   // Filters
   const [search, setSearch] = useState('');
@@ -129,62 +124,63 @@ export default function StockMovementsPage() {
   };
 
   useEffect(() => {
-    if (loading || warehouseLookupLoadedRef.current) return;
+    if (warehouseLookupLoadedRef.current) return;
     warehouseLookupLoadedRef.current = true;
     window.setTimeout(fetchWarehouses, 0);
-  }, [loading]);
+  }, []);
 
   // Fetch stock movements
-  const fetchMovements = async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const {
+    data: movementData,
+    isPending: loading,
+    isError,
+    error: queryError,
+    refetch: fetchMovements,
+  } = useQuery({
+    queryKey: ['stock', 'movements', { page: pageNum, limit: rowsPerPage, typeFilter, startDate, endDate, debouncedSearch }],
+    queryFn: async () => {
       const response = await stockApi.getMovements({
         type: typeFilter as 'in' | 'out' | 'adjustment' | undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         search: debouncedSearch || undefined,
-        page: pagination.page,
-        limit: pagination.limit
+        page: pageNum,
+        limit: rowsPerPage,
       });
-      
-      if (response && response.success) {
-        setMovements(response.data as StockMovement[]);
-        // Extract pagination info if available
-        const paginationData = (response as { pagination?: PaginationInfo }).pagination;
-        if (paginationData) {
-          setPagination(prev => ({
-            ...prev,
-            ...paginationData
-          }));
-        }
-      } else if (response) {
-        console.error('[StockMovements] API error response:', response);
-        const errMsg = (response as { message?: string }).message;
-        setError(errMsg || t('stockMovements.loadFailed'));
+      if (!response || !response.success) {
+        throw new Error((response as { message?: string })?.message || 'Failed to load stock movements');
       }
-    } catch (err) {
-      console.error('[StockMovements] Error:', err);
-      setError(err instanceof Error ? err.message : t('stockMovements.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  };
+      const meta = (response as { pagination?: PaginationInfo }).pagination;
+      return {
+        items: response.data as StockMovement[],
+        pagination: meta || null,
+      };
+    },
+    // Stock movements are an audit trail: browsing them is not a transactional
+    // read, so the standard 60s browse staleness applies.
+    staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    fetchMovements();
-  }, [pagination.page, typeFilter, startDate, endDate, debouncedSearch]);
+  const movements = movementData?.items ?? [];
+  const pagination: PaginationInfo = {
+    page: pageNum,
+    limit: rowsPerPage,
+    total: movementData?.pagination?.total ?? 0,
+    pages: movementData?.pagination?.pages ?? 1,
+  };
+  const error = isError
+    ? (queryError instanceof Error ? queryError.message : t('stockMovements.loadFailed'))
+    : null;
+
 
   const handlePageChange = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
-    setPagination(prev => ({ ...prev, page: newPage + 1 }));
+    setPageNum(newPage + 1);
   };
 
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPagination(prev => ({ 
-      ...prev, 
-      limit: parseInt(event.target.value, 10),
-      page: 1 
-    }));
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPageNum(1);
   };
 
   const handleExport = () => {
@@ -428,7 +424,7 @@ export default function StockMovementsPage() {
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" className="mb-4" onClose={() => setError(null)}>
+            <Alert severity="error" className="mb-4" onClose={() => fetchMovements()}>
               {error}
             </Alert>
           )}

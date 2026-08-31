@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { suppliersApi } from '@/lib/api';
@@ -57,39 +58,37 @@ export default function SuppliersListPage() {
   const { t } = useTranslation();
   const { formatCurrency } = useCurrency();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('');
 
-  const fetchSuppliers = useCallback(async () => {
-    setLoading(true);
-    try {
+  const {
+    data: supplierData,
+    isPending: loading,
+    refetch: fetchSuppliers,
+  } = useQuery({
+    queryKey: ['suppliers', 'list', { page, search: search || undefined, statusFilter: statusFilter || undefined }],
+    queryFn: async () => {
       const params: Record<string, any> = { page, limit: 20 };
       if (search) params.search = search;
       if (statusFilter) params.isActive = statusFilter;
-
       const response: any = await suppliersApi.getAll(params);
-      if (response.success) {
-        setSuppliers(response.data || []);
-        setTotalPages(response.pages || 1);
-        setTotal(response.total || 0);
-      }
-    } catch (error) {
-      console.error('[SuppliersListPage] Failed to fetch suppliers:', error);
-      toast.error(t('suppliers.errors.fetchFailed', 'Failed to load suppliers'));
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, statusFilter, t]);
+      if (!response.success) throw new Error('Failed to load suppliers');
+      return {
+        items: (response.data || []) as Supplier[],
+        totalPages: response.pages || 1,
+        total: response.total || 0,
+      };
+    },
+    staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    fetchSuppliers();
-  }, [fetchSuppliers]);
+  const suppliers = supplierData?.items ?? [];
+  const totalPages = supplierData?.totalPages ?? 1;
+  const total = supplierData?.total ?? 0;
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

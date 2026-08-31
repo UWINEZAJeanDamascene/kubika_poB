@@ -12,9 +12,22 @@ import { CurrencyProvider } from "@/contexts/CurrencyContext";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      // 60s matches the backend's stock/dashboard cache TTL. The previous
+      // 5-minute default silently overrode it: the server was willing to serve
+      // data 60s old while the client kept showing data up to 5 minutes old.
+      // Screens reading data that is about to be transacted against (POS,
+      // GRN, stock issue) must still set `staleTime: 0` explicitly.
+      staleTime: 60 * 1000,
+      // Keep unused data around long enough that going back to a screen paints
+      // from cache instead of refetching.
+      gcTime: 5 * 60 * 1000,
       refetchOnWindowFocus: false,
-      retry: 1,
+      // Retrying a 4xx just burns a round-trip — the answer will not change.
+      retry: (failureCount: number, error: unknown) => {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (typeof status === 'number' && status >= 400 && status < 500) return false;
+        return failureCount < 1;
+      },
     },
   },
 });

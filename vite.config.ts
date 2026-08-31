@@ -28,6 +28,26 @@ export default defineConfig({
     },
   },
 
+  build: {
+    rollupOptions: {
+      output: {
+        // Split the vendor bundle by cache stability. Previously everything
+        // landed in one ~3 MB chunk, so changing any dependency forced every
+        // returning user to re-download the lot. These groups change at very
+        // different rates, and charting/spreadsheet code is only needed on the
+        // screens that use it.
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router', 'react-router-dom'],
+          'mui-vendor': ['@mui/material', '@emotion/react', '@emotion/styled'],
+          'query-vendor': ['@tanstack/react-query'],
+          'chart-vendor': ['recharts'],
+          'form-vendor': ['react-hook-form', '@hookform/resolvers', 'zod'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
+
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
   optimizeDeps: {

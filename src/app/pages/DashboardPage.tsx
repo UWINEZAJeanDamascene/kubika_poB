@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { Layout } from "../layout/Layout";
 import {
@@ -57,49 +58,59 @@ interface PriorityRow {
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const [data, setData] = useState<ExecutiveDashboardData | null>(null);
-  const [support, setSupport] = useState<SupportData>({ inventory: null, purchase: null, finance: null });
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchDashboard = useCallback(async (opts?: { bustCache?: boolean }) => {
-    try {
-      setError(null);
-      // Load the executive dashboard first so the page renders without waiting
-      // for inventory, purchase, and finance aggregations.
-      const executive = await dashboardApi.getExecutive({ refresh: Boolean(opts?.bustCache) });
-      setData(executive);
-      setLoading(false);
-      setRefreshing(false);
+  // The explicit Refresh button and the live-refresh poll are the intentional
+  // cache-busting paths; a normal mount must reuse the cached dashboard or it
+  // pays the full aggregation cost again. A ref carries that intent into the
+  // query function without changing the query key (which would split the cache).
+  const bustCacheRef = useRef(false);
 
-      // Load support panels in the background.
+  const {
+    data,
+    isPending: loading,
+    isError,
+    error: execError,
+    refetch: refetchExecutive,
+  } = useQuery({
+    queryKey: ['dashboard', 'executive'],
+    queryFn: async () => {
+      const bust = bustCacheRef.current;
+      bustCacheRef.current = false;
+      return dashboardApi.getExecutive({ refresh: bust });
+    },
+    staleTime: 60 * 1000,
+  });
+
+  // Support panels load independently so the page renders without waiting on
+  // the inventory/purchase/finance aggregations.
+  const { data: support = { inventory: null, purchase: null, finance: null } } = useQuery({
+    queryKey: ['dashboard', 'support'],
+    queryFn: async (): Promise<SupportData> => {
       const [inventory, purchase, finance] = await Promise.allSettled([
         dashboardApi.getInventory(),
         dashboardApi.getPurchase(),
         dashboardApi.getFinance(),
       ]);
-      setSupport({
-        inventory: inventory.status === "fulfilled" ? inventory.value : null,
-        purchase: purchase.status === "fulfilled" ? purchase.value : null,
-        finance: finance.status === "fulfilled" ? finance.value : null,
-      });
-    } catch (err: any) {
-      setError(formatDashboardError(err?.message || "Failed to load executive dashboard"));
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
+      return {
+        inventory: inventory.status === 'fulfilled' ? inventory.value : null,
+        purchase: purchase.status === 'fulfilled' ? purchase.value : null,
+        finance: finance.status === 'fulfilled' ? finance.value : null,
+      };
+    },
+    staleTime: 60 * 1000,
+  });
 
-  useEffect(() => {
-    // Use the cached dashboard (if fresh) on first load — the explicit
-    // "Refresh" button and the live-refresh poll are the intentional
-    // cache-busting paths. Forcing a full recompute on every mount defeated
-    // the Redis dashboard cache and made every navigation to this page pay
-    // the full aggregation cost again.
-    fetchDashboard();
-  }, [fetchDashboard]);
-  useLiveRefresh(() => fetchDashboard());
+  const error = isError
+    ? formatDashboardError((execError as any)?.message || 'Failed to load executive dashboard')
+    : null;
+
+  const fetchDashboard = async (opts?: { bustCache?: boolean }) => {
+    if (opts?.bustCache) bustCacheRef.current = true;
+    await refetchExecutive();
+  };
+
+  useLiveRefresh(() => { void fetchDashboard(); });
 
   const metrics = data?.key_metrics;
   const ar = data?.accounts_receivable;

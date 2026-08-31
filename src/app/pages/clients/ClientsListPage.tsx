@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { clientsApi } from '@/lib/api';
 import { API_BASE_URL } from '@/lib/apiBase';
@@ -58,19 +59,10 @@ interface Client {
   overdueAmount?: number;
 }
 
-interface PaginationInfo {
-  currentPage: number;
-  totalPages: number;
-  total: number;
-  limit: number;
-}
 
 export default function ClientsListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   
   // Filters
   const [page, setPage] = useState(1);
@@ -79,46 +71,38 @@ export default function ClientsListPage() {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchClients = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Use getWithStats to get outstanding balances
-      const response = await clientsApi.getWithStats({ 
-        search: search || undefined,
-        page,
-        limit: 20
-      });
-      if (response.success) {
-        const clientData = Array.isArray(response.data) 
-          ? response.data 
-          : (response.data as unknown[]);
-        setClients(clientData as Client[]);
-        
-        // Cast response to access pagination properties
-        const responseWithPagination = response as unknown as { 
-          pages?: string; 
-          currentPage?: string; 
-          total?: string 
-        };
-        if (responseWithPagination.pages) {
-          setPagination({
-            currentPage: parseInt(responseWithPagination.currentPage || '1'),
-            totalPages: parseInt(responseWithPagination.pages) || 1,
-            total: parseInt(responseWithPagination.total || '0'),
-            limit: 20
-          });
-        }
-      }
-    } catch (error) {
-      console.error('[ClientsListPage] Failed to fetch clients:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search]);
+  // Totals arrive as top-level string fields on this endpoint, not in a
+  // nested pagination object, so they are parsed here rather than by the
+  // shared extractor.
+  const {
+    data: clientData,
+    isPending: loading,
+    refetch: fetchClients,
+  } = useQuery({
+    queryKey: ['clients', 'with-stats', { search: search || undefined, page }],
+    queryFn: async () => {
+      const response = await clientsApi.getWithStats({ search: search || undefined, page, limit: 20 });
+      if (!response.success) throw new Error('Failed to load clients');
+      const meta = response as unknown as { pages?: string; currentPage?: string; total?: string };
+      return {
+        items: (response.data as Client[]) || [],
+        pagination: meta.pages
+          ? {
+              currentPage: parseInt(meta.currentPage || '1'),
+              totalPages: parseInt(meta.pages) || 1,
+              total: parseInt(meta.total || '0'),
+              limit: 20,
+            }
+          : null,
+      };
+    },
+    staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
+  const clients = clientData?.items ?? [];
+  const pagination = clientData?.pagination ?? null;
+
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -343,7 +327,7 @@ export default function ClientsListPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={fetchClients}
+                    onClick={() => fetchClients()}
                     disabled={loading}
                     className="h-9 gap-1.5 dark:border-slate-700"
                   >

@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback, useRef, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { API_BASE_URL, productsApi, categoriesApi, suppliersApi } from '@/lib/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useProductList, useInvalidateProducts } from '@/lib/hooks/useEntities';
 import { Layout } from '../layout/Layout';
 import { 
   Plus, 
@@ -137,11 +139,8 @@ interface PaginationInfo {
 export default function ProductsListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
@@ -155,12 +154,10 @@ export default function ProductsListPage() {
       setDebouncedSearchTerm(value);
     }, 350);
   };
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    currentPage: 1,
-    totalPages: 1,
-    total: 0,
-    limit: 10
-  });
+  // Only the inputs live in state. Totals come from the query result, so the
+  // fetch no longer writes into the state its own effect depends on.
+  const [page, setPage] = useState(1);
+  const limit = 10;
   
   // Filters
   const [categoryFilter, setCategoryFilter] = useState<string>('');
@@ -199,54 +196,47 @@ export default function ProductsListPage() {
     }
   };
 
-  const loadProducts = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const params: any = {
-        page: pagination.currentPage,
-        limit: pagination.limit,
-      };
+  // Filters map to backend params. 'archived' is a flag, not a stock status.
+  const listParams = {
+    page,
+    limit,
+    ...(debouncedSearchTerm ? { search: debouncedSearchTerm } : {}),
+    ...(categoryFilter ? { category: categoryFilter } : {}),
+    ...(supplierFilter ? { supplier: supplierFilter } : {}),
+    ...(statusFilter === 'archived'
+      ? { isArchived: true, include_inactive: 'true' }
+      : statusFilter
+        ? { status: statusFilter }
+        : {}),
+  };
 
-      if (debouncedSearchTerm) params.search = debouncedSearchTerm;
-      if (categoryFilter) params.category = categoryFilter;
-      if (supplierFilter) params.supplier = supplierFilter;
-      // Status filter: 'active', 'archived', or stock status 'in_stock', 'low_stock', 'out_of_stock'
-      if (statusFilter === 'archived') {
-        params.isArchived = true;
-        params.include_inactive = 'true'; // Include archived products
-      } else if (statusFilter) {
-        // Map frontend status to backend stock status
-        params.status = statusFilter;
-      }
-      
-      const response = await productsApi.getAll(params);
-      
-      if (response.success) {
-        setProducts(response.data as Product[]);
-        if (response.pagination && typeof response.pagination === 'object') {
-          const pg = response.pagination as Record<string, any>;
-          setPagination(prev => ({
-            ...prev,
-            currentPage: pg.currentPage ?? pg.page ?? (response as Record<string, any>).currentPage ?? prev.currentPage,
-            totalPages: pg.totalPages ?? pg.pages ?? (response as Record<string, any>).pages ?? prev.totalPages,
-            total: pg.total ?? (response as Record<string, any>).total ?? prev.total,
-            limit: pg.limit ?? prev.limit
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('[ProductsListPage] Failed to load products:', error);
-      setError(error instanceof Error ? error.message : t('products.loadFailed'));
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.currentPage, pagination.limit, debouncedSearchTerm, categoryFilter, supplierFilter, statusFilter]);
+  const {
+    items: products,
+    total,
+    isInitialLoading: loading,
+    isError,
+    error: queryError,
+    refetch,
+  } = useProductList(listParams as any);
 
-  // Load products on mount and when page/limit/filters change
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+  const error = isError
+    ? (queryError instanceof Error ? queryError.message : t('products.loadFailed'))
+    : null;
+
+  // Rebuilt from query state so every render site below keeps working unchanged.
+  const pagination: PaginationInfo = {
+    currentPage: page,
+    limit,
+    total,
+    totalPages: Math.max(1, Math.ceil(total / limit)),
+  };
+
+  // After a write, invalidate rather than refetch one list: the same product
+  // may be cached under other keys (detail view, pickers).
+  const queryClient = useQueryClient();
+  const invalidateProducts = useInvalidateProducts();
+  const loadProducts = invalidateProducts;
+
 
   useEffect(() => {
     return () => {
@@ -257,11 +247,11 @@ export default function ProductsListPage() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setDebouncedSearchTerm(searchTerm);
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setPage(1);
   };
 
   const handlePageChange = (page: number) => {
-    setPagination(prev => ({ ...prev, currentPage: page }));
+    setPage(page);
   };
 
   const handleEdit = (product: Product) => {
@@ -286,27 +276,50 @@ export default function ProductsListPage() {
     }
   };
 
-  const handleToggleActive = async (product: Product) => {
-    setActionLoading(true);
-    try {
-      if (product.isArchived) {
+  // Optimistic quick-edit: the row flips the moment it is clicked, then the
+  // server confirms. On failure the previous list is restored and the error
+  // surfaced, so a rejected write can never leave the UI showing a state the
+  // server does not have.
+  const toggleActiveMutation = useMutation({
+    mutationFn: async (product: Product) => {
+      if (product.isArchived || !product.isActive) {
         await productsApi.restore(product._id);
-        toast.success(t('products.restored') || 'Product restored successfully');
-      } else if (product.isActive) {
-        await productsApi.archive(product._id);
-        toast.success(t('products.archived') || 'Product archived successfully');
-      } else {
-        await productsApi.restore(product._id);
-        toast.success(t('products.activated') || 'Product activated successfully');
+        return product.isArchived ? 'restored' : 'activated';
       }
-      await loadProducts();
-    } catch (error) {
+      await productsApi.archive(product._id);
+      return 'archived';
+    },
+    onMutate: async (product: Product) => {
+      await queryClient.cancelQueries({ queryKey: ['products', 'list'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['products', 'list'] });
+      queryClient.setQueriesData({ queryKey: ['products', 'list'] }, (old: any) => {
+        if (!old?.items) return old;
+        return {
+          ...old,
+          items: old.items.map((p: Product) =>
+            p._id === product._id
+              ? { ...p, isArchived: false, isActive: !(product.isActive && !product.isArchived) }
+              : p,
+          ),
+        };
+      });
+      return { previous };
+    },
+    onError: (error, _product, context) => {
+      context?.previous?.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
       console.error('Failed to toggle product status:', error);
       toast.error(t('products.toggleStatusFailed') || 'Failed to update product status');
-    } finally {
-      setActionLoading(false);
-    }
-  };
+    },
+    onSuccess: (outcome) => {
+      if (outcome === 'restored') toast.success(t('products.restored') || 'Product restored successfully');
+      else if (outcome === 'archived') toast.success(t('products.archived') || 'Product archived successfully');
+      else toast.success(t('products.activated') || 'Product activated successfully');
+    },
+    // Reconcile against the server either way.
+    onSettled: () => { void invalidateProducts(); },
+  });
+
+  const handleToggleActive = (product: Product) => toggleActiveMutation.mutate(product);
 
   const handleExport = async () => {
     try {
@@ -424,7 +437,7 @@ export default function ProductsListPage() {
       <ErrorState
         title={t('products.loadFailed')}
         description={error}
-        onRetry={() => loadProducts()}
+        onRetry={() => refetch()}
       />
     );
   }
@@ -437,7 +450,7 @@ export default function ProductsListPage() {
     setCategoryFilter('');
     setSupplierFilter('');
     setStatusFilter('');
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setPage(1);
   };
 
   return (
@@ -532,7 +545,7 @@ export default function ProductsListPage() {
               </div>
             </div>
             <div className="grid gap-2 sm:grid-cols-2 lg:flex lg:flex-wrap">
-              <Select value={categoryFilter || 'all'} onValueChange={(value) => { setCategoryFilter(value === 'all' ? '' : value); setPagination(prev => ({ ...prev, currentPage: 1 })); }}>
+              <Select value={categoryFilter || 'all'} onValueChange={(value) => { setCategoryFilter(value === 'all' ? '' : value); setPage(1); }}>
                 <SelectTrigger className="w-full lg:w-[160px]">
                   <SelectValue placeholder={t('products.allCategories') || 'All Categories'} />
                 </SelectTrigger>
@@ -544,7 +557,7 @@ export default function ProductsListPage() {
                 </SelectContent>
               </Select>
 
-              <Select value={supplierFilter || 'all'} onValueChange={(value) => { setSupplierFilter(value === 'all' ? '' : value); setPagination(prev => ({ ...prev, currentPage: 1 })); }}>
+              <Select value={supplierFilter || 'all'} onValueChange={(value) => { setSupplierFilter(value === 'all' ? '' : value); setPage(1); }}>
                 <SelectTrigger className="w-full lg:w-[160px]">
                   <SelectValue placeholder={t('products.allSuppliers') || 'All Suppliers'} />
                 </SelectTrigger>
@@ -556,7 +569,7 @@ export default function ProductsListPage() {
                 </SelectContent>
               </Select>
               
-              <Select value={statusFilter || 'all'} onValueChange={(value) => { setStatusFilter(value === 'all' ? '' : value); setPagination(prev => ({ ...prev, currentPage: 1 })); }}>
+              <Select value={statusFilter || 'all'} onValueChange={(value) => { setStatusFilter(value === 'all' ? '' : value); setPage(1); }}>
                 <SelectTrigger className="w-full lg:w-[140px]">
                   <SelectValue placeholder={t('products.allStatus') || 'Status'} />
                 </SelectTrigger>

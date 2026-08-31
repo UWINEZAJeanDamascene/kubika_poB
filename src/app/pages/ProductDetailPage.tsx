@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { productsApi, stockApi, ebmApi } from '@/lib/api';
 import { Layout } from '../layout/Layout';
@@ -259,8 +260,6 @@ export default function ProductDetailPage() {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'details';
 
-  const [loading, setLoading] = useState(true);
-  const [product, setProduct] = useState<Product | null>(null);
   const [barcodeMediaReady, setBarcodeMediaReady] = useState(false);
   const [ebmCodesLoading, setEbmCodesLoading] = useState(false);
   const ebmCodesLoadedForRef = useRef<string | null>(null);
@@ -284,6 +283,23 @@ export default function ProductDetailPage() {
   // Lifecycle state
   const [lifecycle, setLifecycle] = useState<LifecycleTimelineEntry[]>([]);
   const [lifecycleLoading, setLifecycleLoading] = useState(false);
+
+  // Navigating back to a product now paints from cache and revalidates in the
+  // background, instead of showing a spinner for data just displayed.
+  const {
+    data: product = null,
+    isPending: loading,
+    refetch: loadProduct,
+  } = useQuery({
+    queryKey: ['products', 'detail', id],
+    queryFn: async () => {
+      const response = await productsApi.getById(id as string);
+      if (!response.success || !response.data) throw new Error('Failed to load product');
+      return response.data as Product;
+    },
+    enabled: !!id,
+    staleTime: 60 * 1000,
+  });
 
   useEffect(() => {
     ebmCodesLoadedForRef.current = null;
@@ -321,23 +337,6 @@ export default function ProductDetailPage() {
     }
   }, [movementPagination.currentPage]);
 
-  const loadProduct = async () => {
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await productsApi.getById(id);
-      if (response.success && response.data) {
-        setProduct(response.data as Product);
-      }
-    } catch (error) {
-      console.error('Failed to load product:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadEbmCodes = async (productData?: Product | null) => {
     const target = productData ?? product;

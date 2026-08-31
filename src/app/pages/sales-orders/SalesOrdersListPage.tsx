@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useClientPicker } from '@/lib/hooks/useEntities';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { salesOrdersApi, clientsApi } from '@/lib/api';
+import { salesOrdersApi } from '@/lib/api';
 import { EmptyState } from '@/app/components/EmptyState';
 import { Layout } from '../../layout/Layout';
 import {
@@ -94,10 +96,6 @@ interface SalesOrder {
   createdAt: string;
 }
 
-interface Client {
-  _id: string;
-  name: string;
-}
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-950/40 dark:text-slate-300 dark:border-slate-700',
@@ -128,79 +126,59 @@ export default function SalesOrdersListPage() {
     { value: 'cancelled', label: t('salesOrders.status_options.cancelled', 'Cancelled') },
   ];
 
-  const [loading, setLoading] = useState(true);
-  const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
-    pages: 1,
-  });
+  // Inputs only; totals are derived from the query result below.
+  const [pageNum, setPageNum] = useState(1);
+  const limit = 20;
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  const fetchSalesOrders = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params: Record<string, any> = {
-        page: pagination.page,
-        limit: pagination.limit,
+  const soParams = {
+    page: pageNum,
+    limit,
+    ...(search ? { search } : {}),
+    ...(statusFilter && statusFilter !== 'all' ? { status: statusFilter } : {}),
+    ...(clientFilter && clientFilter !== 'all' ? { clientId: clientFilter } : {}),
+    ...(dateFrom ? { startDate: dateFrom } : {}),
+    ...(dateTo ? { endDate: dateTo } : {}),
+  };
+
+  const {
+    data: soData,
+    isPending: loading,
+    refetch: fetchSalesOrders,
+  } = useQuery({
+    queryKey: ['sales-orders', 'list', soParams],
+    queryFn: async () => {
+      const response = await salesOrdersApi.getAll(soParams as any);
+      if (!response.success) throw new Error('Failed to load sales orders');
+      const meta = (response as any).pagination || {
+        total: (response as any).total || 0,
+        pages: (response as any).pages || 1,
       };
+      return {
+        items: response.data as SalesOrder[],
+        total: meta.total || 0,
+        pages: meta.pages || 1,
+      };
+    },
+    staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
 
-      if (search) params.search = search;
-      if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
-      if (clientFilter && clientFilter !== 'all') params.clientId = clientFilter;
-      if (dateFrom) params.startDate = dateFrom;
-      if (dateTo) params.endDate = dateTo;
+  const salesOrders = soData?.items ?? [];
+  // Kept in the original shape so the render sites below are unchanged.
+  const pagination = { page: pageNum, limit, total: soData?.total ?? 0, pages: soData?.pages ?? 1 };
 
-      const response = await salesOrdersApi.getAll(params);
-      if (response.success) {
-        setSalesOrders(response.data as SalesOrder[]);
-        const paginationMeta = (response as any).pagination || {
-          total: (response as any).total || 0,
-          pages: (response as any).pages || 1,
-        };
-        setPagination(prev => ({
-          ...prev,
-          total: paginationMeta.total || 0,
-          pages: paginationMeta.pages || 1,
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching sales orders:', error);
-      toast.error(t('salesOrders.fetchFailed', 'Failed to fetch sales orders'));
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.page, pagination.limit, search, statusFilter, clientFilter, dateFrom, dateTo]);
+  const { items: clients } = useClientPicker();
 
-  const fetchClients = useCallback(async () => {
-    try {
-      const response = await clientsApi.getAll({ limit: 200, forPicker: '1' });
-      if (response.success) {
-        setClients(response.data as Client[]);
-      }
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
-
-  useEffect(() => {
-    fetchSalesOrders();
-  }, [fetchSalesOrders]);
 
   const doConfirm = async () => {
     if (!pendingOrderId) return;
@@ -302,7 +280,7 @@ export default function SalesOrdersListPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchSalesOrders}
+                    onClick={() => fetchSalesOrders()}
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -672,7 +650,7 @@ export default function SalesOrdersListPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
+                  onClick={() => setPageNum((p) => Math.max(1, p - 1))}
                   disabled={pagination.page === 1}
                   className="dark:border-slate-700 dark:text-slate-200"
                 >
@@ -684,7 +662,7 @@ export default function SalesOrdersListPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
+                  onClick={() => setPageNum((p) => p + 1)}
                   disabled={pagination.page >= pagination.pages}
                   className="dark:border-slate-700 dark:text-slate-200"
                 >

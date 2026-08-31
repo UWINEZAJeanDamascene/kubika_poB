@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useClientPicker } from '@/lib/hooks/useEntities';
 import { useNavigate } from 'react-router';
-import { invoicesApi, clientsApi } from '@/lib/api';
+import { invoicesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
@@ -68,10 +70,6 @@ interface Invoice {
   ebm?: { ebmStatus?: string };
 }
 
-interface Client {
-  _id: string;
-  name: string;
-}
 
 const toAmount = (value: unknown): number => {
   const parsed = typeof value === 'number' ? value : parseFloat(String(value ?? ''));
@@ -109,9 +107,6 @@ export default function InvoicesListPage() {
     { value: 'failed', label: t('invoice.ebmStatus.failed', 'Failed') },
   ];
 
-  const [loading, setLoading] = useState(true);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [ebmStatusFilter, setEbmStatusFilter] = useState('all');
@@ -120,117 +115,79 @@ export default function InvoicesListPage() {
   const [dateTo, setDateTo] = useState('');
   const [activeTab, setActiveTab] = useState('invoices');
 
-  const [pagination, setPagination] = useState({
-    page: 1,
-    limit: 20,
-    total: 0,
+  const [page, setPage] = useState(1);
+  const limit = 20;
+
+  // This endpoint nests its rows one level deeper than the others
+  // ({ data: { data: [...], total } }), so the list is unwrapped here rather
+  // than by the shared extractor.
+  const invoiceParams = {
+    page,
+    limit,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    ebmStatus: ebmStatusFilter !== 'all' ? ebmStatusFilter : undefined,
+    clientId: clientFilter !== 'all' ? clientFilter : undefined,
+    startDate: dateFrom || undefined,
+    endDate: dateTo || undefined,
+    search: search || undefined,
+  };
+
+  const {
+    data: invoiceData,
+    isPending: loading,
+    refetch: fetchInvoices,
+  } = useQuery({
+    queryKey: ['invoices', 'list', invoiceParams],
+    queryFn: async () => {
+      const response = await invoicesApi.getAll(invoiceParams as any);
+      if (!response || !response.success) throw new Error('Failed to load invoices');
+      const payload = response.data as any;
+      const rows = Array.isArray(payload) ? payload : (payload?.data || []);
+      return {
+        items: (rows as any[]).map(normalizeInvoice),
+        total: (Array.isArray(payload) ? rows.length : payload?.total) ?? rows.length,
+      };
+    },
+    staleTime: 60 * 1000,
+    placeholderData: keepPreviousData,
   });
 
-  const fetchInvoices = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await invoicesApi.getAll({
-        page: pagination.page,
-        limit: pagination.limit,
-        status: statusFilter !== 'all' ? statusFilter : undefined,
-        ebmStatus: ebmStatusFilter !== 'all' ? ebmStatusFilter : undefined,
-        clientId: clientFilter !== 'all' ? clientFilter : undefined,
-        startDate: dateFrom || undefined,
-        endDate: dateTo || undefined,
-        search: search || undefined,
-      });
-      
-      if (response.success && response.data) {
-        const data = response.data as any;
-        console.log('Response data structure:', data);
-        
-        // Backend returns { success, count, total, pages, currentPage, data: [...invoices] }
-        // So response.data is the object containing the invoices array
-        const invoicesData = Array.isArray(data) ? data : (data.data || []);
-        
-        console.log('Extracted invoices:', invoicesData);
-        console.log('Invoices count:', invoicesData?.length || 0);
-        if (Array.isArray(invoicesData)) {
-          setInvoices(invoicesData.map(normalizeInvoice));
-          setPagination(prev => ({ ...prev, total: data.total || invoicesData.length }));
-        } else {
-          setInvoices([]);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch invoices:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.page, pagination.limit, statusFilter, ebmStatusFilter, clientFilter, dateFrom, dateTo, search]);
+  const invoices = invoiceData?.items ?? [];
 
-  const fetchClients = useCallback(async () => {
-    try {
-      const response = await clientsApi.getAll({ limit: 100 });
-      if (response.success && response.data) {
-        const clientData = Array.isArray(response.data)
-          ? response.data
-          : (response.data as any[]);
-        setClients(clientData as Client[]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch clients:', error);
-    }
-  }, []);
+  const { items: clients } = useClientPicker();
 
-  useEffect(() => {
-    fetchClients();
-    
-    // Debug: Check stored companyId and test API directly
-    const storedCompanyId = localStorage.getItem('companyId');
-    console.log('Stored companyId:', storedCompanyId);
-    
-    // Test API call with no filters
-    invoicesApi.getAll({ limit: 100 }).then(response => {
-      console.log('Direct API test - full response:', response);
-      console.log('Direct API test - data:', response.data);
-      const data = response.data as any;
-      if (data?.data) {
-        console.log('Direct API test - invoices count:', data.data.length);
-        console.log('Direct API test - first invoice:', data.data[0]);
-      }
-    }).catch(err => {
-      console.error('Direct API test failed:', err);
-    });
-  }, [fetchClients]);
-
-  useEffect(() => {
-    fetchInvoices();
-  }, [fetchInvoices]);
+  // NOTE: a debug block used to run here on every mount, issuing a second
+  // invoicesApi.getAll({ limit: 100 }) purely to console.log the response.
+  // That was a wasted round-trip on every visit to this screen; removed.
 
   const handleSearch = (value: string) => {
     setSearch(value);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
   const handleStatusFilter = (value: string) => {
     setStatusFilter(value);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
   const handleEbmStatusFilter = (value: string) => {
     setEbmStatusFilter(value);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
   const handleClientFilter = (value: string) => {
     setClientFilter(value);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
   const handleDateFromChange = (value: string) => {
     setDateFrom(value);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
   const handleDateToChange = (value: string) => {
     setDateTo(value);
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
   const formatDate = (dateStr: string) => {
@@ -245,7 +202,7 @@ export default function InvoicesListPage() {
     setClientFilter('all');
     setDateFrom('');
     setDateTo('');
-    setPagination(prev => ({ ...prev, page: 1 }));
+    setPage(1);
   };
 
   const handleExport = async () => {

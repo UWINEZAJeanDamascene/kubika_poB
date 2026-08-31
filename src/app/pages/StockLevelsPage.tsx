@@ -29,7 +29,7 @@ import {
   Warning as WarningIcon,
   TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
-import { productsApi } from '@/lib/api';
+import { useStockLevels } from '@/lib/hooks/useProducts';
 import { Layout } from '../layout/Layout';
 import { EmptyState } from '@/app/components/EmptyState';
 import { Package } from 'lucide-react';
@@ -57,18 +57,10 @@ interface ProductStock {
   isActive: boolean;
 }
 
-const toNumber = (value: unknown): number => {
-  const parsed = typeof value === 'string' ? Number.parseFloat(value) : Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-};
-
 export default function StockLevelsPage() {
   const { t } = useTranslation();
   const { formatCurrency } = useCurrency();
-  const [products, setProducts] = useState<ProductStock[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+
   const isDark = () => document.documentElement.classList.contains('dark');
   const [dark, setDark] = useState(isDark());
   
@@ -81,8 +73,7 @@ export default function StockLevelsPage() {
   // Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
-  const [total, setTotal] = useState(0);
-  
+
   // Filters
   const [search, setSearch] = useState('');
   const [stockStatusFilter, setStockStatusFilter] = useState('');
@@ -96,79 +87,31 @@ export default function StockLevelsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch stock data from products API (aggregated stock levels)
-  const fetchStockLevels = async () => {
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const params: any = {
-        page: page + 1,
-        limit: rowsPerPage,
-        isArchived: false,
-        forStockLevels: '1',
-      };
+  // Server state lives in React Query: revisiting this screen paints from
+  // cache instead of waiting on a round-trip, and paging keeps the previous
+  // page on screen rather than flashing an empty table.
+  const {
+    data,
+    isPending,
+    isFetching,
+    isError,
+    error: queryError,
+    refetch,
+  } = useStockLevels({
+    page: page + 1,
+    limit: rowsPerPage,
+    search: debouncedSearch || undefined,
+    status: stockStatusFilter || undefined,
+  });
 
-      if (debouncedSearch) {
-        params.search = debouncedSearch;
-      }
-
-      if (stockStatusFilter) {
-        params.status = stockStatusFilter;
-      }
-
-      const response = await productsApi.getAll(params);
-      
-      if (response && response.success) {
-        const productData = (response.data as any[]) || [];
-        
-        // Transform product data to stock format
-        const stockData: ProductStock[] = productData.map((product: any) => {
-          const currentStock = toNumber(product.currentStock);
-          const reservedQuantity = toNumber(product.reservedQuantity);
-          const avgCost = toNumber(product.averageCost);
-          const costPrice = toNumber(product.costPrice);
-          const effectiveCost = avgCost > 0 ? avgCost : costPrice;
-          
-          return {
-            _id: product._id,
-            sku: product.sku,
-            name: product.name,
-            category: product.category,
-            unit: product.unit || 'pcs',
-            currentStock: currentStock,
-            reservedQuantity,
-            availableQuantity: Math.max(currentStock - reservedQuantity, 0),
-            averageCost: effectiveCost,
-            totalValue: currentStock * effectiveCost,
-            lowStockThreshold: toNumber(product.lowStockThreshold) || 10,
-            defaultWarehouse: product.defaultWarehouse,
-            isActive: product.isActive !== false,
-          };
-        });
-
-        setProducts(stockData);
-        
-        if (response.pagination && typeof response.pagination === 'object') {
-          const pg = response.pagination as Record<string, any>;
-          setTotal(pg.total || productData.length);
-        } else {
-          setTotal(productData.length);
-        }
-      } else {
-        setError(t('stockLevels.fetchFailed'));
-      }
-    } catch (err) {
-      console.error('[StockLevels] Error:', err);
-      setError(err instanceof Error ? err.message : t('stockLevels.unexpectedError'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStockLevels();
-  }, [page, rowsPerPage, debouncedSearch, stockStatusFilter]);
+  const products = data?.items ?? [];
+  const total = data?.total ?? 0;
+  // Only block the table on the very first load; background refetches keep the
+  // existing rows visible.
+  const loading = isPending;
+  const error = isError
+    ? (queryError instanceof Error ? queryError.message : t('stockLevels.fetchFailed'))
+    : null;
 
   const handlePageChange = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
     setPage(newPage);
@@ -180,7 +123,7 @@ export default function StockLevelsPage() {
   };
 
   const handleRefresh = () => {
-    fetchStockLevels();
+    refetch();
   };
 
   const handleExport = () => {
@@ -263,7 +206,8 @@ export default function StockLevelsPage() {
           <Button
             variant="outlined"
             size="small"
-            startIcon={<RefreshIcon />}
+            disabled={isFetching}
+            startIcon={isFetching ? <CircularProgress size={16} /> : <RefreshIcon />}
             onClick={handleRefresh}
             sx={{
               borderColor: dark ? '#475569' : '#cbd5e1',
@@ -372,7 +316,7 @@ export default function StockLevelsPage() {
 
       {/* Error Alert */}
       {error && (
-        <Alert severity="error" className="mb-4" onClose={() => setError(null)}>
+        <Alert severity="error" className="mb-4" onClose={() => refetch()}>
           {error}
         </Alert>
       )}
