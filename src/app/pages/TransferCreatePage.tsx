@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { 
   Paper,
   Box,
   TextField,
+  Autocomplete,
   MenuItem,
   Select,
   FormControl,
@@ -74,8 +76,6 @@ export default function TransferCreatePage() {
   const [items, setItems] = useState<TransferItem[]>([]);
   
   // Dropdown data
-  const [products, setProducts] = useState<Product[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [selectedProduct, setSelectedProduct] = useState('');
   
   // Success dialog
@@ -90,29 +90,32 @@ export default function TransferCreatePage() {
     return () => observer.disconnect();
   }, []);
 
-  // Fetch products and warehouses
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [productsRes, warehousesRes] = await Promise.all([
-          productsApi.getAll({ limit: 1000 }),
-          stockApi.getLevels({ limit: 1000 })
-        ]);
-        
-        if (productsRes.success) {
-          setProducts(productsRes.data as Product[]);
-        }
-        
-        if (warehousesRes.success && warehousesRes.warehouses) {
-          setWarehouses(warehousesRes.warehouses as Warehouse[]);
-        }
-      } catch (err) {
-        console.error('Error fetching data:', err);
-      }
-    };
-    
-    fetchData();
-  }, []);
+  // Transactional read: `currentStock` on these products decides how much may
+  // be transferred, so it is never served from cache. A stale quantity here
+  // would let someone move stock that no longer exists — the cost of being
+  // wrong is a negative balance and a manual reconciliation, which is far
+  // worse than one extra round-trip.
+  const { data: products = [] } = useQuery({
+    queryKey: ['products', 'transfer-source'],
+    queryFn: async () => {
+      const res = await productsApi.getAll({ limit: 1000 });
+      return res.success ? (res.data as Product[]) : [];
+    },
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+  });
+
+  const { data: warehouses = [] } = useQuery({
+    queryKey: ['warehouses', 'transfer-target'],
+    queryFn: async () => {
+      const res: any = await stockApi.getLevels({ limit: 1000 });
+      return res.success && res.warehouses ? (res.warehouses as Warehouse[]) : [];
+    },
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+  });
 
   const handleAddItem = () => {
     if (!selectedProduct) return;
@@ -306,20 +309,48 @@ export default function TransferCreatePage() {
             
             {/* Add Product */}
             <div className="flex gap-2 mb-4">
-              <FormControl fullWidth sx={fieldSx}>
-                <InputLabel>{t('transfers.selectProduct', 'Select Product')}</InputLabel>
-                <Select
-                  value={selectedProduct}
-                  label={t('transfers.selectProduct', 'Select Product')}
-                  onChange={(e) => setSelectedProduct(e.target.value)}
-                >
-                  {products.map(p => (
-                    <MenuItem key={p._id} value={p._id}>
-                      {p.name} ({p.sku})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {/*
+                Autocomplete rather than Select: this list is loaded with
+                limit 1000, and a Select renders every option as a DOM node —
+                a thousand MenuItems built on open, on a screen used to move
+                stock. Autocomplete renders only what matches what you type,
+                and typing is the faster interaction for a long catalogue anyway.
+              */}
+              <Autocomplete
+                fullWidth
+                options={products}
+                // Autocomplete does NOT virtualize: with an empty input it would
+                // render every one of the ~1000 options in the listbox. This caps
+                // what is mounted at 100 regardless of input, so the open cost is
+                // bounded.
+                //
+                // TRADE-OFF: the cap is applied AFTER filtering, so when more than
+                // 100 products match the typed term the surplus is not shown and
+                // the user has to refine the search. Matching is over name and
+                // SKU, so a SKU or a distinctive word gets there in a keystroke or
+                // two — but "every product is always immediately reachable" is not
+                // true, and a searchable server-side picker is the real fix if
+                // catalogues get large.
+                filterOptions={(opts: any[], state) => {
+                  const term = state.inputValue.trim().toLowerCase();
+                  const matched = term
+                    ? opts.filter((o: any) =>
+                        `${o.name} ${o.sku}`.toLowerCase().includes(term))
+                    : opts;
+                  return matched.slice(0, 100);
+                }}
+                value={products.find((p: any) => p._id === selectedProduct) || null}
+                onChange={(_e, option: any) => setSelectedProduct(option ? option._id : '')}
+                getOptionLabel={(option: any) => `${option.name} (${option.sku})`}
+                isOptionEqualToValue={(option: any, value: any) => option._id === value._id}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label={t('transfers.selectProduct', 'Select Product')}
+                    sx={fieldSx}
+                  />
+                )}
+              />
               <Button
                 variant="contained"
                 onClick={handleAddItem}

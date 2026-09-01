@@ -70,7 +70,6 @@ import {
   TableRow,
 } from "@/app/components/ui/table";
 import { toast } from "sonner";
-import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 
 const MONTHS = [
@@ -665,7 +664,7 @@ export default function PayrollListPage() {
     fetchRecords();
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const dataToExport = records.map((r) => ({
       "Employee ID": r.employee.employeeId,
       "First Name": r.employee.firstName,
@@ -687,6 +686,10 @@ export default function PayrollListPage() {
       Status: r.record_status || r.payment?.status || "draft",
       Period: `${r.period.monthName} ${r.period.year}`,
     }));
+    // Loaded on demand: this is ~416 kB that only matters when the user
+  // actually exports. A static import puts it in the initial bundle for
+  // everyone, including the majority who never click Export.
+  const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Payroll");

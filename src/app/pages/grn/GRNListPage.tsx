@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router";
 import { grnApi, suppliersApi } from "@/lib/api";
 import { EmptyState } from "@/app/components/EmptyState";
@@ -153,9 +154,6 @@ export default function GRNListPage() {
   const state = location.state as { purchaseOrderId?: string; purchaseOrderRef?: string } | null;
   const initialPO = state?.purchaseOrderId;
 
-  const [loading, setLoading] = useState(true);
-  const [grnList, setGrnList] = useState<GRN[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
 
   const [page, setPage] = useState(1);
@@ -166,6 +164,35 @@ export default function GRNListPage() {
   const [dateTo, setDateTo] = useState<string>("");
 
   /* ── Derived stats ── */
+  const queryClient = useQueryClient();
+
+  const grnQueryKey = ['grn', 'list', { page, statusFilter, ebmStatusFilter, supplierFilter, dateFrom, dateTo }];
+
+  // staleTime 0: confirming a GRN posts stock and a journal entry. Acting on a
+  // cached list risks confirming a GRN someone else already confirmed.
+  const { data: grnData, isPending: loading, refetch: fetchGRNs } = useQuery({
+    queryKey: grnQueryKey,
+    queryFn: async () => {
+      const params: any = { page, limit: 20 };
+      if (statusFilter && statusFilter !== "all") params.status = statusFilter;
+      if (ebmStatusFilter && ebmStatusFilter !== "all") params.ebmStatus = ebmStatusFilter;
+      if (supplierFilter && supplierFilter !== "all") params.supplier_id = supplierFilter;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+
+      const response = await grnApi.getAll(params);
+      if (!response.success) throw new Error("Failed to fetch GRNs");
+      return {
+        items: (Array.isArray(response.data) ? response.data : (response.data as unknown[])) as GRN[],
+        pagination: (response.pagination as PaginationInfo) ?? null,
+      };
+    },
+    staleTime: 0,
+  });
+
+  const grnList = grnData?.items ?? [];
+  const pagination = grnData?.pagination ?? null;
+
   const stats = useMemo(() => {
     const total = grnList.length;
     const draft = grnList.filter((g) => g.status === "draft").length;
@@ -186,28 +213,6 @@ export default function GRNListPage() {
     }
   }, []);
 
-  const fetchGRNs = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params: any = { page, limit: 20 };
-      if (statusFilter && statusFilter !== "all") params.status = statusFilter;
-      if (ebmStatusFilter && ebmStatusFilter !== "all") params.ebmStatus = ebmStatusFilter;
-      if (supplierFilter && supplierFilter !== "all") params.supplier_id = supplierFilter;
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
-
-      const response = await grnApi.getAll(params);
-      if (response.success) {
-        setGrnList((Array.isArray(response.data) ? response.data : (response.data as unknown[])) as GRN[]);
-        if (response.pagination) setPagination(response.pagination as PaginationInfo);
-      }
-    } catch (error) {
-      console.error("[GRNListPage] Failed to fetch GRNs:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, ebmStatusFilter, supplierFilter, dateFrom, dateTo]);
-
   useEffect(() => {
     fetchSuppliers();
   }, [fetchSuppliers]);
@@ -224,15 +229,38 @@ export default function GRNListPage() {
   }, [initialPO, navigate, state]);
 
   /* ── Actions ── */
-  const handleConfirm = async (id: string) => {
-    try {
-      await grnApi.confirm(id);
-      fetchGRNs();
-    } catch (error: any) {
+  // Optimistic confirm: the row shows "confirmed" immediately. If the server
+  // rejects it — already confirmed, closed period, insufficient stock — the
+  // previous list is restored, so the UI can never claim stock was received
+  // when it was not.
+  const confirmMutation = useMutation({
+    mutationFn: (id: string) => grnApi.confirm(id),
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['grn'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['grn'] });
+      queryClient.setQueriesData({ queryKey: ['grn'] }, (old: any) => {
+        if (!old?.items) return old;
+        return {
+          ...old,
+          items: old.items.map((g: GRN) => (g._id === id ? { ...g, status: 'confirmed' } : g)),
+        };
+      });
+      return { previous };
+    },
+    onError: (error: any, _id, context) => {
+      context?.previous?.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
       console.error("Failed to confirm GRN:", error);
       alert(error?.message || "Failed to confirm GRN");
-    }
-  };
+    },
+    // Confirming posts stock and a journal entry, so the stock caches are stale too.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['grn'] });
+      void queryClient.invalidateQueries({ queryKey: ['stock'] });
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+
+  const handleConfirm = (id: string) => confirmMutation.mutate(id);
 
   const handleEdit = (id: string) => navigate(`/grn/${id}/edit`);
 
@@ -240,7 +268,7 @@ export default function GRNListPage() {
     if (!confirm("Are you sure you want to delete this GRN? This action cannot be undone.")) return;
     try {
       await grnApi.delete(id);
-      fetchGRNs();
+      void queryClient.invalidateQueries({ queryKey: ['grn'] });
     } catch (error) {
       console.error("Failed to delete GRN:", error);
       alert("Failed to delete GRN. It may have already been confirmed.");

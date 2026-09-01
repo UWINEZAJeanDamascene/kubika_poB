@@ -1,4 +1,3 @@
-import * as ExcelJS from 'exceljs';
 import { toPng } from 'html-to-image';
 import { saveAs } from 'file-saver';
 
@@ -38,6 +37,10 @@ export async function exportChartToExcel(
   const imageBuffer = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
 
   // 2. Build workbook
+  // Loaded on demand: this is ~416 kB that only matters when the user
+  // actually exports. A static import puts it in the initial bundle for
+  // everyone, including the majority who never click Export.
+  const ExcelJS = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
 
   // --- Data Sheet ---

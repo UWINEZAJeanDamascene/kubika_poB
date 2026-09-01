@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -20,6 +21,7 @@ import {
 import { Badge } from "@/app/components/ui/badge";
 import { Loader2, Package, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react";
 import { stockApi, productsApi, warehousesApi } from "@/lib/api";
+import { TRANSACTIONAL_STALE_TIME } from "@/lib/hooks/useListQuery";
 import { toast } from "sonner";
 
 interface Product {
@@ -58,10 +60,7 @@ export function StockAdjustmentDialog({
   preselectedProductId,
 }: StockAdjustmentDialogProps) {
   const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [fetchingData, setFetchingData] = useState(false);
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     product: preselectedProductId || "",
@@ -73,46 +72,83 @@ export function StockAdjustmentDialog({
     notes: "",
   });
 
-  // Fetch products and warehouses when dialog opens
-  useEffect(() => {
-    if (open) {
-      fetchProducts();
-      fetchWarehouses();
-    }
-  }, [open]);
-
-  const fetchProducts = async () => {
-    setFetchingData(true);
-    try {
+  const productsQuery = useQuery({
+    queryKey: ["products", "adjustment-picker"],
+    queryFn: async (): Promise<Product[]> => {
       const response: any = await productsApi.getAll({ limit: 1000 });
-      if (response.success) {
-        const productData = response.data?.data || response.data || [];
-        setProducts(productData);
-      }
-    } catch (error) {
-      console.error("Failed to fetch products:", error);
-    } finally {
-      setFetchingData(false);
-    }
-  };
+      if (!response.success) throw new Error("Failed to fetch products");
+      return response.data?.data || response.data || [];
+    },
+    enabled: open,
+    // An adjustment changes stock immediately, so the source quantities must
+    // be revalidated rather than served from a browse-cache entry.
+    staleTime: TRANSACTIONAL_STALE_TIME,
+  });
+  const products = productsQuery.data ?? [];
 
-  const fetchWarehouses = async () => {
-    try {
+  const warehousesQuery = useQuery({
+    queryKey: ["warehouses", "adjustment-picker"],
+    queryFn: async (): Promise<Warehouse[]> => {
       const response: any = await warehousesApi.getAll();
-      if (response.success) {
-        const warehouseData = response.data || [];
-        setWarehouses(warehouseData);
-        // Auto-select first warehouse if available
-        if (warehouseData.length > 0 && !form.warehouse) {
-          setForm((prev) => ({ ...prev, warehouse: warehouseData[0]._id }));
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch warehouses:", error);
+      if (!response.success) throw new Error("Failed to fetch warehouses");
+      return response.data || [];
+    },
+    enabled: open,
+    staleTime: 5 * 60 * 1000,
+  });
+  const warehouses = warehousesQuery.data ?? [];
+  const fetchingData = productsQuery.isPending || warehousesQuery.isPending;
+
+  useEffect(() => {
+    if (open && !form.warehouse && warehouses.length) {
+      setForm((prev) => ({ ...prev, warehouse: warehouses[0]._id }));
     }
-  };
+  }, [open, form.warehouse, warehouses]);
 
   const selectedProduct = products.find((p) => p._id === form.product);
+
+  const adjustmentMutation = useMutation({
+    mutationFn: async (input: { product: string; warehouse?: string; quantity: number; type: "in" | "out"; reason: string; notes?: string }) => {
+      const response = await stockApi.adjustStock({ ...input, reason: input.reason as any });
+      if (!response.success) throw new Error("Failed to adjust stock");
+      return response;
+    },
+    onMutate: async (input) => {
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ["products"] }),
+        queryClient.cancelQueries({ queryKey: ["stock"] }),
+      ]);
+      const previousProducts = queryClient.getQueriesData({ queryKey: ["products"] });
+      const previousStock = queryClient.getQueriesData({ queryKey: ["stock"] });
+      const delta = input.type === "in" ? input.quantity : -input.quantity;
+      const applyDelta = (value: any): any => {
+        const updateRows = (rows: any[]) => rows.map((row) => {
+          if (row?._id !== input.product) return row;
+          const currentStock = Number(row.currentStock || 0) + delta;
+          const reservedQuantity = Number(row.reservedQuantity || 0);
+          return { ...row, currentStock, availableQuantity: Math.max(0, currentStock - reservedQuantity) };
+        });
+        if (Array.isArray(value)) return updateRows(value);
+        if (Array.isArray(value?.items)) return { ...value, items: updateRows(value.items) };
+        if (Array.isArray(value?.data)) return { ...value, data: updateRows(value.data) };
+        return value;
+      };
+      queryClient.setQueriesData({ queryKey: ["products"] }, applyDelta);
+      queryClient.setQueriesData({ queryKey: ["stock"] }, applyDelta);
+      return { previousProducts, previousStock };
+    },
+    onError: (error: Error, _input, context) => {
+      context?.previousProducts.forEach(([key, value]) => queryClient.setQueryData(key, value));
+      context?.previousStock.forEach(([key, value]) => queryClient.setQueryData(key, value));
+      toast.error(error.message || t("common.error", "An error occurred"));
+    },
+    onSettled: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["products"] }),
+        queryClient.invalidateQueries({ queryKey: ["stock"] }),
+      ]);
+    },
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,9 +167,8 @@ export function StockAdjustmentDialog({
     // Determine type based on reason or explicit selection
     const type = form.type;
 
-    setLoading(true);
     try {
-      const response = await stockApi.adjustStock({
+      await adjustmentMutation.mutateAsync({
         product: form.product,
         warehouse: form.warehouse || undefined,
         quantity,
@@ -141,31 +176,12 @@ export function StockAdjustmentDialog({
         reason: form.reason as any,
         notes: form.notes || undefined,
       });
-
-      if (response.success) {
-        toast.success(
-          t("stockAdjustment.success", "Stock adjusted successfully")
-        );
-        // Reset form
-        setForm({
-          product: "",
-          warehouse: warehouses.length > 0 ? warehouses[0]._id : "",
-          type: "in",
-          quantity: "",
-          unitCost: "",
-          reason: "correction",
-          notes: "",
-        });
-        onOpenChange(false);
-        onSuccess?.();
-      } else {
-        toast.error(t("stockAdjustment.error", "Failed to adjust stock"));
-      }
-    } catch (error: any) {
-      const message = error?.message || t("common.error", "An error occurred");
-      toast.error(message);
-    } finally {
-      setLoading(false);
+      toast.success(t("stockAdjustment.success", "Stock adjusted successfully"));
+      setForm({ product: "", warehouse: warehouses[0]?._id || "", type: "in", quantity: "", unitCost: "", reason: "correction", notes: "" });
+      onOpenChange(false);
+      onSuccess?.();
+    } catch {
+      // onError already restores the optimistic cache and shows feedback.
     }
   };
 
@@ -361,17 +377,17 @@ export function StockAdjustmentDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={loading}
+              disabled={adjustmentMutation.isPending}
               className="dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
             >
               {t("common.cancel", "Cancel")}
             </Button>
             <Button
               type="submit"
-              disabled={loading || !form.product || !form.quantity}
+              disabled={adjustmentMutation.isPending || !form.product || !form.quantity}
               className={form.type === "in" ? "bg-green-600 hover:bg-green-700" : "bg-red-600 hover:bg-red-700"}
             >
-              {loading ? (
+              {adjustmentMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {t("common.processing", "Processing...")}

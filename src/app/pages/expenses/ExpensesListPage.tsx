@@ -66,7 +66,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import PrepaidExpensesTab from './PrepaidExpensesTab';
-import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
 interface Expense {
@@ -392,7 +391,7 @@ export default function ExpensesListPage() {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const dataToExport = expenses.map(exp => ({
       Reference: exp.reference,
       Date: exp.date,
@@ -407,6 +406,10 @@ export default function ExpensesListPage() {
       Notes: exp.notes || '',
     }));
 
+    // Loaded on demand: this is ~416 kB that only matters when the user
+  // actually exports. A static import puts it in the initial bundle for
+  // everyone, including the majority who never click Export.
+  const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Expenses");

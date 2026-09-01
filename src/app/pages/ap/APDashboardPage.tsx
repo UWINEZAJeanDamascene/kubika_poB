@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo} from 'react';
 import { apReconciliationApi, apPaymentsApi, suppliersApi } from '@/lib/api';
 import { useLiveRefresh } from '@/lib/hooks/useLiveRefresh';
 import { Layout } from '../../layout/Layout';
@@ -264,6 +264,17 @@ export default function APDashboardPage() {
     return map[type] || type;
   };
 
+  // Built once instead of on every dashboard re-render: this list can hold a
+  // thousand entries, and rebuilding its option elements on each state change
+  // (date filters, tab switches) was pure waste.
+  const supplierOptions = useMemo(
+    () =>
+      suppliers.map((s: any) => (
+        <SelectItem key={s._id} value={s._id} className="dark:text-slate-200">{s.name}</SelectItem>
+      )),
+    [suppliers],
+  );
+
   return (
     <Layout>
       <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
@@ -383,9 +394,7 @@ export default function APDashboardPage() {
                         </SelectTrigger>
                         <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
                           <SelectItem value="all" className="dark:text-slate-200">All Suppliers</SelectItem>
-                          {suppliers.map((s) => (
-                            <SelectItem key={s._id} value={s._id} className="dark:text-slate-200">{s.name}</SelectItem>
-                          ))}
+                          {supplierOptions}
                         </SelectContent>
                       </Select>
                       <Input type="date" value={agingAsOfDate} onChange={(e) => setAgingAsOfDate(e.target.value)} className="w-[160px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white" />

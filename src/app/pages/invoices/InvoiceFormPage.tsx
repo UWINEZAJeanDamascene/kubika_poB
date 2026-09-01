@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { invoicesApi, clientsApi, productsApi, warehousesApi, ebmApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
@@ -223,6 +223,20 @@ export default function InvoiceFormPage() {
       fetchInvoice(id);
     }
   }, [id, isEditMode, fetchInvoice]);
+
+  // The product dropdown is rendered once per invoice line, so without this the
+  // option elements for every product were rebuilt for each line on every
+  // keystroke in the form. The list itself does not change while editing, so it
+  // is built once and shared by every line's Select.
+  const productOptions = useMemo(
+    () =>
+      products.map((product) => (
+        <SelectItem key={product._id} value={product._id} className="dark:text-slate-200">
+          {product.name} ({product.sku}) &middot; Stock: {product.currentStock || 0}
+        </SelectItem>
+      )),
+    [products],
+  );
 
   const handleLineChange = (index: number, field: keyof InvoiceLine, value: any) => {
     const newLines = [...formData.lines];
@@ -550,11 +564,7 @@ export default function InvoiceFormPage() {
                                   <SelectValue placeholder="Select product" />
                                 </SelectTrigger>
                                 <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
-                                  {products.map(product => (
-                                    <SelectItem key={product._id} value={product._id} className="dark:text-slate-200">
-                                      {product.name} ({product.sku}) &middot; Stock: {product.currentStock || 0}
-                                    </SelectItem>
-                                  ))}
+                                  {productOptions}
                                 </SelectContent>
                               </Select>
                             </TableCell>

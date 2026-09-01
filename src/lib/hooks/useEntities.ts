@@ -10,7 +10,6 @@ import {
   useListQuery,
   useInvalidate,
   BROWSE_STALE_TIME,
-  TRANSACTIONAL_STALE_TIME,
 } from './useListQuery';
 
 /**
@@ -122,22 +121,6 @@ export function useProduct(id: string | undefined) {
     },
     enabled: !!id,
     staleTime: BROWSE_STALE_TIME,
-  });
-}
-
-/**
- * Stock levels for a POS/GRN/transfer flow.
- *
- * staleTime 0 by design: this number is about to be transacted against, and a
- * cached quantity here can authorise a sale of stock that no longer exists.
- * Use useStockLevels (in useProducts.ts) for the browsable stock screen.
- */
-export function useLiveStockLevels(params: Record<string, unknown>, enabled = true) {
-  return useListQuery<any>({
-    queryKey: ['stock', 'levels', 'live', params],
-    fetcher: () => stockApi.getLevels(params as any) as any,
-    staleTime: TRANSACTIONAL_STALE_TIME,
-    enabled,
   });
 }
 

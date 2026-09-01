@@ -48,10 +48,13 @@ import {
   DoorOpen,
   DoorClosed,
 } from 'lucide-react';
-import { salesLegacyApi, clientsApi, warehouseApi, PosProduct, bankAccountsApi, invoicesApi, creditNotesApi, tillApi } from '@/lib/api';
+import { salesLegacyApi, warehouseApi, PosProduct, bankAccountsApi, invoicesApi, creditNotesApi, tillApi } from '@/lib/api';
 import { useFormatCurrency } from '@/lib/currencyUtils';
 import { useTranslation } from 'react-i18next';
 import { EBMStatusBadge } from '@/app/components/EBMStatusBadge';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { TRANSACTIONAL_STALE_TIME } from '@/lib/hooks/useListQuery';
+import { useClientPicker } from '@/lib/hooks/useEntities';
 
 interface CartItem extends PosProduct {
   cartQuantity: number;
@@ -137,10 +140,7 @@ export default function SalesLegacyPage() {
   }, [appFormatCurrency]);
   
   // State
-  const [products, setProducts] = useState<PosProduct[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [selectedClientId, setSelectedClientId] = useState<string>('walk-in');
@@ -150,59 +150,24 @@ export default function SalesLegacyPage() {
   const [paymentReference, setPaymentReference] = useState('');
   const [notes, setNotes] = useState('');
   const [walkInName, setWalkInName] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [initialProductsLoaded, setInitialProductsLoaded] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [showCart, setShowCart] = useState(false);
   const [bankAccountId, setBankAccountId] = useState<string>('');
-  const [bankAccounts, setBankAccounts] = useState<Array<{_id: string; name: string; accountType: string}>>([]);
   const [heldSales, setHeldSales] = useState<HeldSale[]>([]);
-  const [tillSession, setTillSession] = useState<TillSession | null>(null);
   const [tillLoading, setTillLoading] = useState(false);
   const [openingFloatInput, setOpeningFloatInput] = useState('');
   const [closingCountInput, setClosingCountInput] = useState('');
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
-  const [recentInvoices, setRecentInvoices] = useState<PosInvoice[]>([]);
-  const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [posEbmStatusFilter, setPosEbmStatusFilter] = useState('all');
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
   const scannerRef = useRef<any>(null);
   const scanBufferRef = useRef('');
   const lastScanKeyAtRef = useRef(0);
   const scanFlushTimerRef = useRef<number | null>(null);
-  const secondaryDataLoadedRef = useRef(false);
-  
-  const fetchActiveTill = useCallback(async () => {
-    setTillLoading(true);
-    try {
-      const response = await tillApi.getActive();
-      if (response.success) {
-        const active = response.data as any;
-        if (active && active.status === 'open') {
-          setTillSession({
-            _id: active._id,
-            openedAt: active.openedAt,
-            openingFloat: toNumericAmount(active.openingFloat),
-            closingCount: active.closingCount,
-            status: active.status,
-          });
-        } else {
-          setTillSession(null);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load till session:', error);
-      toast.error('Could not load till status');
-    } finally {
-      setTillLoading(false);
-    }
-  }, []);
+  const queryClient = useQueryClient();
+  const tillKey = ['pos', 'active-till'] as const;
 
-  // Load only data needed to show products first. Customer and bank pickers load after first product fetch.
   useEffect(() => {
-    loadWarehouses();
-    fetchActiveTill();
     const storedHeldSales = localStorage.getItem('pos-held-sales');
     if (storedHeldSales) {
       try {
@@ -211,7 +176,7 @@ export default function SalesLegacyPage() {
         localStorage.removeItem('pos-held-sales');
       }
     }
-  }, [fetchActiveTill]);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
@@ -219,83 +184,87 @@ export default function SalesLegacyPage() {
   }, [searchQuery]);
 
   useEffect(() => {
-    if (!initialProductsLoaded || secondaryDataLoadedRef.current) return;
-    secondaryDataLoadedRef.current = true;
-    const timer = window.setTimeout(() => {
-      loadClients();
-      loadBankAccounts();
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, [initialProductsLoaded]);
-
-  useEffect(() => {
     localStorage.setItem('pos-held-sales', JSON.stringify(heldSales));
   }, [heldSales]);
 
-  
-  const loadBankAccounts = async () => {
-    try {
-      const response = await bankAccountsApi.getAll({ isActive: true });
-      if (response.success && Array.isArray(response.data)) {
-        setBankAccounts(response.data as Array<{_id: string; name: string; accountType: string}>);
-      }
-    } catch (error) {
-      console.error('Failed to load bank accounts:', error);
-    }
-  };
-  
-  // Load products when warehouse selected or search changes
-  useEffect(() => {
-    if (selectedWarehouseId) {
-      loadProducts();
-    }
-  }, [selectedWarehouseId, debouncedSearchQuery]);
-  
-  const loadWarehouses = async () => {
-    try {
+  const warehousesQuery = useQuery({
+    queryKey: ['warehouses', 'picker'],
+    queryFn: async (): Promise<Warehouse[]> => {
       const response = await warehouseApi.getAll({ isActive: true, limit: 100 });
-      if (response.success && Array.isArray(response.data)) {
-        setWarehouses(response.data as Warehouse[]);
-        // Auto-select first warehouse if available
-        if ((response.data as Warehouse[]).length > 0) {
-          setSelectedWarehouseId((response.data as Warehouse[])[0]._id);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load warehouses:', error);
-    }
-  };
-  
-  const loadClients = async () => {
-    try {
-      const response = await clientsApi.getAll({ limit: 100, isActive: true, forPicker: '1' });
-      if (response.success && Array.isArray(response.data)) {
-        setClients(response.data as Client[]);
-      }
-    } catch (error) {
-      console.error('Failed to load clients:', error);
-    }
-  };
-  
-  const loadProducts = async () => {
-    setIsLoading(true);
-    try {
+      if (!response.success) throw new Error('Failed to load warehouses');
+      return Array.isArray(response.data) ? response.data as Warehouse[] : [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const warehouses = warehousesQuery.data ?? [];
+
+  useEffect(() => {
+    if (!selectedWarehouseId && warehouses.length) setSelectedWarehouseId(warehouses[0]._id);
+  }, [selectedWarehouseId, warehouses]);
+
+  const productsQuery = useQuery({
+    queryKey: ['pos', 'products', { warehouseId: selectedWarehouseId, search: debouncedSearchQuery || undefined }],
+    queryFn: async (): Promise<PosProduct[]> => {
       const response = await salesLegacyApi.getProducts({
         search: debouncedSearchQuery || undefined,
         warehouseId: selectedWarehouseId,
-        limit: 50
+        limit: 50,
       });
-      if (response.success && Array.isArray(response.data)) {
-        setProducts(response.data);
-        setInitialProductsLoaded(true);
-      }
-    } catch (error) {
-      console.error('Failed to load products:', error);
-      toast.error('Failed to load products');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      if (!response.success) throw new Error('Failed to load products');
+      return Array.isArray(response.data) ? response.data : [];
+    },
+    enabled: Boolean(selectedWarehouseId),
+    // The POS transacts against this stock immediately. Always revalidate it.
+    staleTime: TRANSACTIONAL_STALE_TIME,
+  });
+  const products = productsQuery.data ?? [];
+  const isLoading = productsQuery.isPending;
+
+  const clientsQuery = useClientPicker();
+  const clients = clientsQuery.items as Client[];
+
+  const bankAccountsQuery = useQuery({
+    queryKey: ['bank-accounts', 'picker'],
+    queryFn: async (): Promise<Array<{ _id: string; name: string; accountType: string }>> => {
+      const response = await bankAccountsApi.getAll({ isActive: true });
+      if (!response.success) throw new Error('Failed to load bank accounts');
+      return Array.isArray(response.data) ? response.data as Array<{ _id: string; name: string; accountType: string }> : [];
+    },
+    staleTime: 60 * 1000,
+  });
+  const bankAccounts = bankAccountsQuery.data ?? [];
+
+  const tillQuery = useQuery({
+    queryKey: tillKey,
+    queryFn: async (): Promise<TillSession | null> => {
+      const response = await tillApi.getActive();
+      if (!response.success) throw new Error('Failed to load till session');
+      const active = response.data as any;
+      return active?.status === 'open'
+        ? { _id: active._id, openedAt: active.openedAt, openingFloat: toNumericAmount(active.openingFloat), closingCount: active.closingCount, status: active.status }
+        : null;
+    },
+    staleTime: TRANSACTIONAL_STALE_TIME,
+  });
+  const tillSession = tillQuery.data ?? null;
+
+  const recentInvoicesQuery = useQuery({
+    queryKey: ['invoices', 'pos-recent', posEbmStatusFilter],
+    queryFn: async (): Promise<PosInvoice[]> => {
+      const response = await invoicesApi.getAll({
+        page: 1,
+        limit: 15,
+        ebmStatus: posEbmStatusFilter !== 'all' ? posEbmStatusFilter : undefined,
+      });
+      if (!response.success) throw new Error('Failed to load invoices');
+      const data = response.data as any;
+      return Array.isArray(data) ? data : data?.invoices || data?.data || [];
+    },
+    enabled: invoiceDialogOpen,
+    staleTime: TRANSACTIONAL_STALE_TIME,
+  });
+  const recentInvoices = recentInvoicesQuery.data ?? [];
+  const loadingInvoices = recentInvoicesQuery.isPending;
   
   const toNumber = (val: number | any): number => {
     return toNumericAmount(val);
@@ -335,7 +304,6 @@ export default function SalesLegacyPage() {
       });
 
       const matches = response.success ? response.data : [];
-      setProducts(matches);
       const normalizedCode = code.toLowerCase();
       const exactMatch = matches.find((product) => {
         const sku = product.sku?.toLowerCase();
@@ -526,7 +494,7 @@ export default function SalesLegacyPage() {
       const response = await tillApi.open(openingFloat);
       if (response.success) {
         const data = response.data as any;
-        setTillSession({
+        queryClient.setQueryData(tillKey, {
           _id: data._id,
           openedAt: data.openedAt,
           openingFloat: toNumericAmount(data.openingFloat),
@@ -557,7 +525,7 @@ export default function SalesLegacyPage() {
     try {
       const response = await tillApi.close(closingCount);
       if (response.success) {
-        setTillSession(null);
+        queryClient.setQueryData(tillKey, null);
         setClosingCountInput('');
         toast.success('Till closed');
       } else {
@@ -571,34 +539,9 @@ export default function SalesLegacyPage() {
     }
   };
 
-  const loadRecentInvoices = async () => {
-    setLoadingInvoices(true);
-    try {
-      const response = await invoicesApi.getAll({
-        page: 1,
-        limit: 15,
-        ebmStatus: posEbmStatusFilter !== 'all' ? posEbmStatusFilter : undefined,
-      });
-      const data = response.data as any;
-      setRecentInvoices(Array.isArray(data) ? data : data?.invoices || data?.data || []);
-    } catch (error: any) {
-      console.error('Failed to load invoices:', error);
-      toast.error(error?.message || 'Failed to load invoices');
-    } finally {
-      setLoadingInvoices(false);
-    }
-  };
-
   const openInvoiceActions = () => {
     setInvoiceDialogOpen(true);
-    loadRecentInvoices();
   };
-
-  useEffect(() => {
-    if (invoiceDialogOpen) {
-      loadRecentInvoices();
-    }
-  }, [posEbmStatusFilter]);
 
   const requireManagerPin = () => {
     const pin = window.prompt('Manager PIN required');
@@ -616,7 +559,7 @@ export default function SalesLegacyPage() {
       const response = await invoicesApi.cancel(invoice._id, reason);
       if (response.success) {
         toast.success('Sale voided with reversal');
-        loadRecentInvoices();
+        await queryClient.invalidateQueries({ queryKey: ['invoices'] });
       }
     } catch (error: any) {
       console.error('Void failed:', error);
@@ -741,6 +684,52 @@ export default function SalesLegacyPage() {
       grandTotal
     };
   }, [cart]);
+
+  // A completed sale immediately reduces the stock shown in the POS grid. The
+  // server remains authoritative: failed sales restore this exact snapshot and
+  // every settlement revalidates the live product/stock/invoice queries.
+  const saleMutation = useMutation({
+    mutationFn: async ({ requestData, shouldSendEmail }: { requestData: any; shouldSendEmail: boolean }) =>
+      salesLegacyApi.createDirectSale(requestData, shouldSendEmail),
+    onMutate: async ({ requestData }) => {
+      await queryClient.cancelQueries({ queryKey: ['pos', 'products'] });
+      const previousProducts = queryClient.getQueriesData({ queryKey: ['pos', 'products'] });
+      const quantities = new Map(
+        requestData.items.map((item: { productId: string; quantity: number }) => [item.productId, Number(item.quantity) || 0]),
+      );
+
+      queryClient.setQueriesData({ queryKey: ['pos', 'products'] }, (old: unknown) => {
+        const apply = (product: any) => {
+          const quantity = quantities.get(product?._id);
+          if (quantity == null) return product;
+          const currentStock = Number(product.currentStock ?? product.availableQuantity ?? 0);
+          return {
+            ...product,
+            currentStock: currentStock - quantity,
+            ...(product.availableQuantity != null
+              ? { availableQuantity: Number(product.availableQuantity) - quantity }
+              : {}),
+          };
+        };
+        if (Array.isArray(old)) return old.map(apply);
+        if (old && typeof old === 'object' && Array.isArray((old as { items?: unknown[] }).items)) {
+          return { ...(old as object), items: (old as { items: unknown[] }).items.map(apply) };
+        }
+        return old;
+      });
+
+      return { previousProducts };
+    },
+    onError: (_error, _input, context) => {
+      context?.previousProducts.forEach(([key, value]) => queryClient.setQueryData(key, value));
+    },
+    onSettled: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['pos', 'products'] }),
+      queryClient.invalidateQueries({ queryKey: ['products'] }),
+      queryClient.invalidateQueries({ queryKey: ['stock'] }),
+      queryClient.invalidateQueries({ queryKey: ['invoices'] }),
+    ]),
+  });
   
   // Update payment amount when grand total changes
   useEffect(() => {
@@ -767,8 +756,6 @@ export default function SalesLegacyPage() {
       toast.error('Please select a warehouse');
       return;
     }
-    
-    setIsSubmitting(true);
     
     try {
       const selectedClient = clients.find(c => c._id === selectedClientId);
@@ -809,7 +796,7 @@ export default function SalesLegacyPage() {
         } : undefined,
       };
       
-      const response = await salesLegacyApi.createDirectSale(requestData, sendEmail);
+      const response = await saleMutation.mutateAsync({ requestData, shouldSendEmail: sendEmail });
       
       if (response.success) {
         toast.success('Sale completed successfully!');
@@ -828,7 +815,6 @@ export default function SalesLegacyPage() {
         setPaymentReference('');
         setWalkInName('');
         setSelectedClientId('walk-in');
-        
         // Navigate to invoice or show receipt
         if (response.data && (response.data as any)._id) {
           navigate(`/invoices/${(response.data as any)._id}`);
@@ -839,8 +825,6 @@ export default function SalesLegacyPage() {
     } catch (error: any) {
       console.error('Sale error:', error);
       toast.error(error?.message || 'Failed to complete sale');
-    } finally {
-      setIsSubmitting(false);
     }
   };
   
@@ -894,7 +878,12 @@ export default function SalesLegacyPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => { loadProducts(); loadClients(); }}
+                    onClick={() => {
+                      void productsQuery.refetch();
+                      void clientsQuery.refetch();
+                      void bankAccountsQuery.refetch();
+                      void tillQuery.refetch();
+                    }}
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -1418,10 +1407,10 @@ export default function SalesLegacyPage() {
                   <Button
                     className="mt-3 h-12 w-full bg-indigo-600 text-base font-semibold hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500"
                     onClick={handleSubmit}
-                    disabled={isSubmitting || !!checkoutBlockedReason}
+                    disabled={saleMutation.isPending || !!checkoutBlockedReason}
                     title={checkoutBlockedReason || undefined}
                   >
-                    {isSubmitting ? (
+                    {saleMutation.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         Processing...
@@ -1433,7 +1422,7 @@ export default function SalesLegacyPage() {
                       </>
                     )}
                   </Button>
-                  {checkoutBlockedReason && !isSubmitting && (
+                  {checkoutBlockedReason && !saleMutation.isPending && (
                     <p className="mt-2 text-center text-xs font-medium text-amber-600 dark:text-amber-400">
                       {checkoutBlockedReason}
                     </p>

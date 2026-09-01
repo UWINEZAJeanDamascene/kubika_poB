@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { salesOrdersApi, clientsApi, productsApi, quotationsApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
@@ -22,6 +22,7 @@ import { Label } from '@/app/components/ui/label';
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Textarea } from '@/app/components/ui/textarea';
+import { SearchableSelect } from '@/app/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -291,6 +292,14 @@ export default function SalesOrderCreatePage() {
 
   const { subtotal, taxTotal, grandTotal } = calculateTotals();
   const selectedClient = clients.find((c) => c._id === formData.client);
+  const clientOptions = useMemo(
+    () => clients.map((client) => ({ value: client._id, label: client.name })),
+    [clients],
+  );
+  const productOptions = useMemo(
+    () => products.map((product) => ({ value: product._id, label: `${product.name} (${product.sku})` })),
+    [products],
+  );
 
   return (
     <Layout>
@@ -408,18 +417,14 @@ export default function SalesOrderCreatePage() {
                         <Label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
                           Client <span className="text-red-500">*</span>
                         </Label>
-                        <Select value={formData.client} onValueChange={(value) => setFormData({ ...formData, client: value })}>
-                          <SelectTrigger className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700">
-                            <SelectValue placeholder="Select client" />
-                          </SelectTrigger>
-                          <SelectContent className="dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700">
-                            {clients.map((client) => (
-                              <SelectItem key={client._id} value={client._id} className="dark:focus:bg-slate-800 dark:focus:text-white">
-                                {client.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <SearchableSelect
+                          value={formData.client}
+                          options={clientOptions}
+                          placeholder="Select client"
+                          searchPlaceholder="Search clients..."
+                          onValueChange={(value) => setFormData({ ...formData, client: value })}
+                          className="text-slate-900 ring-1 ring-slate-200 dark:text-white dark:ring-slate-700"
+                        />
                       </div>
 
                       <div className="space-y-2">
@@ -511,18 +516,14 @@ export default function SalesOrderCreatePage() {
                           <div className="grid grid-cols-1 gap-3 sm:grid-cols-12 sm:items-end sm:gap-2">
                             <div className="sm:col-span-4">
                               <Label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400 sm:hidden">Product</Label>
-                              <Select value={line.product} onValueChange={(value) => updateLine(line.id, 'product', value)}>
-                                <SelectTrigger className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700">
-                                  <SelectValue placeholder="Select product" />
-                                </SelectTrigger>
-                                <SelectContent className="dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-700">
-                                  {products.map((product) => (
-                                    <SelectItem key={product._id} value={product._id} className="dark:focus:bg-slate-800 dark:focus:text-white">
-                                      {product.name} ({product.sku})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <SearchableSelect
+                                value={line.product}
+                                options={productOptions}
+                                placeholder="Select product"
+                                searchPlaceholder="Search products or SKU..."
+                                onValueChange={(value) => updateLine(line.id, 'product', value)}
+                                className="text-slate-900 ring-1 ring-slate-200 dark:text-white dark:ring-slate-700"
+                              />
                             </div>
 
                             <div className="sm:col-span-2">

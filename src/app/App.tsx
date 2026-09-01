@@ -36,7 +36,6 @@ import PricingPage from "./pages/landing/PricingPage";
 import SecurityLandingPage from "./pages/landing/SecurityLandingPage";
 import OperationsLandingPage from "./pages/landing/OperationsLandingPage";
 import PlatformLandingPage from "./pages/landing/PlatformLandingPage";
-import AIChatBot from "./components/AIChatBot";
 import { useCompanyStore } from "@/store/companyStore";
 import { useChatPanelStore } from "@/store/chatPanelStore";
 import LoginPage from "./pages/auth/LoginPage";
@@ -54,6 +53,9 @@ const PurchaseDashboardPage = lazy(
   () => import("./pages/PurchaseDashboardPage"),
 );
 const FinanceDashboardPage = lazy(() => import("./pages/FinanceDashboardPage"));
+// The assistant renders charts, so keeping it out of the application shell
+// prevents Recharts from being downloaded by users who cannot use Enterprise AI.
+const AIChatBot = lazy(() => import("./components/AIChatBot"));
 
 function EnterpriseAIChatBot() {
   const { isAuthenticated, user } = useAuth();
@@ -72,7 +74,11 @@ function EnterpriseAIChatBot() {
     }
   }, [hasEnterpriseAI, setChatOpen]);
 
-  return hasEnterpriseAI ? <AIChatBot /> : null;
+  return hasEnterpriseAI ? (
+    <Suspense fallback={null}>
+      <AIChatBot />
+    </Suspense>
+  ) : null;
 }
 // All page modules below are lazy-loaded for route-level code splitting.
 // Named-export-only modules use the `.then` trick to expose `default`.

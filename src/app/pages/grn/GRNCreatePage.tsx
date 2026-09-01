@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router";
-import { grnApi, purchaseOrdersApi, warehousesApi, productsApi } from "@/lib/api";
+import { grnApi, purchaseOrdersApi, warehousesApi } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
 import {
   ArrowLeft,
@@ -108,8 +109,6 @@ export default function GRNCreatePage() {
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   const [selectedPOId, setSelectedPOId] = useState<string>(initialPOId || "");
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
@@ -132,34 +131,37 @@ export default function GRNCreatePage() {
   const [freightPaidBy, setFreightPaidBy] = useState<string>("company");
 
   /* ── Data fetching ── */
-  const fetchPurchaseOrders = useCallback(async () => {
-    try {
-      const response = await purchaseOrdersApi.getAll({ status: "approved", limit: 50 });
-      const responsePartial = await purchaseOrdersApi.getAll({ status: "partially_received", limit: 50 });
-      const poList: PurchaseOrder[] = [];
-      if (response.success && response.data) poList.push(...(Array.isArray(response.data) ? response.data : ([]) as PurchaseOrder[]));
-      if (responsePartial.success && responsePartial.data) poList.push(...(Array.isArray(responsePartial.data) ? responsePartial.data : ([]) as PurchaseOrder[]));
-      setPurchaseOrders(poList);
-    } catch (error) {
-      console.error("[GRNCreatePage] Error fetching POs:", error);
-    }
-  }, []);
+  // Receiving a GRN changes stock, so the purchase-order and warehouse inputs
+  // are revalidated whenever this form opens rather than read as browse data.
+  const purchaseOrdersQuery = useQuery({
+    queryKey: ["purchase-orders", "grn-source"],
+    queryFn: async (): Promise<PurchaseOrder[]> => {
+      const [approved, partial] = await Promise.all([
+        purchaseOrdersApi.getAll({ status: "approved", limit: 50 }),
+        purchaseOrdersApi.getAll({ status: "partially_received", limit: 50 }),
+      ]);
+      const orders = [approved, partial].flatMap((response) =>
+        response.success && Array.isArray(response.data) ? response.data as PurchaseOrder[] : [],
+      );
+      return Array.from(new Map(orders.map((order) => [order._id, order])).values());
+    },
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+  });
+  const purchaseOrders = purchaseOrdersQuery.data ?? [];
 
-  const fetchWarehouses = useCallback(async () => {
-    try {
+  const warehousesQuery = useQuery({
+    queryKey: ["warehouses", "grn-receipt"],
+    queryFn: async (): Promise<Warehouse[]> => {
       const response = await warehousesApi.getAll({ limit: 100 });
-      if (response.success && response.data) {
-        setWarehouses((Array.isArray(response.data) ? response.data : (response.data as unknown[])) as Warehouse[]);
-      }
-    } catch (error) {
-      console.error("[GRNCreatePage] Error fetching warehouses:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPurchaseOrders();
-    fetchWarehouses();
-  }, [fetchPurchaseOrders, fetchWarehouses]);
+      return response.success && Array.isArray(response.data) ? response.data as Warehouse[] : [];
+    },
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
+  });
+  const warehouses = warehousesQuery.data ?? [];
 
   /* ── PO select ── */
   const handlePOSelect = async (poId: string) => {
@@ -197,19 +199,14 @@ export default function GRNCreatePage() {
         setFreightInvoiceDate("");
         setFreightPaidBy("company");
 
-        const grnLines: GRNLine[] = await Promise.all(
-          po.lines.map(async (line: any) => {
-            let trackingType: "none" | "batch" | "serial" = "none";
-            try {
-              const productResponse = await productsApi.getById(line.product._id);
-              if (productResponse.success) {
-                const product = productResponse.data as any;
-                trackingType = product.trackingType || "none";
-              }
-            } catch (e) {
-              console.error("[GRNCreatePage] Failed to fetch product:", line.product._id, e);
-              trackingType = line.product?.trackingType || "none";
-            }
+        // GET /purchase-orders/:id already populates lines.product with
+        // `trackingType` (see purchaseOrderController.getPurchaseOrder), so the
+        // value is in hand. This previously issued one products/:id request per
+        // line purely to re-read it — a 20-line PO meant 20 extra round-trips
+        // before the form could render.
+        const grnLines: GRNLine[] = po.lines.map((line: any) => {
+            const trackingType: "none" | "batch" | "serial" =
+              line.product?.trackingType || "none";
             return {
               product: line.product._id,
               productName: line.product.name,
@@ -222,8 +219,7 @@ export default function GRNCreatePage() {
               purchaseOrderLine: line._id,
               trackingType,
             };
-          })
-        );
+        });
         setLines(grnLines);
       }
     } catch (error) {

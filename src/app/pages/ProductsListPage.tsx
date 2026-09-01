@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { API_BASE_URL, productsApi, categoriesApi, suppliersApi } from '@/lib/api';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useProductList, useInvalidateProducts } from '@/lib/hooks/useEntities';
+import { API_BASE_URL, productsApi, categoriesApi } from '@/lib/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useProductList, useInvalidateProducts, useSupplierPicker } from '@/lib/hooks/useEntities';
 import { Layout } from '../layout/Layout';
 import { 
   Plus, 
@@ -123,12 +123,6 @@ interface Category {
   name: string;
 }
 
-interface Supplier {
-  _id: string;
-  name: string;
-  code: string;
-}
-
 interface PaginationInfo {
   currentPage: number;
   totalPages: number;
@@ -139,13 +133,10 @@ interface PaginationInfo {
 export default function ProductsListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [actionLoading, setActionLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const filterOptionsLoadedRef = useRef(false);
 
   const debouncedSetSearchTerm = (value: string) => {
     setSearchTerm(value);
@@ -168,33 +159,17 @@ export default function ProductsListPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  useEffect(() => {
-    if (filterOptionsLoadedRef.current) return;
-    filterOptionsLoadedRef.current = true;
-    void Promise.all([loadCategories(), loadSuppliers()]);
-  }, []);
-
-  const loadCategories = async () => {
-    try {
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories', 'picker'],
+    queryFn: async (): Promise<Category[]> => {
       const response = await categoriesApi.getAll({ isActive: true, forPicker: '1' });
-      if (response.success && response.data) {
-        setCategories(response.data as Category[]);
-      }
-    } catch (error) {
-      console.error('Failed to load categories:', error);
-    }
-  };
+      if (!response.success) throw new Error('Failed to load categories');
+      return Array.isArray(response.data) ? response.data as Category[] : [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const loadSuppliers = async () => {
-    try {
-      const response = await suppliersApi.getAll({ limit: 100, isActive: true, forPicker: '1' });
-      if (response.success && response.data) {
-        setSuppliers(response.data as Supplier[]);
-      }
-    } catch (error) {
-      console.error('Failed to load suppliers:', error);
-    }
-  };
+  const { items: suppliers } = useSupplierPicker();
 
   // Filters map to backend params. 'archived' is a flag, not a stock status.
   const listParams = {
