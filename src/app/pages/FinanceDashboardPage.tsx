@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { Layout } from "../layout/Layout";
-import { dashboardApi, taxDashboardApi, type FinanceDashboardData, type TaxDashboardData } from "@/lib/api";
+import { dashboardApi, taxDashboardApi } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/hooks/useLiveRefresh";
 import { formatDashboardError, formatDashboardDateTime } from "@/app/components/dashboard/dashboardPageUtils";
 import { Button } from "@/app/components/ui/button";
@@ -15,13 +16,12 @@ const chartConfig = { inflows: { label: "Inflows", color: "var(--dashboard-green
 
 export default function FinanceDashboardPage() {
   const navigate = useNavigate();
-  const [data, setData] = useState<FinanceDashboardData | null>(null);
-  const [taxData, setTaxData] = useState<TaxDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const fetchDashboard = useCallback(async () => { try { setError(null); const [finance, tax] = await Promise.all([dashboardApi.getFinance(), taxDashboardApi.get({ year: new Date().getFullYear() })]); setData(finance); if (tax.success) setTaxData(tax.data); } catch (err: any) { setError(formatDashboardError(err?.message || "Failed to load finance dashboard")); } finally { setLoading(false); setRefreshing(false); } }, []);
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  const year = new Date().getFullYear();
+  const { data: dashboardData, isPending: loading, error: queryError, refetch: fetchDashboard } = useQuery({ queryKey: ['dashboard', 'finance', year], queryFn: async ({ signal }) => { const [finance, tax] = await Promise.all([dashboardApi.getFinance(signal), taxDashboardApi.get({ year })]); return { finance, tax: tax.success ? tax.data : null }; }, staleTime: 60_000 });
+  const data = dashboardData?.finance;
+  const taxData = dashboardData?.tax;
+  const error = queryError ? formatDashboardError(queryError.message || "Failed to load finance dashboard") : null;
   useLiveRefresh(fetchDashboard);
 
   const summary = data?.summary;

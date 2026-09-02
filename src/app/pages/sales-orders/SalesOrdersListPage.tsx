@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useClientPicker } from '@/lib/hooks/useEntities';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -112,6 +112,7 @@ export default function SalesOrdersListPage() {
   console.log('[SalesOrdersListPage] Component starting render');
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   console.log('[SalesOrdersListPage] useNavigate called');
 
   const STATUS_OPTIONS = [
@@ -156,8 +157,8 @@ export default function SalesOrdersListPage() {
     refetch: fetchSalesOrders,
   } = useQuery({
     queryKey: ['sales-orders', 'list', soParams],
-    queryFn: async () => {
-      const response = await salesOrdersApi.getAll(soParams as any);
+    queryFn: async ({ signal }) => {
+      const response = await salesOrdersApi.getAll(soParams as any, signal);
       if (!response.success) throw new Error('Failed to load sales orders');
       const meta = (response as any).pagination || {
         total: (response as any).total || 0,
@@ -187,7 +188,7 @@ export default function SalesOrdersListPage() {
       const response = await salesOrdersApi.confirm(pendingOrderId);
       if (response.success) {
         toast.success(t('salesOrders.confirmSuccess', 'Sales order confirmed successfully'));
-        fetchSalesOrders();
+        await queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       }
     } catch (error) {
       console.error('Error confirming sales order:', error);
@@ -206,7 +207,7 @@ export default function SalesOrdersListPage() {
       const response = await salesOrdersApi.cancel(pendingOrderId, 'Cancelled by user');
       if (response.success) {
         toast.success(t('salesOrders.cancelSuccess', 'Sales order cancelled successfully'));
-        fetchSalesOrders();
+        await queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
       }
     } catch (error) {
       console.error('Error cancelling sales order:', error);

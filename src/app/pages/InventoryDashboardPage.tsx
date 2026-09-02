@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { Layout } from "../layout/Layout";
-import { dashboardApi, type InventoryDashboardData } from "@/lib/api";
+import { dashboardApi } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/hooks/useLiveRefresh";
 import { formatDashboardError, formatDashboardDateTime } from "@/app/components/dashboard/dashboardPageUtils";
 import { Button } from "@/app/components/ui/button";
@@ -30,24 +31,13 @@ const warehouseConfig = { total_value: { label: "Stock value", color: "var(--das
 
 export default function InventoryDashboardPage() {
   const navigate = useNavigate();
-  const [data, setData] = useState<InventoryDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDashboard = useCallback(async () => {
-    try {
-      setError(null);
-      setData(await dashboardApi.getInventory());
-    } catch (err: any) {
-      setError(formatDashboardError(err?.message || "Failed to load inventory dashboard"));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  const { data, isPending: loading, error: queryError, refetch: fetchDashboard } = useQuery({
+    queryKey: ['dashboard', 'inventory'],
+    queryFn: ({ signal }) => dashboardApi.getInventory(signal),
+    staleTime: 60_000,
+  });
+  const error = queryError ? formatDashboardError(queryError.message || "Failed to load inventory dashboard") : null;
   useLiveRefresh(fetchDashboard);
 
   const summary = data?.summary;
@@ -88,7 +78,7 @@ export default function InventoryDashboardPage() {
             generatedAt={data?.generated_at}
             loading={loading}
             refreshing={refreshing}
-            onRefresh={async () => { setRefreshing(true); await fetchDashboard(); }}
+            onRefresh={async () => { setRefreshing(true); await fetchDashboard(); setRefreshing(false); }}
             tone={loading ? "neutral" : atRisk > 0 ? "warning" : "healthy"}
             context={<div className="industrial-filter"><span>Scope</span><strong>All warehouses</strong></div>}
             actions={<Button type="button" variant="outline" size="sm" className="industrial-button" onClick={() => navigate("/products/new")}><Package className="h-3.5 w-3.5" /> New product</Button>}

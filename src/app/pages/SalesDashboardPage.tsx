@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { Layout } from "../layout/Layout";
-import { dashboardApi, type SalesDashboardData } from "@/lib/api";
+import { dashboardApi } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/hooks/useLiveRefresh";
 import { formatDashboardError } from "@/app/components/dashboard/dashboardPageUtils";
 import { Button } from "@/app/components/ui/button";
@@ -41,24 +42,9 @@ function statusLabel(status: string): string {
 
 export default function SalesDashboardPage() {
   const navigate = useNavigate();
-  const [data, setData] = useState<SalesDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchDashboard = useCallback(async () => {
-    try {
-      setError(null);
-      setData(await dashboardApi.getSales());
-    } catch (err: any) {
-      setError(formatDashboardError(err?.message || "Failed to load sales dashboard"));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  const { data, isPending: loading, error: queryError, refetch: fetchDashboard } = useQuery({ queryKey: ['dashboard', 'sales'], queryFn: ({ signal }) => dashboardApi.getSales(signal), staleTime: 60_000 });
+  const error = queryError ? formatDashboardError(queryError.message || "Failed to load sales dashboard") : null;
   useLiveRefresh(fetchDashboard);
 
   const summary = data?.summary;

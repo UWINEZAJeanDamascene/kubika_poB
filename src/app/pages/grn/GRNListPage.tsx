@@ -217,10 +217,6 @@ export default function GRNListPage() {
     fetchSuppliers();
   }, [fetchSuppliers]);
 
-  useEffect(() => {
-    fetchGRNs();
-  }, [fetchGRNs]);
-
   /* ── Redirect from PO ── */
   useEffect(() => {
     if (initialPO) {

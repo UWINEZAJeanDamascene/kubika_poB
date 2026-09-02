@@ -169,6 +169,8 @@ interface RequestOptions {
   params?: Record<string, any>;
   /** Abort the request after this many milliseconds (auth endpoints default to 1 minute). */
   timeoutMs?: number;
+  /** React Query cancellation signal, forwarded to the underlying fetch. */
+  signal?: AbortSignal;
 }
 
 const AUTH_REQUEST_TIMEOUT_MS = 60_000;
@@ -231,7 +233,9 @@ async function request<T>(
     options.timeoutMs ??
     (isAuthEndpoint ? AUTH_REQUEST_TIMEOUT_MS : DEFAULT_REQUEST_TIMEOUT_MS);
 
-  const controller = timeoutMs ? new AbortController() : null;
+  const controller = timeoutMs || options.signal ? new AbortController() : null;
+  const abortFromQuery = () => controller?.abort();
+  options.signal?.addEventListener("abort", abortFromQuery, { once: true });
   const timeoutId =
     timeoutMs && controller
       ? setTimeout(() => controller.abort(), timeoutMs)
@@ -274,13 +278,16 @@ async function request<T>(
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new ApiError(
         408,
-        "Request timed out. The server may be waking up — please try again.",
-        "REQUEST_TIMEOUT",
+        options.signal?.aborted
+          ? "Request cancelled."
+          : "Request timed out. The server may be waking up - please try again.",
+        options.signal?.aborted ? "REQUEST_CANCELLED" : "REQUEST_TIMEOUT",
       );
     }
     throw error;
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
+    options.signal?.removeEventListener("abort", abortFromQuery);
   }
 }
 
@@ -1345,23 +1352,23 @@ export const dashboardApi = {
     }),
 
   // Inventory Dashboard (Phase 3)
-  getInventory: async () => {
-    return request<InventoryDashboardData>("/dashboard/inventory");
+  getInventory: async (signal?: AbortSignal) => {
+    return request<InventoryDashboardData>("/dashboard/inventory", { signal });
   },
 
   // Sales Dashboard (Phase 3)
-  getSales: async () => {
-    return request<SalesDashboardData>("/dashboard/sales");
+  getSales: async (signal?: AbortSignal) => {
+    return request<SalesDashboardData>("/dashboard/sales", { signal });
   },
 
   // Purchase Dashboard (Phase 3)
-  getPurchase: async () => {
-    return request<PurchaseDashboardData>("/dashboard/purchase");
+  getPurchase: async (signal?: AbortSignal) => {
+    return request<PurchaseDashboardData>("/dashboard/purchase", { signal });
   },
 
   // Finance Dashboard (Phase 3)
-  getFinance: async () => {
-    return request<FinanceDashboardData>("/dashboard/finance");
+  getFinance: async (signal?: AbortSignal) => {
+    return request<FinanceDashboardData>("/dashboard/finance", { signal });
   },
 
   // Purchase Returns Summary
@@ -1398,8 +1405,8 @@ export const productsApi = {
       `/products${query ? `?${query}` : ""}`,
     );
   },
-  getById: (id: string) =>
-    request<{ success: boolean; data: unknown }>(`/products/${id}`),
+  getById: (id: string, signal?: AbortSignal) =>
+    request<{ success: boolean; data: unknown }>(`/products/${id}`, { signal }),
   create: (product: unknown) =>
     request<{ success: boolean; data: unknown }>("/products", {
       method: "POST",
@@ -1437,10 +1444,10 @@ export const productsApi = {
       message: string;
       data: { outOfStockCount: number; lowStockCount: number };
     }>("/products/check-low-stock", { method: "POST" }),
-  getHistory: (id: string) =>
-    request<{ success: boolean; data: unknown }>(`/products/${id}/history`),
-  getLifecycle: (id: string) =>
-    request<{ success: boolean; data: unknown }>(`/products/${id}/lifecycle`),
+  getHistory: (id: string, signal?: AbortSignal) =>
+    request<{ success: boolean; data: unknown }>(`/products/${id}/history`, { signal }),
+  getLifecycle: (id: string, signal?: AbortSignal) =>
+    request<{ success: boolean; data: unknown }>(`/products/${id}/lifecycle`, { signal }),
   // Barcode / QR image fetchers (return Blob)
   getBarcodeImage: (
     id: string,
@@ -1519,7 +1526,7 @@ export const warehousesApi = {
     page?: number;
     limit?: number;
     isActive?: boolean;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<WarehouseResponse>(
       `/stock/warehouses${query ? `?${query}` : ""}`,
@@ -1804,10 +1811,11 @@ export const suppliersApi = {
     limit?: number;
     isActive?: boolean;
     forPicker?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/suppliers${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
@@ -1856,10 +1864,11 @@ export const clientsApi = {
     type?: string;
     isActive?: boolean;
     forPicker?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/clients${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getWithStats: (params?: {
@@ -1869,10 +1878,11 @@ export const clientsApi = {
     type?: string;
     isActive?: boolean;
     forPicker?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/clients/with-stats${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
@@ -2029,6 +2039,7 @@ export const stockApi = {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/stock/movements${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   receiveStock: (data: {
@@ -2130,10 +2141,11 @@ export const invoicesApi = {
     page?: number;
     limit?: number;
     search?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/sales-invoices${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
@@ -12242,10 +12254,11 @@ export const salesOrdersApi = {
     page?: number;
     limit?: number;
     search?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown; pagination?: unknown }>(
       `/sales-orders${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>

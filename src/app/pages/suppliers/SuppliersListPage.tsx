@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { suppliersApi } from '@/lib/api';
@@ -58,6 +58,7 @@ export default function SuppliersListPage() {
   const { t } = useTranslation();
   const { formatCurrency } = useCurrency();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -69,11 +70,11 @@ export default function SuppliersListPage() {
     refetch: fetchSuppliers,
   } = useQuery({
     queryKey: ['suppliers', 'list', { page, search: search || undefined, statusFilter: statusFilter || undefined }],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const params: Record<string, any> = { page, limit: 20 };
       if (search) params.search = search;
       if (statusFilter) params.isActive = statusFilter;
-      const response: any = await suppliersApi.getAll(params);
+      const response: any = await suppliersApi.getAll(params, signal);
       if (!response.success) throw new Error('Failed to load suppliers');
       return {
         items: (response.data || []) as Supplier[],
@@ -102,7 +103,7 @@ export default function SuppliersListPage() {
       const response: any = await suppliersApi.delete(id);
       if (response.success) {
         toast.success(t('suppliers.success.deleted', 'Supplier deleted successfully'));
-        fetchSuppliers();
+        await queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || t('suppliers.errors.deleteFailed', 'Failed to delete supplier'));
@@ -114,7 +115,7 @@ export default function SuppliersListPage() {
       const response: any = await suppliersApi.toggleStatus(id);
       if (response.success) {
         toast.success(t('suppliers.success.statusToggled', 'Supplier status updated'));
-        fetchSuppliers();
+        await queryClient.invalidateQueries({ queryKey: ['suppliers'] });
       }
     } catch (error: any) {
       toast.error(error.response?.data?.message || t('suppliers.errors.toggleFailed', 'Failed to update status'));

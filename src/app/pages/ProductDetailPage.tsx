@@ -268,21 +268,13 @@ export default function ProductDetailPage() {
   const [ebmPackagingUnits, setEbmPackagingUnits] = useState<EBMCodeOption[]>([]);
   const [ebmQuantityUnits, setEbmQuantityUnits] = useState<EBMCodeOption[]>([]);
   const [ebmItemClasses, setEbmItemClasses] = useState<EBMItemClassOption[]>([]);
-  const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [movementsLoading, setMovementsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [movementPagination, setMovementPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     total: 0
   });
 
-  // History state
-  const [history, setHistory] = useState<ProductHistoryEntry[]>([]);
-  const [historyLoading, setHistoryLoading] = useState(false);
-
-  // Lifecycle state
-  const [lifecycle, setLifecycle] = useState<LifecycleTimelineEntry[]>([]);
-  const [lifecycleLoading, setLifecycleLoading] = useState(false);
 
   // Navigating back to a product now paints from cache and revalidates in the
   // background, instead of showing a spinner for data just displayed.
@@ -292,8 +284,8 @@ export default function ProductDetailPage() {
     refetch: loadProduct,
   } = useQuery({
     queryKey: ['products', 'detail', id],
-    queryFn: async () => {
-      const response = await productsApi.getById(id as string);
+    queryFn: async ({ signal }) => {
+      const response = await productsApi.getById(id as string, signal);
       if (!response.success || !response.data) throw new Error('Failed to load product');
       return response.data as Product;
     },
@@ -308,7 +300,6 @@ export default function ProductDetailPage() {
     setEbmPackagingUnits([]);
     setEbmQuantityUnits([]);
     setEbmItemClasses([]);
-    loadProduct();
   }, [id]);
 
   useEffect(() => {
@@ -317,25 +308,10 @@ export default function ProductDetailPage() {
   }, [product?._id]);
 
   useEffect(() => {
-    if (product && initialTab === 'details') {
+    if (product && activeTab === 'details') {
       ensureEbmCodesLoaded();
     }
-    if (product && initialTab === 'movements') {
-      loadMovements();
-    }
-    if (product && initialTab === 'history') {
-      loadHistory();
-    }
-    if (product && initialTab === 'lifecycle') {
-      loadLifecycle();
-    }
-  }, [product, initialTab]);
-
-  useEffect(() => {
-    if (initialTab === 'movements' && movementPagination.currentPage !== 1) {
-      loadMovements();
-    }
-  }, [movementPagination.currentPage]);
+  }, [product, activeTab]);
 
 
   const loadEbmCodes = async (productData?: Product | null) => {
@@ -368,62 +344,40 @@ export default function ProductDetailPage() {
     if (product) void loadEbmCodes(product);
   };
 
-  const loadMovements = async () => {
-    if (!id) return;
-    setMovementsLoading(true);
-    try {
-      const response = await stockApi.getMovements({
-        productId: id,
-        page: movementPagination.currentPage,
-        limit: 20
-      });
-      if (response.success && response.data) {
-        const data = response.data as any;
-        setMovements(Array.isArray(data) ? data : data.movements || []);
-        if (data.pagination) {
-          setMovementPagination(prev => ({
-            ...prev,
-            ...data.pagination
-          }));
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load movements:', error);
-    } finally {
-      setMovementsLoading(false);
-    }
-  };
+  const { data: movementData, isPending: movementsLoading } = useQuery({
+    queryKey: ['products', id, 'movements', movementPagination.currentPage],
+    queryFn: async ({ signal }) => {
+      const response = await stockApi.getMovements({ productId: id, page: movementPagination.currentPage, limit: 20 }, signal);
+      if (!response.success) throw new Error('Failed to load movements');
+      return response.data as any;
+    },
+    enabled: Boolean(id && activeTab === 'movements'),
+    staleTime: 60_000,
+  });
+  const movements = (Array.isArray(movementData) ? movementData : movementData?.movements || []) as StockMovement[];
+  const resolvedMovementPagination = (Array.isArray(movementData) ? null : movementData?.pagination) || movementPagination;
 
-  const loadHistory = async () => {
-    if (!id) return;
-    setHistoryLoading(true);
-    try {
-      const response = await productsApi.getHistory(id);
-      if (response.success && response.data) {
-        setHistory(response.data as ProductHistoryEntry[]);
-      }
-    } catch (error) {
-      console.error('Failed to load history:', error);
-    } finally {
-      setHistoryLoading(false);
-    }
-  };
+  const { data: history = [], isPending: historyLoading } = useQuery({
+    queryKey: ['products', id, 'history'],
+    queryFn: async ({ signal }) => {
+      const response = await productsApi.getHistory(id as string, signal);
+      if (!response.success) throw new Error('Failed to load history');
+      return (response.data || []) as ProductHistoryEntry[];
+    },
+    enabled: Boolean(id && activeTab === 'history'),
+    staleTime: 60_000,
+  });
 
-  const loadLifecycle = async () => {
-    if (!id) return;
-    setLifecycleLoading(true);
-    try {
-      const response = await productsApi.getLifecycle(id);
-      if (response.success && response.data) {
-        const data = response.data as any;
-        setLifecycle(data.timeline || []);
-      }
-    } catch (error) {
-      console.error('Failed to load lifecycle:', error);
-    } finally {
-      setLifecycleLoading(false);
-    }
-  };
+  const { data: lifecycle = [], isPending: lifecycleLoading } = useQuery({
+    queryKey: ['products', id, 'lifecycle'],
+    queryFn: async ({ signal }) => {
+      const response = await productsApi.getLifecycle(id as string, signal);
+      if (!response.success) throw new Error('Failed to load lifecycle');
+      return ((response.data as any)?.timeline || []) as LifecycleTimelineEntry[];
+    },
+    enabled: Boolean(id && activeTab === 'lifecycle'),
+    staleTime: 60_000,
+  });
 
   const handleRegisterEbm = async () => {
     if (!id) return;
@@ -704,9 +658,9 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue={initialTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 sm:grid-cols-5 lg:max-w-4xl">
-            <TabsTrigger value="details" onClick={ensureEbmCodesLoaded}>
+            <TabsTrigger value="details">
               <Package className="h-4 w-4 mr-2" />
               {tr('products.details', 'Details')}
             </TabsTrigger>
@@ -714,15 +668,15 @@ export default function ProductDetailPage() {
               <Warehouse className="h-4 w-4 mr-2" />
               {tr('products.stock', 'Stock')}
             </TabsTrigger>
-            <TabsTrigger value="movements" onClick={() => { if (movements.length === 0) loadMovements(); }}>
+            <TabsTrigger value="movements">
               <History className="h-4 w-4 mr-2" />
               {tr('products.movements', 'Movements')}
             </TabsTrigger>
-            <TabsTrigger value="history" onClick={() => { if (history.length === 0) loadHistory(); }}>
+            <TabsTrigger value="history">
               <Clock className="h-4 w-4 mr-2" />
               {tr('products.history', 'History')}
             </TabsTrigger>
-            <TabsTrigger value="lifecycle" onClick={() => { if (lifecycle.length === 0) loadLifecycle(); }}>
+            <TabsTrigger value="lifecycle">
               <FileText className="h-4 w-4 mr-2" />
               {tr('products.lifecycle', 'Lifecycle')}
             </TabsTrigger>
@@ -1010,7 +964,7 @@ export default function ProductDetailPage() {
                     </Table>
                     </div>
 
-                    {movementPagination.totalPages > 1 && (
+                    {resolvedMovementPagination.totalPages > 1 && (
                       <div className="flex items-center justify-center mt-4">
                         <Pagination>
                           <PaginationContent>
@@ -1022,13 +976,13 @@ export default function ProductDetailPage() {
                             </PaginationItem>
                             <PaginationItem>
                               <span className="px-4 text-sm">
-                                {movementPagination.currentPage} / {movementPagination.totalPages}
+                                {movementPagination.currentPage} / {resolvedMovementPagination.totalPages}
                               </span>
                             </PaginationItem>
                             <PaginationItem>
                               <PaginationNext 
                                 onClick={() => setMovementPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
-                                className={movementPagination.currentPage >= movementPagination.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                                className={movementPagination.currentPage >= resolvedMovementPagination.totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
                               />
                             </PaginationItem>
                           </PaginationContent>

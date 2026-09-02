@@ -138,7 +138,7 @@ export default function StockMovementsPage() {
     refetch: fetchMovements,
   } = useQuery({
     queryKey: ['stock', 'movements', { page: pageNum, limit: rowsPerPage, typeFilter, startDate, endDate, debouncedSearch }],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const response = await stockApi.getMovements({
         type: typeFilter as 'in' | 'out' | 'adjustment' | undefined,
         startDate: startDate || undefined,
@@ -146,7 +146,7 @@ export default function StockMovementsPage() {
         search: debouncedSearch || undefined,
         page: pageNum,
         limit: rowsPerPage,
-      });
+      }, signal);
       if (!response || !response.success) {
         throw new Error((response as { message?: string })?.message || 'Failed to load stock movements');
       }

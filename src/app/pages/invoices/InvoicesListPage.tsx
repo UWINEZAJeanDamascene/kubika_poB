@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useClientPicker } from '@/lib/hooks/useEntities';
 import { useNavigate } from 'react-router';
 import { invoicesApi } from '@/lib/api';
@@ -88,6 +88,7 @@ export default function InvoicesListPage() {
   const { t } = useTranslation();
   const { formatCurrency } = useCurrency();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const STATUS_OPTIONS = [
     { value: 'all', label: t('invoice.status_options.all', 'All Status') },
@@ -138,8 +139,8 @@ export default function InvoicesListPage() {
     refetch: fetchInvoices,
   } = useQuery({
     queryKey: ['invoices', 'list', invoiceParams],
-    queryFn: async () => {
-      const response = await invoicesApi.getAll(invoiceParams as any);
+    queryFn: async ({ signal }) => {
+      const response = await invoicesApi.getAll(invoiceParams as any, signal);
       if (!response || !response.success) throw new Error('Failed to load invoices');
       const payload = response.data as any;
       const rows = Array.isArray(payload) ? payload : (payload?.data || []);
@@ -493,7 +494,7 @@ export default function InvoicesListPage() {
                                   </Button>
                                 )}
                                 {invoice.status === 'draft' && (
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={async () => { try { await invoicesApi.confirm(invoice._id); fetchInvoices(); } catch (e) { console.error(e); } }} title={t('invoice.confirm', 'Confirm')}>
+                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={async () => { try { await invoicesApi.confirm(invoice._id); await queryClient.invalidateQueries({ queryKey: ['invoices'] }); } catch (e) { console.error(e); } }} title={t('invoice.confirm', 'Confirm')}>
                                     <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                   </Button>
                                 )}
@@ -541,7 +542,7 @@ export default function InvoicesListPage() {
                               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${invoice._id}/edit`); }} className="h-8 w-8 p-0">
                                 <Edit className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={async (e) => { e.stopPropagation(); try { await invoicesApi.confirm(invoice._id); fetchInvoices(); } catch (err) { console.error(err); } }} className="h-8 w-8 p-0">
+                              <Button variant="ghost" size="sm" onClick={async (e) => { e.stopPropagation(); try { await invoicesApi.confirm(invoice._id); await queryClient.invalidateQueries({ queryKey: ['invoices'] }); } catch (err) { console.error(err); } }} className="h-8 w-8 p-0">
                                 <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                               </Button>
                             </>

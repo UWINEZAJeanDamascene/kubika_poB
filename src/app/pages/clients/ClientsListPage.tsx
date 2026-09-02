@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { clientsApi } from '@/lib/api';
 import { API_BASE_URL } from '@/lib/apiBase';
@@ -63,6 +63,7 @@ interface Client {
 export default function ClientsListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   
   // Filters
   const [page, setPage] = useState(1);
@@ -80,8 +81,8 @@ export default function ClientsListPage() {
     refetch: fetchClients,
   } = useQuery({
     queryKey: ['clients', 'with-stats', { search: search || undefined, page }],
-    queryFn: async () => {
-      const response = await clientsApi.getWithStats({ search: search || undefined, page, limit: 20 });
+    queryFn: async ({ signal }) => {
+      const response = await clientsApi.getWithStats({ search: search || undefined, page, limit: 20 }, signal);
       if (!response.success) throw new Error('Failed to load clients');
       const meta = response as unknown as { pages?: string; currentPage?: string; total?: string };
       return {
@@ -113,7 +114,7 @@ export default function ClientsListPage() {
   const handleToggleStatus = async (clientId: string) => {
     try {
       await clientsApi.toggleStatus(clientId);
-      fetchClients();
+      await queryClient.invalidateQueries({ queryKey: ['clients'] });
     } catch (error) {
       console.error('Failed to toggle status:', error);
     }
@@ -147,7 +148,7 @@ export default function ClientsListPage() {
       const response = await clientsApi.delete(deleteTarget.id);
       if (response.success) {
         setDeleteTarget(null);
-        fetchClients();
+        await queryClient.invalidateQueries({ queryKey: ['clients'] });
       } else {
         alert(response.message || t('clients.deleteFailed', 'Failed to delete client'));
       }
