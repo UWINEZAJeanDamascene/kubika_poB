@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Staatliches&family=Work+Sans:wght@400;500;600;700&display=swap');
+@import '@fontsource/staatliches';
+@import '@fontsource/work-sans/400.css';
+@import '@fontsource/work-sans/500.css';
+@import '@fontsource/work-sans/600.css';
+@import '@fontsource/work-sans/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/600.css';
+@import '@fontsource/jetbrains-mono/700.css';
 
-/* Public surfaces use Staatliches for industrial display type, Work Sans for UI copy,
-   and JetBrains Mono for telemetry, metrics, and technical labels. */
+/* Public surfaces keep a dependable local type pairing: Staatliches for short
+   display moments, Work Sans for prose, and JetBrains Mono for record metadata. */

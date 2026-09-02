@@ -1,11 +1,15 @@
-import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import { useMemo, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Stack } from '@mui/material';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
-import { Activity, ArrowLeft, Check, Layers3, LockKeyhole } from 'lucide-react';
-import muiTheme from '@/theme/muiTheme';
-import { LanguageSelector } from '@/app/components/LanguageSelector';
+import { Stack } from '@mui/material';
+import { createMuiTheme } from '@/theme/muiTheme';
+import { useTheme } from '@/contexts/ThemeContext';
+import { PublicHeader } from '@/app/components/public/PublicHeader';
+import {
+  AccessDocket,
+  RegistrationMark,
+  RuleLabel,
+} from '@/app/components/public/PublicPrimitives';
 
 interface AuthFrameProps {
   eyebrow: string;
@@ -15,49 +19,66 @@ interface AuthFrameProps {
   sideTitle?: string;
   sideCopy?: string;
   sideItems?: string[];
+  mobilePromise?: string;
 }
 
-const systemLog = [
-  '[07:42:15] SECURE CHANNEL / READY',
-  '[07:42:16] TENANT BOUNDARY / VERIFIED',
-  '[07:42:17] AUDIT STREAM / LISTENING',
-  '[07:42:18] OPERATIONS CORE / NOMINAL',
-];
-
-export function AuthFrame({ eyebrow, title, subtitle, children, sideTitle, sideCopy, sideItems }: AuthFrameProps) {
+export function AuthFrame({
+  eyebrow,
+  title,
+  subtitle,
+  children,
+  sideTitle,
+  sideCopy,
+  sideItems,
+  mobilePromise,
+}: AuthFrameProps) {
   const { t } = useTranslation();
-  const resolvedSideTitle = sideTitle ?? t('auth.secureAccessTitle');
-  const resolvedSideCopy = sideCopy ?? t('auth.secureAccessCopy');
-  const resolvedSideItems = sideItems ?? [t('auth.secureAccessItems.tenantSecurity'), t('auth.secureAccessItems.rolePermissions'), t('auth.secureAccessItems.auditSessions')];
+  const { theme } = useTheme();
+  const pageTheme = useMemo(() => createMuiTheme(theme), [theme]);
+  const resolvedSideTitle = sideTitle ?? t('auth.folio.title');
+  const resolvedSideCopy = sideCopy ?? t('auth.folio.copy');
+  const resolvedSideItems = sideItems ?? [
+    t('auth.folio.items.workspace'),
+    t('auth.folio.items.roles'),
+    t('auth.folio.items.history'),
+  ];
+  const resolvedMobilePromise = mobilePromise ?? t('auth.folio.mobilePromise');
 
   return (
-    <MuiThemeProvider theme={muiTheme}>
-      <div className="industrial-auth min-h-screen bg-[var(--industrial-bg)] text-[var(--industrial-ink)]">
-      <header className="border-b border-[var(--industrial-copper)]/45 bg-[var(--industrial-bg)]">
-        <div className="mx-auto flex min-h-[72px] max-w-[1440px] items-center justify-between gap-5 px-5 sm:px-8 lg:px-12">
-          <Link to="/" className="inline-flex items-center gap-3" aria-label={t('auth.brandName')}>
-            <span className="grid h-10 w-10 place-items-center border border-[var(--industrial-copper)] bg-[var(--industrial-copper)] text-[var(--industrial-bg)]"><Layers3 className="h-5 w-5" strokeWidth={1.8} /></span>
-            <span className="leading-none"><span className="block font-mono text-sm font-bold tracking-[0.18em]">{t('auth.brandName')}</span><span className="mt-1 block font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--industrial-muted)]">{t('auth.accessConsole')}</span></span>
-          </Link>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <div className="hidden sm:block"><LanguageSelector variant="landing" className="!text-[var(--industrial-muted)] hover:!bg-white/10 hover:!text-[var(--industrial-ink)]" /></div>
-            <Button component={Link} to="/" variant="text" color="inherit" startIcon={<ArrowLeft className="h-4 w-4" />} className="!px-2 !text-[10px] !text-[var(--industrial-muted)] hover:!text-[var(--industrial-ink)]">{t('auth.home')}</Button>
-          </Stack>
-        </div>
-      </header>
+    <MuiThemeProvider theme={pageTheme}>
+      <div className="public-shell public-access-shell min-h-screen overflow-x-hidden">
+        <PublicHeader mode="access" />
+        <main className="public-access-layout mx-auto grid w-full max-w-[1240px] gap-8 px-5 py-8 sm:px-8 sm:py-10 lg:grid-cols-[5fr_7fr] lg:gap-12 lg:px-10 lg:py-14">
+          <section className="public-access-context" aria-labelledby="access-context-title">
+            <RegistrationMark className="mb-8" />
+            <RuleLabel>{t('auth.folio.label')}</RuleLabel>
+            <h1 id="access-context-title" className="public-display mt-5 max-w-md text-[clamp(2.75rem,4.4vw,4.75rem)] leading-[1] text-(--public-ink)">
+              {resolvedSideTitle}
+            </h1>
+            <p className="public-body mt-6 max-w-md text-base leading-7 text-(--public-ink-muted)">
+              {resolvedSideCopy}
+            </p>
+            <AccessDocket items={resolvedSideItems} />
+          </section>
 
-      <main className="industrial-grid mx-auto grid min-h-[calc(100vh-72px)] max-w-[1440px] gap-8 px-5 py-8 sm:px-8 lg:grid-cols-[0.88fr_1.12fr] lg:items-stretch lg:px-12 lg:py-12">
-        <section className="relative hidden overflow-hidden border border-white/10 bg-[var(--industrial-panel)] p-8 lg:flex lg:min-h-[680px] lg:flex-col lg:justify-between xl:p-12">
-          <div><p className="industrial-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--industrial-copper)]">ACCESS / CONTEXT</p><h1 className="industrial-display mt-7 max-w-xl text-7xl leading-[0.82] text-[var(--industrial-ink)]">{resolvedSideTitle}</h1><p className="mt-7 max-w-md text-sm leading-7 text-[var(--industrial-muted)]">{resolvedSideCopy}</p></div>
-          <div className="mt-12 border border-white/10 bg-[var(--industrial-bg)] p-5"><div className="flex items-center justify-between border-b border-white/10 pb-4"><span className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--industrial-muted)]"><Activity className="h-4 w-4 text-[var(--industrial-copper)]" />SYSTEM ACTIVITY</span><span className="h-2 w-2 bg-[var(--industrial-olive)]" /></div><Stack spacing={1.75} className="mt-5">{systemLog.map((line) => <p key={line} className="font-mono text-[10px] text-[var(--industrial-muted)]"><span className="mr-2 text-[var(--industrial-olive)]">›</span>{line}</p>)}</Stack></div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">{resolvedSideItems.map((item) => <div key={item} className="flex items-center gap-3 border border-white/10 p-3"><Check className="h-4 w-4 shrink-0 text-[var(--industrial-copper)]" /><span className="font-mono text-[10px] uppercase tracking-[0.08em] text-[var(--industrial-muted)]">{item}</span></div>)}</div>
-        </section>
-
-        <section className="self-center border border-white/10 bg-[var(--industrial-panel)] p-6 sm:p-9 lg:min-h-[680px] lg:p-12">
-          <div className="mb-9 border-b border-white/10 pb-7"><div className="flex items-center justify-between gap-4"><p className="industrial-mono text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--industrial-copper)]">{eyebrow}</p><LockKeyhole className="h-4 w-4 text-[var(--industrial-muted)]" /></div><h2 className="industrial-display mt-4 text-6xl leading-[0.84] text-[var(--industrial-ink)] sm:text-7xl">{title}</h2><p className="mt-5 max-w-xl text-sm leading-7 text-[var(--industrial-muted)]">{subtitle}</p></div>
-          {children}
-        </section>
-      </main>
+          <section className="public-access-form" aria-labelledby="access-form-title">
+            <Stack spacing={0} className="public-access-form__inner">
+              <div className="public-access-form__heading">
+                <RuleLabel>{eyebrow}</RuleLabel>
+                <h2 id="access-form-title" className="public-access-form__title mt-4">
+                  {title}
+                </h2>
+                <p className="public-body mt-5 max-w-xl text-base leading-7 text-(--public-ink-muted)">
+                  {subtitle}
+                </p>
+                <p className="public-access-form__mobile-promise mt-5 border-t border-(--public-rule) pt-4 text-sm leading-6 text-(--public-ink-muted)">
+                  {resolvedMobilePromise}
+                </p>
+              </div>
+              <div className="public-access-form__content">{children}</div>
+            </Stack>
+          </section>
+        </main>
       </div>
     </MuiThemeProvider>
   );

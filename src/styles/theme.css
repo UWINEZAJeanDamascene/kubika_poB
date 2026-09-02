@@ -274,9 +274,610 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .industrial-grid {
-    background-image: linear-gradient(color-mix(in srgb, var(--industrial-ink) 7%, transparent) 1px, transparent 1px), linear-gradient(90deg, color-mix(in srgb, var(--industrial-ink) 7%, transparent) 1px, transparent 1px);
-    background-size: 32px 32px;
+  .public-shell {
+    --public-paper: var(--industrial-bg);
+    --public-surface: var(--industrial-panel);
+    --public-surface-raised: var(--industrial-panel-raised);
+    --public-ink: var(--industrial-ink);
+    --public-ink-muted: color-mix(in srgb, var(--industrial-ink) 72%, var(--industrial-bg));
+    --public-ink-subtle: color-mix(in srgb, var(--industrial-ink) 52%, var(--industrial-bg));
+    --public-accent: var(--industrial-copper);
+    --public-positive: var(--industrial-olive);
+    --public-danger: var(--industrial-danger);
+    --public-rule: var(--industrial-rule);
+    --public-rule-strong: var(--industrial-rule-strong);
+    --public-shadow: 0 18px 42px rgba(28, 28, 26, 0.12);
+    background: var(--public-paper);
+    color: var(--public-ink);
+    font-family: 'Work Sans', Arial, sans-serif;
+  }
+
+  .public-shell a {
+    text-decoration: none;
+  }
+
+  .public-display {
+    font-family: 'Staatliches', Impact, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.005em;
+  }
+
+  .public-mono {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .public-rule-label {
+    color: var(--public-accent);
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    line-height: 1.35;
+    text-transform: uppercase;
+  }
+
+  .public-registration-mark {
+    display: block;
+    height: 1px;
+    position: relative;
+    width: 24px;
+    background: var(--public-accent);
+  }
+
+  .public-registration-mark::after {
+    background: var(--public-accent);
+    content: '';
+    height: 24px;
+    left: 0;
+    position: absolute;
+    top: 0;
+    width: 1px;
+  }
+
+  .public-brand-mark {
+    align-items: center;
+    background: var(--public-accent);
+    display: inline-flex;
+    height: 42px;
+    justify-content: center;
+    width: 42px;
+  }
+
+  .public-brand-copy {
+    display: inline-flex;
+    flex-direction: column;
+    line-height: 1;
+  }
+
+  .public-brand-copy__name,
+  .public-brand-copy__tagline {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    text-transform: uppercase;
+  }
+
+  .public-brand-copy__name {
+    color: var(--public-ink);
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+  }
+
+  .public-brand-copy__tagline {
+    color: var(--public-ink-muted);
+    font-size: 0.5625rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    margin-top: 0.35rem;
+  }
+
+  .public-header {
+    background: var(--public-paper);
+    border-bottom: 1px solid var(--public-rule);
+    transition: border-color 180ms ease, min-height 180ms ease;
+  }
+
+  .public-header--scrolled {
+    border-bottom-color: var(--public-rule-strong);
+  }
+
+  .public-header__inner {
+    min-height: 72px;
+    transition: min-height 180ms ease;
+  }
+
+  .public-header--scrolled .public-header__inner {
+    min-height: 60px;
+  }
+
+  .public-header__nav {
+    display: none !important;
+  }
+
+  .public-mobile-menu-button {
+    display: inline-flex !important;
+  }
+
+  .public-header__sign-in {
+    display: none !important;
+  }
+
+  .public-header__nav-link,
+  .public-header__sign-in,
+  .public-back-link,
+  .public-theme-toggle,
+  .public-mobile-menu-button,
+  .public-language-trigger {
+    color: var(--public-ink-muted) !important;
+  }
+
+  .public-header__nav-link {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    transition: color 160ms ease;
+  }
+
+  .public-header__nav-link:hover,
+  .public-header__nav-link:focus-visible,
+  .public-header__sign-in:hover,
+  .public-header__sign-in:focus-visible,
+  .public-back-link:hover,
+  .public-back-link:focus-visible,
+  .public-theme-toggle:hover,
+  .public-mobile-menu-button:hover,
+  .public-language-trigger:hover,
+  .public-language-trigger:focus-visible {
+    color: var(--public-ink) !important;
+  }
+
+  .public-action {
+    background: var(--public-accent) !important;
+    border-radius: 2px !important;
+    box-shadow: none !important;
+    color: var(--public-paper) !important;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace !important;
+    font-size: 0.6875rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.04em !important;
+    text-transform: uppercase !important;
+    transition: background-color 160ms ease, transform 160ms ease !important;
+  }
+
+  .public-action:hover,
+  .public-action:focus-visible {
+    background: color-mix(in srgb, var(--public-accent) 86%, var(--public-ink)) !important;
+  }
+
+  .public-action:hover svg,
+  .public-action:focus-visible svg {
+    transform: translateX(2px);
+  }
+
+  .public-action svg {
+    transition: transform 160ms ease;
+  }
+
+  .public-action.Mui-disabled {
+    background: var(--public-surface-raised) !important;
+    color: var(--public-ink-muted) !important;
+    opacity: 1 !important;
+  }
+
+  .public-quiet-link {
+    color: var(--public-ink) !important;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+    text-decoration: underline !important;
+    text-decoration-color: transparent !important;
+    text-underline-offset: 0.25rem;
+    transition: color 160ms ease, text-decoration-color 160ms ease;
+  }
+
+  .public-quiet-link:hover,
+  .public-quiet-link:focus-visible {
+    color: var(--public-accent) !important;
+    text-decoration-color: var(--public-accent) !important;
+  }
+
+  .public-home-cta .public-quiet-link,
+  .public-home-cta .public-quiet-link:hover,
+  .public-home-cta .public-quiet-link:focus-visible {
+    color: var(--public-paper) !important;
+  }
+
+  .public-home-cta .public-quiet-link:hover,
+  .public-home-cta .public-quiet-link:focus-visible {
+    text-decoration-color: var(--public-paper) !important;
+  }
+
+  .public-mobile-nav {
+    border-top: 1px solid var(--public-rule);
+    padding: 0.25rem 1.25rem 0.75rem;
+  }
+
+  .public-mobile-nav__link {
+    align-items: center;
+    border-bottom: 1px solid var(--public-rule);
+    color: var(--public-ink-muted);
+    display: flex;
+    min-height: 48px;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .public-mobile-nav__link--action {
+    color: var(--public-accent);
+  }
+
+  .public-notice {
+    border-radius: 2px !important;
+    font-size: 0.875rem !important;
+    line-height: 1.5 !important;
+  }
+
+  .public-notice--danger {
+    border-color: color-mix(in srgb, var(--public-danger) 48%, transparent) !important;
+    color: var(--public-danger) !important;
+  }
+
+  .public-notice--success {
+    border-color: color-mix(in srgb, var(--public-positive) 52%, transparent) !important;
+    color: var(--public-positive) !important;
+  }
+
+  .public-notice--muted {
+    border-color: var(--public-rule-strong) !important;
+    color: var(--public-ink-muted) !important;
+  }
+
+  .public-field-label {
+    color: var(--public-ink-muted);
+    font-size: 0.8125rem;
+    font-weight: 600;
+  }
+
+  .public-field .MuiInputBase-input {
+    color: var(--public-ink);
+    font-family: 'Work Sans', Arial, sans-serif;
+    font-size: 1rem;
+    padding-bottom: 0.7rem;
+    padding-top: 0.55rem;
+  }
+
+  .public-field .MuiInputBase-input::placeholder {
+    color: var(--public-ink-subtle);
+    opacity: 1;
+  }
+
+  .public-field .MuiInput-root::before {
+    border-bottom-color: var(--public-rule-strong);
+  }
+
+  .public-field .MuiInput-root:hover:not(.Mui-disabled)::before {
+    border-bottom-color: var(--public-accent);
+  }
+
+  .public-field .MuiInput-root::after {
+    border-bottom-color: var(--public-accent);
+  }
+
+  .public-field .MuiInputAdornment-root {
+    color: var(--public-ink-subtle);
+  }
+
+  .public-field .MuiFormHelperText-root {
+    color: var(--public-danger);
+    font-size: 0.75rem;
+    margin-left: 0;
+    margin-right: 0;
+  }
+
+  .public-field .Mui-disabled .MuiInputBase-input {
+    color: var(--public-ink-muted);
+  }
+
+  .public-field-action,
+  .public-inline-link,
+  .public-back-form-link,
+  .public-notice-action,
+  .public-footer-link {
+    color: var(--public-accent);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 0.25rem;
+    transition: color 160ms ease, text-decoration-color 160ms ease;
+  }
+
+  .public-field-action {
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .public-field-action:hover,
+  .public-field-action:focus-visible,
+  .public-inline-link:hover,
+  .public-inline-link:focus-visible,
+  .public-back-form-link:hover,
+  .public-back-form-link:focus-visible,
+  .public-notice-action:hover,
+  .public-notice-action:focus-visible,
+  .public-footer-link:hover,
+  .public-footer-link:focus-visible {
+    color: var(--public-ink);
+    text-decoration-color: var(--public-accent);
+  }
+
+  .public-back-form-link {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    display: inline-flex;
+    font-size: 0.875rem;
+    gap: 0.5rem;
+    justify-content: flex-start;
+    padding: 0;
+    text-decoration: none;
+  }
+
+  .public-notice-action {
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+    font-family: 'Work Sans', Arial, sans-serif;
+    font-size: 0.8125rem;
+    padding: 0.35rem 0;
+  }
+
+  .public-password-toggle {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    color: var(--public-ink-subtle);
+    cursor: pointer;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0;
+    transition: color 160ms ease;
+  }
+
+  .public-password-toggle:hover,
+  .public-password-toggle:focus-visible {
+    color: var(--public-accent);
+  }
+
+  .public-form-footer {
+    border-top: 1px solid var(--public-rule);
+    padding-top: 1.25rem;
+  }
+
+  .public-submitted-state {
+    border-top: 1px solid var(--public-rule-strong);
+    padding-top: 1.5rem;
+  }
+
+  .public-submitted-state__title {
+    color: var(--public-ink);
+    font-size: clamp(1.25rem, 2vw, 1.65rem);
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .public-access-docket {
+    border-top: 1px solid var(--public-rule-strong);
+  }
+
+  .public-access-docket__item {
+    border-bottom: 1px solid var(--public-rule);
+    color: var(--public-ink-muted);
+    font-size: 0.875rem;
+    min-height: 58px;
+  }
+
+  .public-access-docket__index {
+    color: var(--public-accent);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    width: 28px;
+  }
+
+  .public-step-index {
+    width: 100%;
+  }
+
+  .public-step-index__step {
+    color: var(--public-ink-muted);
+    flex: 1 1 auto;
+    font-size: 0.75rem;
+    font-weight: 600;
+    min-width: 0;
+  }
+
+  .public-step-index__marker {
+    align-items: center;
+    border: 1px solid var(--public-rule-strong);
+    color: var(--public-ink-muted);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.6875rem;
+    height: 32px;
+    justify-content: center;
+    width: 32px;
+  }
+
+  .public-step-index__step--current .public-step-index__marker {
+    background: var(--public-accent);
+    border-color: var(--public-accent);
+    color: var(--public-paper);
+  }
+
+  .public-step-index__step--complete .public-step-index__marker {
+    border-color: var(--public-accent);
+    color: var(--public-accent);
+  }
+
+  .public-step-index__step--current .public-step-index__label,
+  .public-step-index__step--complete .public-step-index__label {
+    color: var(--public-ink);
+  }
+
+  .public-step-index__connector {
+    background: var(--public-rule-strong);
+    flex: 1 1 48px;
+    height: 1px;
+    margin: 0 1rem;
+    min-width: 24px;
+  }
+
+  .public-plan-register {
+    border-top: 1px solid var(--public-rule-strong);
+  }
+
+  .public-plan-row,
+  .public-plan-skeleton {
+    border-bottom: 1px solid var(--public-rule);
+    margin: 0 !important;
+    min-height: 76px;
+    padding: 0.75rem 0;
+    width: 100%;
+  }
+
+  .public-plan-row {
+    align-items: center;
+    border-top: 2px solid transparent;
+    color: var(--public-ink-muted);
+    transition: border-color 160ms ease, color 160ms ease, background-color 160ms ease;
+  }
+
+  .public-plan-row:hover,
+  .public-plan-row:focus-within {
+    background: color-mix(in srgb, var(--public-accent) 5%, transparent);
+    color: var(--public-ink);
+  }
+
+  .public-plan-row--selected {
+    border-top-color: var(--public-accent);
+    color: var(--public-ink);
+  }
+
+  .public-plan-row__control {
+    align-items: center;
+    display: flex;
+    flex: 1 1 auto;
+    margin: 0 !important;
+    min-width: 0;
+  }
+
+  .public-plan-row .MuiRadio-root {
+    color: var(--public-rule-strong);
+    padding: 0.5rem;
+  }
+
+  .public-plan-row .MuiRadio-root.Mui-checked {
+    color: var(--public-accent);
+  }
+
+  .public-plan-row .MuiFormControlLabel-label {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .public-plan-row__content {
+    min-width: 0;
+  }
+
+  .public-plan-row__name {
+    color: var(--public-ink);
+    font-size: 0.9375rem;
+    font-weight: 700;
+  }
+
+  .public-plan-row__description {
+    color: var(--public-ink-muted);
+    font-size: 0.8125rem;
+    line-height: 1.45;
+  }
+
+  .public-plan-row__amount {
+    color: var(--public-accent);
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .public-success-marker {
+    align-items: center;
+    background: var(--public-positive);
+    color: var(--public-paper);
+    display: inline-flex;
+    height: 44px;
+    justify-content: center;
+    width: 44px;
+  }
+
+  .public-success-marker svg {
+    height: 22px;
+    width: 22px;
+  }
+
+  @media (min-width: 1024px) {
+    .public-header__nav {
+      display: flex !important;
+    }
+
+    .public-mobile-menu-button {
+      display: none !important;
+    }
+  }
+
+  @media (min-width: 640px) {
+    .public-header__sign-in {
+      display: inline-flex !important;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .public-header__inner {
+      min-height: 64px;
+    }
+
+    .public-header--scrolled .public-header__inner {
+      min-height: 64px;
+    }
+
+    .public-brand-mark {
+      height: 38px;
+      width: 38px;
+    }
+
+    .public-brand-copy__name {
+      font-size: 0.75rem;
+    }
+
+    .public-brand-copy__tagline {
+      font-size: 0.5rem;
+    }
+
+    .public-step-index__connector {
+      margin: 0 0.45rem;
+      min-width: 12px;
+    }
+
+    .public-step-index__label {
+      font-size: 0.6875rem;
+    }
+
+    .public-plan-row__description {
+      font-size: 0.75rem;
+    }
   }
 
   .industrial-frame {

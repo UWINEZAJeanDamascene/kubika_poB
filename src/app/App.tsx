@@ -31,19 +31,20 @@ const queryClient = new QueryClient({
     },
   },
 });
-import HomePage from "./pages/landing/HomePage";
-import PricingPage from "./pages/landing/PricingPage";
-import SecurityLandingPage from "./pages/landing/SecurityLandingPage";
-import OperationsLandingPage from "./pages/landing/OperationsLandingPage";
-import PlatformLandingPage from "./pages/landing/PlatformLandingPage";
 import { useCompanyStore } from "@/store/companyStore";
 import { useChatPanelStore } from "@/store/chatPanelStore";
-import LoginPage from "./pages/auth/LoginPage";
-import RegisterPage from "./pages/auth/RegisterPage";
-import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
-import PlatformAdminSetupPage from "./pages/auth/PlatformAdminSetupPage";
-import CompanySelectorPage from "./pages/auth/CompanySelectorPage";
+
+const HomePage = lazy(() => import("./pages/landing/HomePage"));
+const PricingPage = lazy(() => import("./pages/landing/PricingPage"));
+const SecurityLandingPage = lazy(() => import("./pages/landing/SecurityLandingPage"));
+const OperationsLandingPage = lazy(() => import("./pages/landing/OperationsLandingPage"));
+const PlatformLandingPage = lazy(() => import("./pages/landing/PlatformLandingPage"));
+const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
+const ResetPasswordPage = lazy(() => import("./pages/auth/ResetPasswordPage"));
+const PlatformAdminSetupPage = lazy(() => import("./pages/auth/PlatformAdminSetupPage"));
+const CompanySelectorPage = lazy(() => import("./pages/auth/CompanySelectorPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const InventoryDashboardPage = lazy(
   () => import("./pages/InventoryDashboardPage"),

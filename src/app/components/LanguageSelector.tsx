@@ -37,7 +37,7 @@ export function LanguageSelector({
         ? 'flex h-10 w-full items-center justify-center rounded-2xl text-slate-400 hover:bg-white/10 hover:text-white transition-colors'
         : 'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs md:text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-colors'
       : variant === 'landing'
-        ? 'h-9 gap-1.5 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium inline-flex items-center justify-center rounded-md px-3 text-sm'
+        ? 'h-9 gap-1.5 text-(--public-ink-muted) hover:bg-(--public-surface) hover:text-(--public-ink) font-medium inline-flex items-center justify-center px-3 text-sm'
         : 'inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm';
 
   return (
@@ -53,7 +53,14 @@ export function LanguageSelector({
           {!collapsed && (
             <>
               <span>{t(current.labelKey)}</span>
-              <span className="ml-auto text-[10px] bg-cyan-300 text-slate-950 rounded-full px-1.5 py-0.5 font-bold">
+              <span
+                className={cn(
+                  'ml-auto px-1.5 py-0.5 text-[10px] font-bold',
+                  variant === 'landing'
+                    ? 'bg-(--public-accent) text-(--public-paper)'
+                    : 'rounded-full bg-cyan-300 text-slate-950',
+                )}
+              >
                 {current.short}
               </span>
             </>
