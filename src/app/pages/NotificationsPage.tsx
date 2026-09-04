@@ -27,6 +27,8 @@ import {
   ShieldCheck,
   Zap,
   Inbox,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { cn } from '../components/ui/utils';
 import {
@@ -161,6 +163,8 @@ function MetricTile({ title, value, icon, tone, subtitle, loading }: MetricTileP
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [stats, setStats] = useState({
     total: 0,
@@ -172,10 +176,10 @@ export default function NotificationsPage() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const response = await notificationsApi.getAll({ 
-        page: 1, 
-        limit: 100,
-        unreadOnly: filter === 'unread'
+      const response = await notificationsApi.getAll({
+        page,
+        limit: 50,
+        unreadOnly: filter === 'unread',
       });
       
       if (response.success) {
@@ -186,11 +190,12 @@ export default function NotificationsPage() {
         const criticalCount = response.data.filter((n: Notification) => n.severity === 'critical').length;
         const warningCount = response.data.filter((n: Notification) => n.severity === 'warning').length;
         
+        setPages(response.pagination?.pages || 1);
         setStats({
           total: response.pagination?.total || response.data.length,
-          unread: unreadCount,
+          unread: response.unreadCount ?? unreadCount,
           critical: criticalCount,
-          warning: warningCount
+          warning: warningCount,
         });
       }
     } catch (error) {
@@ -202,7 +207,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     fetchNotifications();
-  }, [filter]);
+  }, [filter, page]);
 
   const handleMarkAsRead = async (id: string) => {
     try {
@@ -529,7 +534,7 @@ export default function NotificationsPage() {
           </div>
 
           {/* Tabs */}
-          <Tabs value={filter} onValueChange={(v) => setFilter(v as 'all' | 'unread')}>
+          <Tabs value={filter} onValueChange={(v) => { setFilter(v as 'all' | 'unread'); setPage(1); }}>
             <TabsList className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
               <TabsTrigger
                 value="all"
@@ -654,6 +659,30 @@ export default function NotificationsPage() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {pages > 1 && (
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950" aria-label="Notification pagination">
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="Previous notifications page"
+                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                disabled={loading || page === 1}
+              >
+                <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+              </Button>
+              <span className="text-sm text-slate-500 dark:text-slate-400">Page {page} of {pages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="Next notifications page"
+                onClick={() => setPage((current) => Math.min(pages, current + 1))}
+                disabled={loading || page === pages}
+              >
+                Next <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
+            </div>
           )}
         </div>
       </div>

@@ -8,7 +8,7 @@ import { Badge } from "@/app/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
-import { Check, FileDown, Link as LinkIcon, Loader2, Lock, Upload } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, FileDown, Link as LinkIcon, Loader2, Lock, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = { embedded?: boolean; accountId?: string; accountData?: any };
@@ -35,10 +35,16 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
   const bankAccountId = accountId || params.id || "";
   const [account, setAccount] = useState<any>(accountData || null);
   const [sessions, setSessions] = useState<any[]>([]);
+  const [sessionPage, setSessionPage] = useState(1);
+  const [sessionPages, setSessionPages] = useState(1);
   const [activeSessionId, setActiveSessionId] = useState("");
   const [summary, setSummary] = useState<any>(null);
   const [statementTx, setStatementTx] = useState<any[]>([]);
+  const [statementPage, setStatementPage] = useState(1);
+  const [statementPages, setStatementPages] = useState(1);
   const [bookTx, setBookTx] = useState<any[]>([]);
+  const [bookPage, setBookPage] = useState(1);
+  const [bookPages, setBookPages] = useState(1);
   const [selectedStatement, setSelectedStatement] = useState("");
   const [selectedBook, setSelectedBook] = useState("");
   const [filter, setFilter] = useState("all");
@@ -63,17 +69,18 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
         bankAccountId
           ? (accountData ? Promise.resolve({ data: accountData }) : bankAccountsApi.getById(bankAccountId))
           : Promise.resolve({ data: null }),
-        bankReconciliationApi.listSessions(bankAccountId ? { bankAccountId } : undefined),
+        bankReconciliationApi.listSessions(bankAccountId ? { bankAccountId, page: sessionPage, limit: 50 } : { page: sessionPage, limit: 50 }),
       ]);
       setAccount(accountRes.data || null);
       setSessions(sessionsRes.data || []);
+      setSessionPages(sessionsRes.pagination?.pages || 1);
       if (!activeSessionId && sessionsRes.data?.[0]?._id) setActiveSessionId(sessionsRes.data[0]._id);
     } catch (error: any) {
       toast.error(error.message || "Failed to load reconciliation sessions");
     } finally {
       setLoading(false);
     }
-  }, [accountData, activeSessionId, bankAccountId]);
+  }, [accountData, activeSessionId, bankAccountId, sessionPage]);
 
   const loadWorkspace = useCallback(async () => {
     if (!activeSessionId) return;
@@ -82,18 +89,20 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
     try {
       const [summaryRes, statementRes, bookRes] = await Promise.all([
         bankReconciliationApi.summary(activeSessionId),
-        bankReconciliationApi.listTransactions(activeSessionId, { matchStatus }),
-        bankReconciliationApi.listBookTransactions(activeSessionId, { matchStatus }),
+        bankReconciliationApi.listTransactions(activeSessionId, { matchStatus, page: statementPage, limit: 100 }),
+        bankReconciliationApi.listBookTransactions(activeSessionId, { matchStatus, page: bookPage, limit: 100 }),
       ]);
       setSummary(summaryRes.data);
       setStatementTx(statementRes.data || []);
+      setStatementPages(statementRes.pagination?.pages || 1);
       setBookTx(bookRes.data || []);
+      setBookPages(bookRes.pagination?.pages || 1);
     } catch (error: any) {
       toast.error(error.message || "Failed to load reconciliation workspace");
     } finally {
       setLoading(false);
     }
-  }, [activeSessionId, filter]);
+  }, [activeSessionId, filter, statementPage, bookPage]);
 
   useEffect(() => {
     loadSessions();
@@ -238,12 +247,18 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
               </button>
             ))}
             {!sessions.length && <p className="text-sm text-slate-500">No reconciliation sessions yet.</p>}
+            {sessionPages > 1 && (
+              <PaginationControls page={sessionPage} pages={sessionPages} onPageChange={(nextPage) => {
+                setSessionPage(nextPage);
+                setActiveSessionId("");
+              }} label="Session pagination" />
+            )}
           </CardContent>
         </Card>
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2">
-            <Select value={filter} onValueChange={setFilter}>
+            <Select value={filter} onValueChange={(value) => { setFilter(value); setStatementPage(1); setBookPage(1); setSelectedStatement(""); setSelectedBook(""); }}>
               <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
@@ -269,6 +284,9 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
               selected={selectedStatement}
               onSelect={setSelectedStatement}
               side="statement"
+              page={statementPage}
+              pages={statementPages}
+              onPageChange={(nextPage) => { setSelectedStatement(""); setStatementPage(nextPage); }}
             />
             <TransactionPanel
               title="Book Transactions"
@@ -276,6 +294,9 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
               selected={selectedBook}
               onSelect={setSelectedBook}
               side="book"
+              page={bookPage}
+              pages={bookPages}
+              onPageChange={(nextPage) => { setSelectedBook(""); setBookPage(nextPage); }}
             />
           </div>
         </div>
@@ -315,6 +336,20 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
   return embedded ? content : <Layout>{content}</Layout>;
 }
 
+function PaginationControls({ page, pages, onPageChange, label }: { page: number; pages: number; onPageChange: (page: number) => void; label: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 pt-2" aria-label={label}>
+      <Button variant="outline" size="sm" aria-label="Previous page" onClick={() => onPageChange(Math.max(1, page - 1))} disabled={page <= 1}>
+        <ChevronLeft className="mr-1 h-4 w-4" />
+      </Button>
+      <span className="text-xs text-slate-500">{page} / {pages}</span>
+      <Button variant="outline" size="sm" aria-label="Next page" onClick={() => onPageChange(Math.min(pages, page + 1))} disabled={page >= pages}>
+        <ChevronRight className="ml-1 h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
 function SummaryLine({ label, value, strong = false }: { label: string; value: any; strong?: boolean }) {
   return (
     <div className={`flex items-center justify-between gap-3 ${strong ? "font-semibold" : ""}`}>
@@ -330,12 +365,18 @@ function TransactionPanel({
   selected,
   onSelect,
   side,
+  page,
+  pages,
+  onPageChange,
 }: {
   title: string;
   items: any[];
   selected: string;
   onSelect: (id: string) => void;
   side: "statement" | "book";
+  page: number;
+  pages: number;
+  onPageChange: (page: number) => void;
 }) {
   return (
     <Card className="border-slate-200 bg-white text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50">
@@ -382,6 +423,7 @@ function TransactionPanel({
             )}
           </TableBody>
         </Table>
+        {pages > 1 && <div className="px-4 pb-3"><PaginationControls page={page} pages={pages} onPageChange={onPageChange} label={`${title} pagination`} /></div>}
       </CardContent>
     </Card>
   );

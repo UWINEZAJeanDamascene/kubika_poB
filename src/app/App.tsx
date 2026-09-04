@@ -33,6 +33,7 @@ const queryClient = new QueryClient({
 });
 import { useCompanyStore } from "@/store/companyStore";
 import { useChatPanelStore } from "@/store/chatPanelStore";
+import { useCrossUserCacheSync } from "@/lib/realtimeSync";
 
 const HomePage = lazy(() => import("./pages/landing/HomePage"));
 const PricingPage = lazy(() => import("./pages/landing/PricingPage"));
@@ -689,6 +690,7 @@ function RouteLoadingFallback() {
 
 // TOP-LEVEL DEBUG - should always show in console
 function AppRoutes() {
+  useCrossUserCacheSync();
   return (
     <>
       <OfflineSyncBanner />

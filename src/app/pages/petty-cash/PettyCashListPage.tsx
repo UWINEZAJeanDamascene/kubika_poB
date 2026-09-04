@@ -68,6 +68,8 @@ export default function PettyCashListPage() {
   // ── Data state ──────────────────────────────────────────────────────────────
   const [loading, setLoading] = useState(true);
   const [funds, setFunds] = useState<any[]>([]);
+  const [fundPage, setFundPage] = useState(1);
+  const [fundPages, setFundPages] = useState(1);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [expenseAccounts, setExpenseAccounts] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -201,11 +203,12 @@ export default function PettyCashListPage() {
             ? overrideShowInactive
             : showInactive;
         // When showing inactive, pass no isActive filter to get all funds.
-        const params = inactive ? {} : { isActive: true };
+        const params = inactive ? { page: fundPage, limit: 50 } : { isActive: true, page: fundPage, limit: 50 };
         const response = await pettyCashApi.getFunds(params);
         console.log("[PettyCashListPage] Funds API Response:", response);
         if (response.success && response.data) {
           setFunds(response.data);
+          setFundPages(response.pagination?.pages || response.pages || 1);
         }
       } catch (error) {
         console.error("[PettyCashListPage] Failed to fetch funds:", error);
@@ -214,7 +217,7 @@ export default function PettyCashListPage() {
         setLoading(false);
       }
     },
-    [showInactive],
+    [fundPage, showInactive],
   );
 
   const fetchBankAccounts = useCallback(async () => {
@@ -263,6 +266,7 @@ export default function PettyCashListPage() {
   // ── Toggle inactive handler ───────────────────────────────────────────────────
   const handleToggleInactive = (checked: boolean) => {
     setShowInactive(checked);
+    setFundPage(1);
     fetchFunds(checked);
   };
 
@@ -1196,6 +1200,17 @@ export default function PettyCashListPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+          {fundPages > 1 && (
+            <div className="mt-4 flex items-center justify-between gap-3" aria-label="Petty cash funds pagination">
+              <Button variant="outline" size="sm" onClick={() => setFundPage((current) => Math.max(1, current - 1))} disabled={loading || fundPage === 1}>
+                <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+              </Button>
+              <span className="text-sm text-slate-500 dark:text-slate-400">Page {fundPage} of {fundPages}</span>
+              <Button variant="outline" size="sm" onClick={() => setFundPage((current) => Math.min(fundPages, current + 1))} disabled={loading || fundPage === fundPages}>
+                Next <ChevronRight className="ml-1 h-4 w-4" />
+              </Button>
             </div>
           )}
 

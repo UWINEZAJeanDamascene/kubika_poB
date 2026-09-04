@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { quotationsApi, clientsApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
@@ -82,11 +83,6 @@ interface PaginationInfo {
 export default function QuotationsListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [quotations, setQuotations] = useState<Quotation[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
-  
   // Filters
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -100,74 +96,61 @@ export default function QuotationsListPage() {
   const [pendingAction, setPendingAction] = useState<{type: 'send' | 'accept' | 'reject', id: string} | null>(null);
   const [recipientEmail, setRecipientEmail] = useState('');
 
-  const fetchClients = useCallback(async () => {
-    try {
-      const response = await clientsApi.getAll({ limit: 100, forPicker: '1' });
-      if (response.success && response.data) {
-        const clientData = Array.isArray(response.data) 
-          ? response.data 
-          : (response.data as unknown[]);
-        setClients(clientData as Client[]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch clients:', error);
-    }
-  }, []);
+  const queryClient = useQueryClient();
 
-  const fetchQuotations = useCallback(async () => {
-    setLoading(true);
-    try {
-      console.log('[QuotationsListPage] Fetching quotations with params:', { statusFilter, clientFilter, dateFrom, dateTo, page, search });
-      
-      const params: any = {
-        page,
-        limit: 20,
-      };
-      
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients', 'picker', 'quotations-filter'],
+    queryFn: async () => {
+      const response = await clientsApi.getAll({ limit: 100, forPicker: '1' });
+      if (!response.success || !response.data) return [] as Client[];
+      return (Array.isArray(response.data) ? response.data : (response.data as unknown[])) as Client[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const quotationsQueryKey = ['quotations', 'list', { page, statusFilter, clientFilter, dateFrom, dateTo, search }];
+
+  // staleTime 0: accepting/converting a quotation gates invoice/stock
+  // commitments, so a cached list could act on a quotation already accepted
+  // or converted by another user.
+  const {
+    data: quotationsData,
+    isPending: loading,
+    refetch: fetchQuotations,
+  } = useQuery({
+    queryKey: quotationsQueryKey,
+    queryFn: async ({ signal }) => {
+      const params: any = { page, limit: 20 };
       if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
       if (clientFilter && clientFilter !== 'all') params.clientId = clientFilter;
       if (dateFrom) params.startDate = dateFrom;
       if (dateTo) params.endDate = dateTo;
       if (search) params.search = search;
-      
-      const response = await quotationsApi.getAll(params);
-      console.log('[QuotationsListPage] Quotations response:', response);
-      
-       if (response.success) {
-         const quotationData = Array.isArray(response.data) 
-           ? response.data 
-           : (response.data as unknown[]);
-         setQuotations(quotationData as Quotation[]);
-         
-         // Handle pagination if response has it
-         const responseWithPagination = response as unknown as { 
-           pages?: number; 
-           currentPage?: number; 
-           total?: number 
-         };
-         if (responseWithPagination.pages !== undefined) {
-           setPagination({
-             currentPage: responseWithPagination.currentPage || 1,
-             totalPages: responseWithPagination.pages || 1,
-             total: responseWithPagination.total || 0,
-             limit: 20
-           });
-         }
-       }
-    } catch (error) {
-      console.error('[QuotationsListPage] Failed to fetch quotations:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, clientFilter, dateFrom, dateTo, search]);
 
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
+      const response = await quotationsApi.getAll(params, signal);
+      if (!response.success) throw new Error('Failed to fetch quotations');
 
-  useEffect(() => {
-    fetchQuotations();
-  }, [fetchQuotations]);
+      const quotationData = Array.isArray(response.data)
+        ? response.data
+        : (response.data as unknown[]);
+      const responseWithPagination = response as unknown as { pages?: number; currentPage?: number; total?: number };
+      const pagination: PaginationInfo | null =
+        responseWithPagination.pages !== undefined
+          ? {
+              currentPage: responseWithPagination.currentPage || 1,
+              totalPages: responseWithPagination.pages || 1,
+              total: responseWithPagination.total || 0,
+              limit: 20,
+            }
+          : null;
+      return { items: quotationData as Quotation[], pagination };
+    },
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
+
+  const quotations = quotationsData?.items ?? [];
+  const pagination = quotationsData?.pagination ?? null;
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,6 +219,7 @@ export default function QuotationsListPage() {
     try {
       await quotationsApi.convertToInvoice(id, {});
       fetchQuotations();
+      void queryClient.invalidateQueries({ queryKey: ['invoices'] });
     } catch (error) {
       console.error('Failed to convert quotation:', error);
     }
@@ -312,7 +296,7 @@ export default function QuotationsListPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchQuotations}
+                    onClick={() => fetchQuotations()}
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <RefreshCw className="h-4 w-4" />

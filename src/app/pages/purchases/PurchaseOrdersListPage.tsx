@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router';
 import { purchaseOrdersApi, suppliersApi, freightAnalysisApi } from '@/lib/api';
 import { FreightBillsContent } from '@/app/pages/freight/FreightBillsListPage';
@@ -119,10 +120,7 @@ export default function PurchaseOrdersListPage() {
   const canCancelPurchaseOrder =
     hasPermission('purchase_orders:delete') ||
     hasPermission('purchase_orders:update');
-  const [loading, setLoading] = useState(true);
-  const [poList, setPoList] = useState<PurchaseOrder[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const queryClient = useQueryClient();
   
   // Filters
   const [page, setPage] = useState(1);
@@ -194,79 +192,99 @@ export default function PurchaseOrdersListPage() {
     };
   }, [freightData]);
 
-  const fetchSuppliers = useCallback(async () => {
-    try {
-      console.log('[PurchaseOrdersListPage] Fetching suppliers...');
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers', 'picker', 'purchase-orders-filter'],
+    queryFn: async () => {
       const response = await suppliersApi.getAll({ limit: 100 });
-      console.log('[PurchaseOrdersListPage] Suppliers response:', response);
-      if (response.success && Array.isArray(response.data)) {
-        setSuppliers(response.data as Supplier[]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch suppliers:', error);
-    }
-  }, []);
+      if (!response.success || !Array.isArray(response.data)) return [] as Supplier[];
+      return response.data as Supplier[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchPurchaseOrders = useCallback(async () => {
-    setLoading(true);
-    try {
-      console.log('[PurchaseOrdersListPage] Fetching with params:', { page, statusFilter, supplierFilter, dateFrom, dateTo });
-      const params: any = {
-        page: page,
-        limit: 20,
-      };
-      
+  const poQueryKey = ['purchaseOrders', 'list', { page, statusFilter, ebmPurchaseStatusFilter, supplierFilter, dateFrom, dateTo, searchQuery }];
+
+  // staleTime 0: approving/cancelling a PO gates GRN receipt against it, so a
+  // cached list could let someone approve a PO another user already cancelled.
+  const {
+    data: poData,
+    isPending: loading,
+  } = useQuery({
+    queryKey: poQueryKey,
+    queryFn: async ({ signal }) => {
+      const params: any = { page, limit: 20 };
       if (statusFilter) params.status = statusFilter;
       if (ebmPurchaseStatusFilter) params.ebmPurchaseMatchStatus = ebmPurchaseStatusFilter;
       if (supplierFilter) params.supplier_id = supplierFilter;
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
       if (searchQuery) params.search = searchQuery;
-      
-      const response = await purchaseOrdersApi.getAll(params);
-      console.log('[PurchaseOrdersListPage] API Response:', response);
-      
-      if (response.success) {
-        setPoList(response.data as PurchaseOrder[]);
-        if (response.pagination) {
-          setPagination(response.pagination as PaginationInfo);
-        }
-      } else {
-        console.error('[PurchaseOrdersListPage] API returned error:', response);
-      }
-    } catch (error) {
-      console.error('[PurchaseOrdersListPage] Failed to fetch purchase orders:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, ebmPurchaseStatusFilter, supplierFilter, dateFrom, dateTo, searchQuery]);
 
-  useEffect(() => {
-    fetchSuppliers();
-  }, [fetchSuppliers]);
+      const response = await purchaseOrdersApi.getAll(params, signal);
+      if (!response.success) throw new Error('Failed to fetch purchase orders');
+      return {
+        items: (response.data as PurchaseOrder[]) || [],
+        pagination: (response.pagination as PaginationInfo) ?? null,
+      };
+    },
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    fetchPurchaseOrders();
-  }, [fetchPurchaseOrders]);
+  const poList = poData?.items ?? [];
+  const pagination = poData?.pagination ?? null;
 
-  const handleApprove = async (id: string) => {
-    if (!canApprovePurchaseOrder) return;
-    try {
-      await purchaseOrdersApi.approve(id);
-      fetchPurchaseOrders();
-    } catch (error) {
+  // Optimistic approve/cancel: the row flips immediately; a rejected write
+  // restores the previous list so the UI never claims an approval the server
+  // did not accept.
+  const approvePoMutation = useMutation({
+    mutationFn: (id: string) => purchaseOrdersApi.approve(id),
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['purchaseOrders'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['purchaseOrders'] });
+      queryClient.setQueriesData({ queryKey: ['purchaseOrders'] }, (old: any) => {
+        if (!old?.items) return old;
+        return { ...old, items: old.items.map((po: PurchaseOrder) => (po._id === id ? { ...po, status: 'approved' as const } : po)) };
+      });
+      return { previous };
+    },
+    onError: (error: any, _id, context) => {
+      context?.previous?.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
       console.error('Failed to approve PO:', error);
-    }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] });
+    },
+  });
+
+  const cancelPoMutation = useMutation({
+    mutationFn: (id: string) => purchaseOrdersApi.cancel(id),
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['purchaseOrders'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['purchaseOrders'] });
+      queryClient.setQueriesData({ queryKey: ['purchaseOrders'] }, (old: any) => {
+        if (!old?.items) return old;
+        return { ...old, items: old.items.map((po: PurchaseOrder) => (po._id === id ? { ...po, status: 'cancelled' as const } : po)) };
+      });
+      return { previous };
+    },
+    onError: (error: any, _id, context) => {
+      context?.previous?.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
+      console.error('Failed to cancel PO:', error);
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['purchaseOrders'] });
+    },
+  });
+
+  const handleApprove = (id: string) => {
+    if (!canApprovePurchaseOrder) return;
+    approvePoMutation.mutate(id);
   };
 
-  const handleCancel = async (id: string) => {
+  const handleCancel = (id: string) => {
     if (!canCancelPurchaseOrder) return;
-    try {
-      await purchaseOrdersApi.cancel(id);
-      fetchPurchaseOrders();
-    } catch (error) {
-      console.error('Failed to cancel PO:', error);
-    }
+    cancelPoMutation.mutate(id);
   };
 
   const statusBadgeClass: Record<string, string> = {

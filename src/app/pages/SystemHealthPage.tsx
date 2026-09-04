@@ -31,7 +31,7 @@ interface HealthSnapshot {
   version: string;
   timestamp: string;
   uptime_seconds: number;
-  database: { status: string; ping_ms: number };
+  database: { status: string; ping_ms: number; engine?: string };
   memory: {
     heap_used_mb: number;
     heap_total_mb: number;
@@ -47,15 +47,37 @@ interface HealthSnapshot {
     rate_mb_per_min: number;
     readings: number;
   } | null;
-  metrics: {
-    requests: {
-      total_requests: number;
-      avg_response_ms: number;
-      error_rate: number;
-      slow_rate: number;
-      requests_per_min: number;
-      recent_avg_ms: number;
-    };
+    metrics: {
+      requests: {
+        total_requests: number;
+        avg_response_ms: number;
+        error_rate: number;
+        slow_rate: number;
+        requests_per_min: number;
+        recent_avg_ms: number;
+        p50_ms: number;
+        p95_ms: number;
+        p99_ms: number;
+        apdex: number | null;
+        apdex_t_ms: number;
+      };
+      client?: {
+        metrics: Array<{
+          name: string;
+          unit: 'ms' | 'score';
+          count: number;
+          avg: number;
+          p50: number;
+          p95: number;
+          p99: number;
+          max: number;
+          sample_window: number;
+        }>;
+        tracked_metrics: number;
+        truncated: boolean;
+        scope: string;
+      };
+
     database_stats: {
       name: string;
       total_size_mb: number;
@@ -125,6 +147,10 @@ function formatDate(iso: string) {
     minute: '2-digit',
     second: '2-digit',
   }).format(new Date(iso));
+}
+
+function formatClientMetric(value: number, unit: 'ms' | 'score') {
+  return unit === 'score' ? value.toFixed(3) : `${value.toFixed(1)}ms`;
 }
 
 const statusConfig: Record<string, { icon: React.ElementType; label: string; color: string; bg: string; border: string }> = {
@@ -441,7 +467,7 @@ export default function SystemHealthPage() {
             <StatusCard
               title="Database"
               status={health.database.status}
-              detail={health.database.status === 'ok' ? 'MongoDB connected' : 'Connection issue detected'}
+detail={health.database.status === 'ok' ? 'PostgreSQL connected' : 'Connection issue detected'}
               icon={Database}
               metric={`Latency ${health.database.ping_ms}ms`}
             />
@@ -633,6 +659,18 @@ export default function SystemHealthPage() {
                       {health.metrics.requests.error_rate.toFixed(2)}%
                     </p>
                   </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-white/5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">p95 Response</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+                      {typeof health.metrics.requests.p95_ms === 'number' ? `${health.metrics.requests.p95_ms.toFixed(1)}ms` : '—'}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-white/5">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Apdex</p>
+                    <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
+                      {typeof health.metrics.requests.apdex === 'number' ? health.metrics.requests.apdex.toFixed(3) : '—'}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-white/5">
                   <div>
@@ -704,6 +742,57 @@ export default function SystemHealthPage() {
         </Card>
       </div>
 
+      {/* ── Browser Performance ── */}
+      {health?.metrics?.client && (
+        <Card className="border-slate-200/60 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-[#0f172a]/60">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
+              <Activity className="h-4 w-4 text-indigo-500" />
+              Browser Performance
+            </CardTitle>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Fleet samples from the React application shell and real user browsers. Values are best-effort and never block requests.
+            </p>
+          </CardHeader>
+          <CardContent>
+            {health.metrics.client.metrics.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/50 p-4 text-sm text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-slate-400">
+                No browser samples have been received yet.
+              </p>
+            ) : (
+              <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-white/5">
+                <table className="w-full min-w-[720px] text-left text-xs">
+                  <thead className="bg-slate-50/80 text-slate-500 dark:bg-white/5 dark:text-slate-400">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Metric</th>
+                      <th className="px-3 py-2 font-semibold">Samples</th>
+                      <th className="px-3 py-2 font-semibold">Average</th>
+                      <th className="px-3 py-2 font-semibold">p50</th>
+                      <th className="px-3 py-2 font-semibold">p95</th>
+                      <th className="px-3 py-2 font-semibold">p99</th>
+                      <th className="px-3 py-2 font-semibold">Max</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                    {health.metrics.client.metrics.map((metric) => (
+                      <tr key={metric.name} className="text-slate-700 dark:text-slate-200">
+                        <td className="px-3 py-2 font-medium">{metric.name}</td>
+                        <td className="px-3 py-2">{metric.count.toLocaleString()}</td>
+                        <td className="px-3 py-2">{formatClientMetric(metric.avg, metric.unit)}</td>
+                        <td className="px-3 py-2">{formatClientMetric(metric.p50, metric.unit)}</td>
+                        <td className="px-3 py-2">{formatClientMetric(metric.p95, metric.unit)}</td>
+                        <td className="px-3 py-2">{formatClientMetric(metric.p99, metric.unit)}</td>
+                        <td className="px-3 py-2">{formatClientMetric(metric.max, metric.unit)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* ── Database Stats ── */}
       <Card className="border-slate-200/60 bg-white/80 backdrop-blur-xl dark:border-white/10 dark:bg-[#0f172a]/60">
         <CardHeader className="pb-3">
@@ -730,7 +819,7 @@ export default function SystemHealthPage() {
                   <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white">{health.metrics.database_stats.total_size_mb.toFixed(1)} MB</p>
                 </div>
                 <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-3 dark:border-white/5 dark:bg-white/5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Collections</p>
+<p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tables</p>
                   <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white">{health.metrics.database_stats.collections_count}</p>
                 </div>
               </div>
@@ -738,7 +827,7 @@ export default function SystemHealthPage() {
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50/80 text-slate-500 dark:bg-white/5 dark:text-slate-400">
                     <tr>
-                      <th className="px-3 py-2 font-semibold">Collection</th>
+<th className="px-3 py-2 font-semibold">Table</th>
                       <th className="px-3 py-2 font-semibold">Documents</th>
                       <th className="px-3 py-2 font-semibold">Size (MB)</th>
                       <th className="px-3 py-2 font-semibold">Avg Obj (B)</th>
@@ -802,7 +891,7 @@ export default function SystemHealthPage() {
                   <table className="w-full text-left text-xs">
                     <thead className="bg-slate-50/80 text-slate-500 dark:bg-white/5 dark:text-slate-400">
                       <tr>
-                        <th className="px-3 py-2 font-semibold">Collection</th>
+<th className="px-3 py-2 font-semibold">Table</th>
                         <th className="px-3 py-2 font-semibold">Documents</th>
                       </tr>
                     </thead>

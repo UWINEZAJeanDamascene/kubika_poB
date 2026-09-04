@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { creditNotesApi, clientsApi, invoicesApi, ebmApi } from '@/lib/api';
 import { EmptyState } from '@/app/components/EmptyState';
@@ -106,10 +107,7 @@ export default function CreditNotesListPage() {
     { value: 'cancelled', label: t('creditNotes.statusList.cancelled', 'Cancelled') },
   ];
 
-  const [loading, setLoading] = useState(true);
-  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
@@ -128,9 +126,15 @@ export default function CreditNotesListPage() {
   const [refundReasons, setRefundReasons] = useState<RefundReasonCode[]>([]);
   const [selectedRefundReason, setSelectedRefundReason] = useState('');
 
-  const fetchCreditNotes = useCallback(async () => {
-    setLoading(true);
-    try {
+  // staleTime 0: confirming credits stock for goods-return credit notes, so a
+  // cached list could let someone confirm a credit note already confirmed.
+  const {
+    data: creditNotes = [],
+    isPending: loading,
+    refetch: fetchCreditNotes,
+  } = useQuery({
+    queryKey: ['creditNotes', 'list', { statusFilter, clientFilter, typeFilter, dateFrom, dateTo, search }],
+    queryFn: async ({ signal }) => {
       const params: any = {};
       if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
       if (clientFilter && clientFilter !== 'all') params.client = clientFilter;
@@ -138,64 +142,41 @@ export default function CreditNotesListPage() {
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
       if (search) params.search = search;
-      
-      const response = await creditNotesApi.getAll(params);
-      
-      if (response.success && response.data) {
-        const data = response.data as any;
-        const notesData = Array.isArray(data) ? data : (data.data || []);
-        
-        if (Array.isArray(notesData)) {
-          setCreditNotes(notesData);
-        } else {
-          setCreditNotes([]);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch credit notes:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [statusFilter, clientFilter, typeFilter, dateFrom, dateTo, search]);
 
-  const fetchClients = useCallback(async () => {
-    try {
+      const response = await creditNotesApi.getAll(params, signal);
+      if (!response.success || !response.data) return [] as CreditNote[];
+      const data = response.data as any;
+      const notesData = Array.isArray(data) ? data : (data.data || []);
+      return (Array.isArray(notesData) ? notesData : []) as CreditNote[];
+    },
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients', 'picker', 'credit-notes-filter'],
+    queryFn: async () => {
       const response = await clientsApi.getAll({ limit: 100 });
-      if (response.success && response.data) {
-        const clientData = Array.isArray(response.data)
-          ? response.data
-          : (response.data as any[]);
-        setClients(clientData as Client[]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch clients:', error);
-    }
-  }, []);
+      if (!response.success || !response.data) return [] as Client[];
+      return (Array.isArray(response.data) ? response.data : (response.data as any[])) as Client[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchInvoices = useCallback(async () => {
-    try {
-      const response = await invoicesApi.getAll({ 
-        status: 'confirmed,partially_paid,fully_paid', 
-        limit: 100 
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices', 'picker', 'credit-notes-eligible'],
+    queryFn: async () => {
+      const response = await invoicesApi.getAll({
+        status: 'confirmed,partially_paid,fully_paid',
+        limit: 100,
       });
-      if (response.success && response.data) {
-        const data = response.data as any;
-        const invoiceData = Array.isArray(data) ? data : (data.invoices || data.data || []);
-        setInvoices(invoiceData as Invoice[]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch invoices:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchClients();
-    fetchInvoices();
-  }, [fetchClients, fetchInvoices]);
-
-  useEffect(() => {
-    fetchCreditNotes();
-  }, [fetchCreditNotes]);
+      if (!response.success || !response.data) return [] as Invoice[];
+      const data = response.data as any;
+      const invoiceData = Array.isArray(data) ? data : (data.invoices || data.data || []);
+      return (Array.isArray(invoiceData) ? invoiceData : []) as Invoice[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -378,6 +359,9 @@ export default function CreditNotesListPage() {
         toast.success('Credit note confirmed successfully');
         setShowConfirmDialog(false);
         fetchCreditNotes();
+        void queryClient.invalidateQueries({ queryKey: ['stock'] });
+        void queryClient.invalidateQueries({ queryKey: ['products'] });
+        void queryClient.invalidateQueries({ queryKey: ['invoices'] });
       } else {
         toast.error((response as any).message || 'Failed to confirm credit note');
       }

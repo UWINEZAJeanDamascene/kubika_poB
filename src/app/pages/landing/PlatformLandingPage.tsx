@@ -30,7 +30,7 @@ import { LanguageSelector } from '@/app/components/LanguageSelector';
 
 const platformMetrics = [
   { value: 'React 18 + Vite', label: 'Frontend stack', detail: 'Fast builds, modern hooks, and a component system that stays responsive even on large datasets.' },
-  { value: 'Node + MongoDB', label: 'Backend stack', detail: 'REST API with tenant-isolated databases. Each company gets its own data boundary.' },
+  { value: 'Node + PostgreSQL', label: 'Backend stack', detail: 'REST API with tenant-isolated PostgreSQL data. Each company gets its own data boundary.' },
   { value: 'Socket.io', label: 'Real-time sync', detail: 'Live updates across tabs and devices without refreshing the browser.' },
   { value: 'Mobile-first', label: 'Responsive UI', detail: 'Works on a laptop, tablet, or phone. Scan barcodes, approve orders, check stock on the move.' },
 ];
@@ -71,7 +71,7 @@ const systemLayers = [
 const techStack = [
   { category: 'Frontend', items: ['React 18', 'React Router', 'Tailwind CSS v4', 'TanStack Query', 'Radix UI', 'Recharts'] },
   { category: 'State & Forms', items: ['Zustand', 'React Hook Form', 'Zod validation'] },
-  { category: 'Backend', items: ['Node.js', 'Express', 'MongoDB', 'Tenant isolation', 'JWT auth'] },
+  { category: 'Backend', items: ['Node.js', 'Express', 'PostgreSQL', 'Tenant isolation', 'JWT auth'] },
   { category: 'Real-time', items: ['Socket.io client', 'Live dashboards', 'Cross-tab sync'] },
 ];
 
@@ -261,13 +261,13 @@ export default function PlatformLandingPage() {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-white/70 px-3 py-1.5 text-sm font-semibold text-cyan-800 shadow-sm backdrop-blur dark:bg-white/8 dark:text-cyan-200">
                 <Blocks className="h-4 w-4" />
-                React, Node, MongoDB — built for production
+                React, Node, PostgreSQL — built for production
               </div>
               <h1 className="mt-6 max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight text-slate-950 dark:text-white sm:text-6xl lg:text-7xl">
                 A modern stack powering real business operations.
               </h1>
               <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-600 dark:text-slate-300">
-                KUBIKA system is a single-page application built on React and Vite, backed by a Node.js API and tenant-isolated MongoDB databases. It is fast, responsive, and designed to work even when your connection does not.
+                KUBIKA system is a single-page application built on React and Vite, backed by a Node.js API and tenant-isolated PostgreSQL data. It is fast, responsive, and designed to work even when your connection does not.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link to={isAuthenticated ? systemHref : '/register'}>

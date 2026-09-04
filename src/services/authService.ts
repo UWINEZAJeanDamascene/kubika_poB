@@ -21,6 +21,7 @@ export interface AuthResponse {
   access_token: string;
   refresh_token: string;
   userId: string;
+  user?: UserData;
   memberships: Membership[];
 }
 
@@ -141,7 +142,7 @@ const authService = {
    * Get current user info
    * Calls GET /auth/me
    */
-  async getMe(): Promise<{ success: boolean; data?: UserData; error?: string }> {
+  async getMe(): Promise<{ success: boolean; data?: UserData; error?: string; errorCode?: string }> {
     try {
       const response = await authApi.getMe();
       
@@ -154,8 +155,12 @@ const authService = {
         data: response.data as unknown as UserData,
       };
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to get user info';
-      return { success: false, error: errorMessage };
+      const authError = error as { code?: string; message?: string };
+      return {
+        success: false,
+        error: authError.message || 'Failed to get user info',
+        errorCode: authError.code,
+      };
     }
   },
 

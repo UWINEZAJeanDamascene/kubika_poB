@@ -30,8 +30,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const init = async () => {
       try {
-        // If there's no token, nothing to do
-        const token = localStorage.getItem('token');
+        // Use the persisted Zustand token first, with the legacy key as a
+        // compatibility fallback for older sessions.
+        const token = store.accessToken || localStorage.getItem('token');
         if (!token) return;
 
         // If user already has permissions, skip
@@ -41,6 +42,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const resp = await authService.getMe();
         if (resp.success && resp.data) {
           setUser(resp.data as unknown as User);
+        } else if (resp.errorCode === 'TOKEN_EXPIRED' || resp.errorCode === 'TOKEN_INVALID') {
+          // Do not leave an expired persisted token marked authenticated. The
+          // next visit should show the login screen and obtain a fresh pair.
+          store.logout();
         }
       } catch (err) {
         // Fail silently - permissions will be unavailable until explicit login

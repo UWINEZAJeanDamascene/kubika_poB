@@ -100,7 +100,22 @@ export const useAuthStore = create<AuthState>()(
       login: (user, accessToken, refreshToken, memberships) => {
         // Set first company as active if multiple
         const activeCompany = memberships[0] || null;
-        
+
+        // Keep legacy consumers and the persisted Zustand state on the same
+        // token. This prevents a request between login and store hydration
+        // from falling back to yesterday's access token.
+        try {
+          localStorage.setItem('token', accessToken);
+          if (activeCompany?.companyId) {
+            localStorage.setItem('companyId', activeCompany.companyId);
+          } else {
+            localStorage.removeItem('companyId');
+          }
+        } catch {
+          // Storage can be unavailable in private browsing; Zustand remains
+          // the authoritative in-memory source for this session.
+        }
+
         set({
           user,
           accessToken,
@@ -111,13 +126,8 @@ export const useAuthStore = create<AuthState>()(
           activeRole: activeCompany?.role || null,
         });
       },
-      
+
       logout: () => {
-        // Older pages used this standalone key before Zustand persistence.
-        // Leaving it behind makes the next public login carry the revoked
-        // access token in its Authorization header.
-        localStorage.removeItem('token');
-        localStorage.removeItem('companyId');
         set({
           user: null,
           accessToken: null,
@@ -127,12 +137,30 @@ export const useAuthStore = create<AuthState>()(
           activeCompanyId: null,
           activeRole: null,
         });
+
+        // Remove both legacy keys and the persisted snapshot. The persist
+        // middleware will recreate a clean snapshot on the next state write.
+        try {
+          localStorage.removeItem('token');
+          localStorage.removeItem('companyId');
+          localStorage.removeItem('auth-storage');
+        } catch {
+          // Storage can be unavailable in private browsing.
+        }
       },
-      
-      refreshTokens: (newAccessToken, newRefreshToken) => set({
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken,
-      }),
+
+      refreshTokens: (newAccessToken, newRefreshToken) => {
+        try {
+          localStorage.setItem('token', newAccessToken);
+        } catch {
+          // Zustand still keeps the refreshed token in memory.
+        }
+        set({
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken,
+          isAuthenticated: true,
+        });
+      },
       
       updateUser: (userData) => {
         const currentUser = get().user;

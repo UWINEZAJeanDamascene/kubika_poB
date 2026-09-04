@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { purchasesApi, suppliersApi } from '@/lib/api';
 import { EmptyState } from '@/app/components/EmptyState';
@@ -79,63 +80,58 @@ interface PaginationInfo {
 export default function PurchasesListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [purchaseList, setPurchaseList] = useState<Purchase[]>([]);
-  const [pagination, setPagination] = useState<PaginationInfo | null>(null);
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [supplierFilter, setSupplierFilter] = useState<string>('');
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
 
-  const fetchSuppliers = useCallback(async () => {
-    try {
-      const response = await suppliersApi.getAll({ limit: 100 });
-      if (response.success && response.data) {
-        const data = Array.isArray(response.data) ? response.data : [];
-        setSuppliers(data as Supplier[]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch suppliers:', error);
-    }
-  }, []);
+  const queryClient = useQueryClient();
 
-  const fetchPurchases = useCallback(async () => {
-    setLoading(true);
-    try {
+  const { data: suppliers = [] } = useQuery({
+    queryKey: ['suppliers', 'picker', 'purchases-filter'],
+    queryFn: async () => {
+      const response = await suppliersApi.getAll({ limit: 100 });
+      if (!response.success || !response.data) return [] as Supplier[];
+      return (Array.isArray(response.data) ? response.data : []) as Supplier[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const purchasesQueryKey = ['purchases', 'list', { page, statusFilter, supplierFilter, dateFrom, dateTo }];
+
+  // staleTime 0: receiving/cancelling a purchase commits or reverses stock;
+  // a cached list could let someone receive a purchase already received.
+  const {
+    data: purchasesData,
+    isPending: loading,
+  } = useQuery({
+    queryKey: purchasesQueryKey,
+    queryFn: async ({ signal }) => {
       const params: Record<string, unknown> = { page, limit: 20 };
       if (statusFilter) params.status = statusFilter;
       if (supplierFilter) params.supplierId = supplierFilter;
       if (dateFrom) params.startDate = dateFrom;
       if (dateTo) params.endDate = dateTo;
 
-      const response = await purchasesApi.getAll(params as any);
-      if (response.success) {
-        setPurchaseList((response.data as Purchase[]) || []);
-        const total = (response as any).total || 0;
-        const pages = (response as any).pages || 1;
-        setPagination({
+      const response = await purchasesApi.getAll(params as any, signal);
+      if (!response.success) throw new Error('Failed to fetch purchases');
+      return {
+        items: (response.data as Purchase[]) || [],
+        pagination: {
           currentPage: (response as any).currentPage || page,
-          totalPages: pages,
-          total,
+          totalPages: (response as any).pages || 1,
+          total: (response as any).total || 0,
           limit: 20,
-        });
-      }
-    } catch (error) {
-      console.error('Failed to fetch purchases:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, statusFilter, supplierFilter, dateFrom, dateTo]);
+        } as PaginationInfo,
+      };
+    },
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    fetchSuppliers();
-  }, [fetchSuppliers]);
-
-  useEffect(() => {
-    fetchPurchases();
-  }, [fetchPurchases]);
+  const purchaseList = purchasesData?.items ?? [];
+  const pagination = purchasesData?.pagination ?? null;
 
   const stats = useMemo(() => {
     const total = purchaseList.length;
@@ -182,23 +178,57 @@ export default function PurchasesListPage() {
     return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const handleReceive = async (id: string) => {
-    try {
-      await purchasesApi.receive(id);
-      fetchPurchases();
-    } catch (error) {
+  // Optimistic receive/cancel: the row flips immediately; a rejected write
+  // restores the previous list and cross-cache invalidation keeps stock and
+  // product caches from silently going stale after a real stock commit.
+  const receivePurchaseMutation = useMutation({
+    mutationFn: (id: string) => purchasesApi.receive(id),
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['purchases'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['purchases'] });
+      queryClient.setQueriesData({ queryKey: ['purchases'] }, (old: any) => {
+        if (!old?.items) return old;
+        return { ...old, items: old.items.map((p: Purchase) => (p._id === id ? { ...p, status: 'received' as const } : p)) };
+      });
+      return { previous };
+    },
+    onError: (error: any, _id, context) => {
+      context?.previous?.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
       console.error('Failed to receive purchase:', error);
-    }
-  };
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      void queryClient.invalidateQueries({ queryKey: ['stock'] });
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
 
-  const handleCancel = async (id: string) => {
-    if (!confirm(t('purchases.confirmCancel', 'Are you sure you want to cancel this purchase?'))) return;
-    try {
-      await purchasesApi.cancel(id);
-      fetchPurchases();
-    } catch (error) {
+  const cancelPurchaseMutation = useMutation({
+    mutationFn: (id: string) => purchasesApi.cancel(id),
+    onMutate: async (id: string) => {
+      await queryClient.cancelQueries({ queryKey: ['purchases'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['purchases'] });
+      queryClient.setQueriesData({ queryKey: ['purchases'] }, (old: any) => {
+        if (!old?.items) return old;
+        return { ...old, items: old.items.map((p: Purchase) => (p._id === id ? { ...p, status: 'cancelled' as const } : p)) };
+      });
+      return { previous };
+    },
+    onError: (error: any, _id, context) => {
+      context?.previous?.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
       console.error('Failed to cancel purchase:', error);
-    }
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['purchases'] });
+      void queryClient.invalidateQueries({ queryKey: ['stock'] });
+    },
+  });
+
+  const handleReceive = (id: string) => receivePurchaseMutation.mutate(id);
+
+  const handleCancel = (id: string) => {
+    if (!confirm(t('purchases.confirmCancel', 'Are you sure you want to cancel this purchase?'))) return;
+    cancelPurchaseMutation.mutate(id);
   };
 
   return (

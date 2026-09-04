@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { pickPackApi } from '@/lib/api';
@@ -149,50 +150,52 @@ export default function PickPacksListPage() {
     { value: 'cancelled', label: t('pickPack.status_options.cancelled', 'Cancelled') },
   ];
 
-  const [loading, setLoading] = useState(true);
-  const [pickPacks, setPickPacks] = useState<PickPack[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [pagination, setPagination] = useState({
+  const [paginationState, setPagination] = useState({
     page: 1,
     limit: 20,
     total: 0,
     pages: 1,
   });
 
-  const fetchPickPacks = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params: Record<string, any> = {
-        page: pagination.page,
-        limit: pagination.limit,
-      };
+  const queryClient = useQueryClient();
 
+  // staleTime 0: starting picking/packing reserves inventory batches, so a
+  // cached list could let someone start picking a task another user already
+  // started or cancelled.
+  const {
+    data: pickPacksData,
+    isPending: loading,
+    refetch: fetchPickPacks,
+  } = useQuery({
+    queryKey: ['pickPacks', 'list', { page: paginationState.page, limit: paginationState.limit, search, statusFilter }],
+    queryFn: async ({ signal }) => {
+      const params: Record<string, any> = { page: paginationState.page, limit: paginationState.limit };
       if (search) params.search = search;
       if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
 
-      const response = await pickPackApi.getAll(params);
-      if (response.success) {
-        setPickPacks(response.data as PickPack[]);
-        if (response.pagination) {
-          setPagination(prev => ({
-            ...prev,
-            total: (response.pagination as any).total || 0,
-            pages: (response.pagination as any).pages || 1,
-          }));
-        }
+      const response = await pickPackApi.getAll(params, signal);
+      if (!response.success) {
+        toast.error(t('pickPack.fetchFailed', 'Failed to fetch pick packs'));
+        return { items: [] as PickPack[], total: paginationState.total, pages: paginationState.pages };
       }
-    } catch (error) {
-      console.error('Error fetching pick packs:', error);
-      toast.error(t('pickPack.fetchFailed', 'Failed to fetch pick packs'));
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.page, pagination.limit, search, statusFilter]);
+      return {
+        items: (response.data as PickPack[]) || [],
+        total: (response.pagination as any)?.total ?? paginationState.total,
+        pages: (response.pagination as any)?.pages ?? paginationState.pages,
+      };
+    },
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    fetchPickPacks();
-  }, [fetchPickPacks]);
+  const pickPacks = pickPacksData?.items ?? [];
+  const pagination = {
+    ...paginationState,
+    total: pickPacksData?.total ?? paginationState.total,
+    pages: pickPacksData?.pages ?? paginationState.pages,
+  };
 
   const handleStartPicking = async (id: string) => {
     try {
@@ -200,6 +203,7 @@ export default function PickPacksListPage() {
       if (response.success) {
         toast.success(t('pickPack.pickingStarted', 'Picking started'));
         fetchPickPacks();
+        void queryClient.invalidateQueries({ queryKey: ['stock'] });
       }
     } catch (error) {
       toast.error(t('pickPack.startPickingFailed', 'Failed to start picking'));
@@ -212,6 +216,10 @@ export default function PickPacksListPage() {
       if (response.success) {
         toast.success(t('pickPack.packingStarted', 'Packing started'));
         fetchPickPacks();
+        // Backend invalidates 'stock' on every pick/pack mutation (route-level
+        // middleware); mirror that here so reserved/available quantities
+        // shown elsewhere don't lag behind starting picking/cancel.
+        void queryClient.invalidateQueries({ queryKey: ['stock'] });
       }
     } catch (error) {
       toast.error(t('pickPack.startPackingFailed', 'Failed to start packing'));
@@ -226,6 +234,7 @@ export default function PickPacksListPage() {
       if (response.success) {
         toast.success(t('pickPack.cancelled', 'Pick pack cancelled'));
         fetchPickPacks();
+        void queryClient.invalidateQueries({ queryKey: ['stock'] });
       }
     } catch (error) {
       toast.error(t('pickPack.cancelFailed', 'Failed to cancel pick pack'));
@@ -274,7 +283,7 @@ export default function PickPacksListPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchPickPacks}
+                    onClick={() => fetchPickPacks()}
                     disabled={loading}
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >

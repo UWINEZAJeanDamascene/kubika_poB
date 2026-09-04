@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { deliveryNotesApi, clientsApi, invoicesApi } from '@/lib/api';
 import { EmptyState } from '@/app/components/EmptyState';
@@ -104,95 +105,70 @@ export default function DeliveryNotesListPage() {
   ];
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [clientFilter, setClientFilter] = useState('all');
   const [quotationFilter, setQuotationFilter] = useState('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  const [pagination, setPagination] = useState({
+  const [paginationState, setPagination] = useState({
     page: 1,
     limit: 20,
     total: 0,
   });
 
-   const fetchDeliveryNotes = useCallback(async () => {
-    setLoading(true);
-    try {
+  const queryClient = useQueryClient();
+
+  // staleTime 0: confirming/dispatching/cancelling deducts or reverses stock,
+  // so a cached list could let someone confirm a delivery note against
+  // quantities another user already dispatched.
+  const {
+    data: dnData,
+    isPending: loading,
+    refetch: fetchDeliveryNotes,
+  } = useQuery({
+    queryKey: ['deliveryNotes', 'list', { page: paginationState.page, limit: paginationState.limit, statusFilter, clientFilter, quotationFilter, dateFrom, dateTo, search }],
+    queryFn: async ({ signal }) => {
       const response = await deliveryNotesApi.getAll({
-        page: pagination.page,
-        limit: pagination.limit,
+        page: paginationState.page,
+        limit: paginationState.limit,
         status: statusFilter !== 'all' ? statusFilter : undefined,
         clientId: clientFilter !== 'all' ? clientFilter : undefined,
         quotationId: quotationFilter !== 'all' ? quotationFilter : undefined,
         startDate: dateFrom || undefined,
         endDate: dateTo || undefined,
-      });
-      
-      if (response.success && response.data) {
-        const data = response.data as any;
-        let notes: any[] = [];
-        
-        if (Array.isArray(data)) {
-          notes = data;
-        } else if (Array.isArray(data.data)) {
-          notes = data.data;
-        } else if (data.data && Array.isArray(data.data.deliveryNotes)) {
-          notes = data.data.deliveryNotes;
-        } else {
-          notes = [];
-        }
-        
-        setDeliveryNotes(notes);
-        
-        if (Array.isArray(data)) {
-          setPagination(prev => ({ ...prev, total: data.length }));
-        } else if (Array.isArray(data.data)) {
-          setPagination(prev => ({ 
-            ...prev, 
-            total: data.total || data.data.length,
-          }));
-        } else if (data.data && Array.isArray(data.data.deliveryNotes)) {
-          setPagination(prev => ({ 
-            ...prev, 
-            total: data.total || data.data.deliveryNotes.length,
-          }));
-        }
-      } else {
-        setDeliveryNotes([]);
-      }
-    } catch (error: any) {
-      console.error('Failed to fetch delivery notes:', error);
-      setDeliveryNotes([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [pagination.page, pagination.limit, statusFilter, clientFilter, quotationFilter, dateFrom, dateTo, search]);
+      }, signal);
 
-  const fetchClients = useCallback(async () => {
-    try {
+      if (!response.success || !response.data) return { items: [] as DeliveryNote[], total: 0 };
+
+      const data = response.data as any;
+      if (Array.isArray(data)) {
+        return { items: data as DeliveryNote[], total: data.length };
+      }
+      if (Array.isArray(data.data)) {
+        return { items: data.data as DeliveryNote[], total: data.total || data.data.length };
+      }
+      if (data.data && Array.isArray(data.data.deliveryNotes)) {
+        return { items: data.data.deliveryNotes as DeliveryNote[], total: data.total || data.data.deliveryNotes.length };
+      }
+      return { items: [] as DeliveryNote[], total: 0 };
+    },
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
+
+  const deliveryNotes = dnData?.items ?? [];
+  const pagination = { ...paginationState, total: dnData?.total ?? paginationState.total };
+
+  const { data: clients = [] } = useQuery({
+    queryKey: ['clients', 'picker', 'delivery-notes-filter'],
+    queryFn: async () => {
       const response = await clientsApi.getAll({ limit: 100 });
-      if (response.success && response.data) {
-        const clientData = Array.isArray(response.data)
-          ? response.data
-          : (response.data as any[]);
-        setClients(clientData as Client[]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch clients:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
-
-  useEffect(() => {
-    fetchDeliveryNotes();
-  }, [fetchDeliveryNotes]);
+      if (!response.success || !response.data) return [] as Client[];
+      return (Array.isArray(response.data) ? response.data : (response.data as any[])) as Client[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
   const handleSearch = (value: string) => {
     setSearch(value);
@@ -319,6 +295,8 @@ export default function DeliveryNotesListPage() {
       }
 
       await fetchDeliveryNotes();
+      void queryClient.invalidateQueries({ queryKey: ['stock'] });
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
       toast.success('Delivery note confirmed successfully');
     } catch (error: any) {
       console.error('=== CONFIRM WORKFLOW ERROR ===', error);
@@ -354,6 +332,8 @@ export default function DeliveryNotesListPage() {
       if (response.success) {
         toast.success(t('deliveryNote.cancelled', 'Delivery note cancelled'));
         fetchDeliveryNotes();
+        void queryClient.invalidateQueries({ queryKey: ['stock'] });
+        void queryClient.invalidateQueries({ queryKey: ['products'] });
       } else {
         toast.error((response as any).message || t('deliveryNote.cancelFailed', 'Failed to cancel'));
       }
@@ -444,7 +424,7 @@ export default function DeliveryNotesListPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchDeliveryNotes}
+                    onClick={() => fetchDeliveryNotes()}
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <RefreshCw className="h-4 w-4" />

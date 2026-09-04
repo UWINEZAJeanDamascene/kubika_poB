@@ -1,6 +1,15 @@
-﻿import { API_BASE_URL } from "./apiBase";
+import { API_BASE_URL } from "./apiBase";
 import { useAuthStore } from "@/store/authStore";
 export { API_BASE_URL };
+
+export interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
+export const API_PAGE_SIZE = 50;
 
 // Bank Account Types
 export interface BankAccount {
@@ -171,11 +180,14 @@ interface RequestOptions {
   timeoutMs?: number;
   /** React Query cancellation signal, forwarded to the underlying fetch. */
   signal?: AbortSignal;
+  /** Internal guard: an expired-token request is retried at most once. */
+  retryAuth?: boolean;
 }
 
 const AUTH_REQUEST_TIMEOUT_MS = 60_000;
 /** Default timeout for non-auth requests. Long enough for a cold-start DB wake-up, but short enough that the UI never spins indefinitely. */
 const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+let refreshPromise: Promise<string | null> | null = null;
 
 class ApiError extends Error {
   constructor(
@@ -187,6 +199,43 @@ class ApiError extends Error {
     super(message);
     this.name = "ApiError";
   }
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+
+  const refreshToken = useAuthStore.getState().refreshToken;
+  if (!refreshToken) return null;
+
+  refreshPromise = (async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    let data: {
+      access_token?: string;
+      refresh_token?: string;
+      message?: string;
+    };
+    try {
+      data = await response.json();
+    } catch {
+      return null;
+    }
+
+    if (!response.ok || !data.access_token || !data.refresh_token) return null;
+
+    useAuthStore.getState().refreshTokens(data.access_token, data.refresh_token);
+    return data.access_token;
+  })()
+    .catch(() => null)
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
 }
 
 async function request<T>(
@@ -265,10 +314,33 @@ async function request<T>(
     }
 
     if (!response.ok) {
+      const errorCode = data?.error?.code || data?.code;
+
+      if (
+        response.status === 401 &&
+        errorCode === "TOKEN_EXPIRED" &&
+        !options.retryAuth &&
+        !isPublicAuthEndpoint
+      ) {
+        const refreshedToken = await refreshAccessToken();
+        if (refreshedToken) {
+          return request<T>(endpoint, {
+            ...options,
+            retryAuth: true,
+            headers: {
+              ...options.headers,
+              Authorization: `Bearer ${refreshedToken}`,
+            },
+          });
+        }
+
+        useAuthStore.getState().logout();
+      }
+
       throw new ApiError(
         response.status,
-        data.error || data.message || "An error occurred",
-        data.code,
+        data.error?.message || data.message || "An error occurred",
+        errorCode,
         data,
       );
     }
@@ -304,7 +376,16 @@ export interface AuthLoginResponse {
   access_token: string;
   refresh_token: string;
   userId: string;
-  user?: unknown;
+  user?: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+    company?: string;
+    permissions?: string[];
+    lastLogin?: string;
+    mustChangePassword?: boolean;
+  };
   memberships: Membership[];
 }
 
@@ -831,8 +912,8 @@ export const companyApi = {
       version: string;
       timestamp: string;
       uptime_seconds: number;
-      database: { status: string; ping_ms: number };
-      memory: { heap_used_mb: number; heap_total_mb: number; heap_limit_mb?: number; heap_used_percent?: number; rss_mb: number; status: string };
+       database: { status: string; ping_ms: number; engine?: string };
+       memory: { heap_used_mb: number; heap_total_mb: number; heap_limit_mb?: number; heap_used_percent?: number; rss_mb: number; status: string };
       cache: { status: string };
       memory_trend: {
         duration_sec: number;
@@ -848,6 +929,27 @@ export const companyApi = {
           slow_rate: number;
           requests_per_min: number;
           recent_avg_ms: number;
+          p50_ms: number;
+          p95_ms: number;
+          p99_ms: number;
+          apdex: number | null;
+          apdex_t_ms: number;
+        };
+        client?: {
+          metrics: Array<{
+            name: string;
+            unit: 'ms' | 'score';
+            count: number;
+            avg: number;
+            p50: number;
+            p95: number;
+            p99: number;
+            max: number;
+            sample_window: number;
+          }>;
+          tracked_metrics: number;
+          truncated: boolean;
+          scope: string;
         };
         database_stats: {
           name: string;
@@ -1288,6 +1390,57 @@ export interface FinanceDashboardData {
   };
 }
 
+export interface RatiosWidgetRatio {
+  key: string;
+  category: string;
+  label: string;
+  value: number | null;
+  formula?: string;
+  status: "good" | "warning" | "danger" | "neutral";
+  status_color: string;
+  status_label: string;
+  inputs?: Record<string, number>;
+}
+
+export interface RatiosWidgetData {
+  company_id: string;
+  generated_at: string;
+  as_of_date: string;
+  date_from: string;
+  ratios: RatiosWidgetRatio[];
+  summary: {
+    good_count: number;
+    warning_count: number;
+    danger_count: number;
+    neutral_count: number;
+  };
+}
+
+export interface PeriodComparisonMetrics {
+  revenue: number;
+  expenses: number;
+  net_profit: number;
+  is_profit: boolean;
+}
+
+export interface PeriodComparisonData {
+  company_id: string;
+  generated_at: string;
+  periods: {
+    current: { label: string; start: string; end: string; metrics: PeriodComparisonMetrics };
+    previous: { label: string; start: string; end: string; metrics: PeriodComparisonMetrics };
+    same_month_last_year: { label: string; start: string; end: string; metrics: PeriodComparisonMetrics };
+  };
+  changes: {
+    revenue_vs_last_month: number | null;
+    revenue_vs_last_year: number | null;
+    expenses_vs_last_month: number | null;
+    expenses_vs_last_year: number | null;
+    net_profit_vs_last_month: number | null;
+    net_profit_vs_last_year: number | null;
+  };
+}
+
 // Dashboard API
 export const dashboardApi = {
   getStats: () =>
@@ -1369,6 +1522,16 @@ export const dashboardApi = {
   // Finance Dashboard (Phase 3)
   getFinance: async (signal?: AbortSignal) => {
     return request<FinanceDashboardData>("/dashboard/finance", { signal });
+  },
+
+  // Financial Ratios widget (Phase 3) — consolidated under routes/dashboardRoutes.js
+  getRatios: async (signal?: AbortSignal) => {
+    return request<RatiosWidgetData>("/dashboard/ratios", { signal });
+  },
+
+  // Period-over-period comparison widget (Phase 3) — consolidated under routes/dashboardRoutes.js
+  getPeriodComparison: async (signal?: AbortSignal) => {
+    return request<PeriodComparisonData>("/dashboard/period-comparison", { signal });
   },
 
   // Purchase Returns Summary
@@ -1530,6 +1693,7 @@ export const warehousesApi = {
     const query = buildQuery(params as Record<string, any>);
     return request<WarehouseResponse>(
       `/stock/warehouses${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
@@ -2035,7 +2199,7 @@ export const stockApi = {
     page?: number;
     limit?: number;
     search?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/stock/movements${query ? `?${query}` : ""}`,
@@ -2088,10 +2252,11 @@ export const stockApi = {
     page?: number;
     limit?: number;
     search?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown; pagination?: unknown }>(
       `/stock/advanced/transfers${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getTransfer: (id: string) =>
@@ -2408,10 +2573,11 @@ export const creditNotesApi = {
     search?: string;
     page?: number;
     limit?: number;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/credit-notes${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
@@ -2531,10 +2697,11 @@ export const quotationsApi = {
     page?: number;
     limit?: number;
     search?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/quotations${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
@@ -2612,10 +2779,11 @@ export const deliveryNotesApi = {
     endDate?: string;
     page?: number;
     limit?: number;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/delivery-notes${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string, nocache?: boolean) =>
@@ -2832,10 +3000,11 @@ export const purchasesApi = {
     page?: number;
     limit?: number;
     search?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown }>(
       `/purchases${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
@@ -2913,10 +3082,11 @@ export const purchaseOrdersApi = {
     date_to?: string;
     page?: number;
     limit?: number;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown; pagination?: unknown }>(
       `/stock/advanced/purchase-orders${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
@@ -6316,12 +6486,7 @@ export interface Notification {
 export interface NotificationResponse {
   success: boolean;
   data: Notification[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
-  };
+  pagination: PaginationMeta;
   unreadCount: number;
 }
 
@@ -6931,9 +7096,9 @@ export interface PettyCashReport {
 
 export const pettyCashApi = {
   // New Fund endpoints per Module 4 spec
-  getFunds: (params?: { isActive?: boolean }) => {
+  getFunds: (params?: { isActive?: boolean; page?: number; limit?: number }) => {
     const query = buildQuery(params as Record<string, any>);
-    return request<{ success: boolean; count: number; data: PettyCashFloat[] }>(
+    return request<{ success: boolean; count: number; total: number; pages: number; pagination: PaginationMeta; data: PettyCashFloat[] }>(
       `/petty-cash/funds${query ? `?${query}` : ""}`,
     );
   },
@@ -7001,6 +7166,7 @@ export const pettyCashApi = {
       count: number;
       total: number;
       pages: number;
+      pagination?: PaginationMeta;
       data: { fund: PettyCashFloat; transactions: PettyCashTransaction[] };
     }>(`/petty-cash/funds/${id}/transactions${query ? `?${query}` : ""}`);
   },
@@ -7254,6 +7420,7 @@ export const pettyCashApi = {
       count: number;
       total: number;
       pages: number;
+      pagination: PaginationMeta;
       data: PettyCashReconciliation[];
     }>(`/petty-cash/funds/${id}/reconciliations${query ? `?${query}` : ""}`);
   },
@@ -9736,9 +9903,9 @@ export const bankReconciliationApi = {
       method: "POST",
       body: data,
     }),
-  listSessions: (params?: { bankAccountId?: string; status?: string }) => {
+  listSessions: (params?: { bankAccountId?: string; status?: string; page?: number; limit?: number }) => {
     const query = buildQuery(params as Record<string, any>);
-    return request<{ success: boolean; data: any[] }>(
+    return request<{ success: boolean; data: any[]; pagination: PaginationMeta }>(
       `/bank-reconciliation/sessions${query ? `?${query}` : ""}`,
     );
   },
@@ -9769,15 +9936,15 @@ export const bankReconciliationApi = {
       `/bank-reconciliation/sessions/${id}/transactions`,
       { method: "POST", body: data },
     ),
-  listTransactions: (id: string, params?: { matchStatus?: string }) => {
+  listTransactions: (id: string, params?: { matchStatus?: string; page?: number; limit?: number }) => {
     const query = buildQuery(params as Record<string, any>);
-    return request<{ success: boolean; data: any[] }>(
+    return request<{ success: boolean; data: any[]; pagination: PaginationMeta }>(
       `/bank-reconciliation/sessions/${id}/transactions${query ? `?${query}` : ""}`,
     );
   },
-  listBookTransactions: (id: string, params?: { matchStatus?: string }) => {
+  listBookTransactions: (id: string, params?: { matchStatus?: string; page?: number; limit?: number }) => {
     const query = buildQuery(params as Record<string, any>);
-    return request<{ success: boolean; data: any[] }>(
+    return request<{ success: boolean; data: any[]; pagination: PaginationMeta }>(
       `/bank-reconciliation/sessions/${id}/book-transactions${query ? `?${query}` : ""}`,
     );
   },
@@ -12311,10 +12478,11 @@ export const pickPackApi = {
     assignedTo?: string;
     page?: number;
     limit?: number;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown; pagination?: unknown }>(
       `/pick-packs${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>

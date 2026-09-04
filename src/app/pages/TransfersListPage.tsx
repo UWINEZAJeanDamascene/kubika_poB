@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { 
@@ -56,6 +57,7 @@ interface StockTransfer {
   status: 'draft' | 'confirmed' | 'completed' | 'cancelled';
   transferDate: string;
   items: TransferItem[];
+  lineCount?: number;
   journalEntry?: string;
   createdAt: string;
   ebm?: {
@@ -74,10 +76,8 @@ interface PaginationInfo {
 export default function TransfersListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [transfers, setTransfers] = useState<StockTransfer[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
+  const [actionError, setActionError] = useState<string | null>(null);
+
   const isDark = () => document.documentElement.classList.contains('dark');
   const [dark, setDark] = useState(isDark());
   
@@ -86,12 +86,6 @@ export default function TransfersListPage() {
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     return () => observer.disconnect();
   }, []);
-  const [pagination, setPagination] = useState<PaginationInfo>({
-    total: 0,
-    page: 1,
-    limit: 50,
-    pages: 0
-  });
 
   const formatCurrency = useFormatCurrency();
   
@@ -103,6 +97,8 @@ export default function TransfersListPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
 
   // Debounce search
   useEffect(() => {
@@ -112,11 +108,20 @@ export default function TransfersListPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // Fetch transfers
-  const fetchTransfers = async () => {
-    setLoading(true);
-    setError(null);
-    try {
+  const queryClient = useQueryClient();
+  const transfersQueryKey = ['stock', 'transfers', 'list', { page, limit, statusFilter, fromWarehouseFilter, toWarehouseFilter, startDate, endDate, debouncedSearch }];
+
+  // staleTime 0: approving/cancelling a transfer commits or reverses stock
+  // between warehouses. Acting on a cached list risks approving a transfer
+  // against quantities another user already moved.
+  const {
+    data: transfersData,
+    isPending: loading,
+    isError,
+    error: queryError,
+  } = useQuery({
+    queryKey: transfersQueryKey,
+    queryFn: async ({ signal }) => {
       const response = await stockApi.getTransfers({
         status: statusFilter || undefined,
         fromWarehouse: fromWarehouseFilter || undefined,
@@ -124,44 +129,34 @@ export default function TransfersListPage() {
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         search: debouncedSearch || undefined,
-        page: pagination.page,
-        limit: pagination.limit
-      });
-      
-      if (response && response.success) {
-        setTransfers(response.data as StockTransfer[]);
-        if (response.pagination) {
-          setPagination(prev => ({
-            ...prev,
-            ...response.pagination as PaginationInfo
-          }));
-        }
-      } else if (response) {
-        const errMsg = (response as { message?: string }).message;
-        setError(errMsg || 'Failed to fetch transfers');
+        page,
+        limit,
+      }, signal);
+      if (!response || !response.success) {
+        throw new Error((response as { message?: string })?.message || 'Failed to fetch transfers');
       }
-    } catch (err) {
-      console.error('[TransfersList] Error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
+      return {
+        items: (response.data as StockTransfer[]) || [],
+        pagination: (response.pagination as PaginationInfo) ?? { total: 0, page, limit, pages: 0 },
+      };
+    },
+    staleTime: 0,
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    fetchTransfers();
-  }, [pagination.page, statusFilter, fromWarehouseFilter, toWarehouseFilter, startDate, endDate, debouncedSearch]);
+  const transfers = transfersData?.items ?? [];
+  const pagination: PaginationInfo = transfersData?.pagination ?? { total: 0, page, limit, pages: 0 };
+  const error =
+    (isError ? (queryError instanceof Error ? queryError.message : 'An unexpected error occurred') : null) ||
+    actionError;
 
   const handlePageChange = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
-    setPagination(prev => ({ ...prev, page: newPage + 1 }));
+    setPage(newPage + 1);
   };
 
   const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setPagination(prev => ({ 
-      ...prev, 
-      limit: parseInt(event.target.value, 10),
-      page: 1 
-    }));
+    setLimit(parseInt(event.target.value, 10));
+    setPage(1);
   };
 
   const handleExport = () => {
@@ -181,7 +176,7 @@ export default function TransfersListPage() {
       item.toWarehouse?.name || '',
       item.status,
       new Date(item.transferDate).toLocaleDateString(),
-      item.items?.length || 0,
+      item.lineCount ?? item.items?.length ?? 0,
       item.journalEntry || '-'
     ]);
     
@@ -215,25 +210,66 @@ export default function TransfersListPage() {
     return <Chip label={statusLabels[status] || status} color={statusColors[status] || 'default'} size="small" />;
   };
 
-  const handleConfirm = async (id: string) => {
-    try {
-      await stockApi.approveTransfer(id);
-      fetchTransfers();
-    } catch (err) {
+  // Optimistic confirm/cancel: the row flips the moment it is clicked, then the
+  // server confirms. A rejected write restores the previous list, so the UI
+  // can never claim stock moved when the server rejected the transfer.
+  const confirmTransferMutation = useMutation({
+    mutationFn: (id: string) => stockApi.approveTransfer(id),
+    onMutate: async (id: string) => {
+      setActionError(null);
+      await queryClient.cancelQueries({ queryKey: ['stock', 'transfers'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['stock', 'transfers'] });
+      queryClient.setQueriesData({ queryKey: ['stock', 'transfers'] }, (old: any) => {
+        if (!old?.items) return old;
+        return {
+          ...old,
+          items: old.items.map((tr: StockTransfer) => (tr._id === id ? { ...tr, status: 'confirmed' as const } : tr)),
+        };
+      });
+      return { previous };
+    },
+    onError: (err: any, _id, context) => {
+      context?.previous?.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
       console.error('Error confirming transfer:', err);
-      setError('Failed to confirm transfer');
-    }
-  };
+      setActionError(err?.message || 'Failed to confirm transfer');
+    },
+    // Approval posts stock movements and a journal entry, so stock/product caches are stale too.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['stock'] });
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
 
-  const handleCancel = async (id: string) => {
-    try {
-      await stockApi.cancelTransfer(id);
-      fetchTransfers();
-    } catch (err) {
+  const cancelTransferMutation = useMutation({
+    mutationFn: (id: string) => stockApi.cancelTransfer(id),
+    onMutate: async (id: string) => {
+      setActionError(null);
+      await queryClient.cancelQueries({ queryKey: ['stock', 'transfers'] });
+      const previous = queryClient.getQueriesData({ queryKey: ['stock', 'transfers'] });
+      queryClient.setQueriesData({ queryKey: ['stock', 'transfers'] }, (old: any) => {
+        if (!old?.items) return old;
+        return {
+          ...old,
+          items: old.items.map((tr: StockTransfer) => (tr._id === id ? { ...tr, status: 'cancelled' as const } : tr)),
+        };
+      });
+      return { previous };
+    },
+    onError: (err: any, _id, context) => {
+      context?.previous?.forEach(([key, value]: [any, any]) => queryClient.setQueryData(key, value));
       console.error('Error cancelling transfer:', err);
-      setError('Failed to cancel transfer');
-    }
-  };
+      setActionError(err?.message || 'Failed to cancel transfer');
+    },
+    // Cancelling a confirmed transfer reverses stock movements and the
+    // journal entry, so product quantities are stale too — same as confirm.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ['stock'] });
+      void queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+
+  const handleConfirm = (id: string) => confirmTransferMutation.mutate(id);
+  const handleCancel = (id: string) => cancelTransferMutation.mutate(id);
 
   const statusCounts = transfers.reduce(
     (acc, transfer) => {
@@ -355,7 +391,7 @@ export default function TransfersListPage() {
 
           {/* Error Alert */}
           {error && (
-            <Alert severity="error" className="mb-4" onClose={() => setError(null)}>
+            <Alert severity="error" className="mb-4" onClose={() => setActionError(null)}>
               {error}
             </Alert>
           )}
@@ -494,7 +530,7 @@ export default function TransfersListPage() {
               ) : (
                 <div className="grid gap-3">
                   {transfers.map((item) => {
-                    const lineCount = item.items?.length || 0;
+                    const lineCount = item.lineCount ?? item.items?.length ?? 0;
                     const transferValue = item.items?.reduce((sum, transferItem) => sum + ((Number(transferItem.quantity) || 0) * (Number(transferItem.unitCost) || 0)), 0) || 0;
                     const firstItem = item.items?.[0];
                     return (
@@ -524,7 +560,7 @@ export default function TransfersListPage() {
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('transfers.linesCount', 'Lines')}</p>
                           <p className="mt-1 text-xl font-black text-slate-950 dark:text-white">{lineCount}</p>
                           <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                            {firstItem ? `${firstItem.product?.name || '-'}${lineCount > 1 ? ` ${t('transfers.moreItems', { count: lineCount - 1 })}` : ''}` : t('transfers.noItemLines')}
+                            {firstItem ? `${firstItem.product?.name || '-'}${lineCount > 1 ? ` ${t('transfers.moreItems', { count: lineCount - 1 })}` : ''}` : t('transfers.openForItems', 'Open transfer to view items')}
                           </p>
                         </div>
                         <div className="rounded-md bg-slate-50 p-3 text-right dark:bg-slate-900">

@@ -413,7 +413,7 @@ export default function ProductFormPage() {
     try {
       const [codesResponse, itemClassResponse] = await Promise.all([
         ebmApi.getCodes(),
-        ebmApi.getItemClasses({ limit: 5000 }),
+        ebmApi.getItemClasses({ limit: 100 }),
       ]);
       const groups = codesResponse.success ? codesResponse.data : {};
       const taxTypes = findCodeGroup(groups, [/tax.*type/, /^tax$/]);

@@ -185,7 +185,7 @@ class CompanyService {
     version: string;
     timestamp: string;
     uptime_seconds: number;
-    database: { status: string; ping_ms: number };
+    database: { status: string; ping_ms: number; engine?: string };
     memory: { heap_used_mb: number; heap_total_mb: number; heap_limit_mb?: number; heap_used_percent?: number; rss_mb: number; status: string };
     cache: { status: string };
     memory_trend: {
@@ -202,6 +202,27 @@ class CompanyService {
         slow_rate: number;
         requests_per_min: number;
         recent_avg_ms: number;
+        p50_ms: number;
+        p95_ms: number;
+        p99_ms: number;
+        apdex: number | null;
+        apdex_t_ms: number;
+      };
+      client?: {
+        metrics: Array<{
+          name: string;
+          unit: 'ms' | 'score';
+          count: number;
+          avg: number;
+          p50: number;
+          p95: number;
+          p99: number;
+          max: number;
+          sample_window: number;
+        }>;
+        tracked_metrics: number;
+        truncated: boolean;
+        scope: string;
       };
       database_stats: {
         name: string;

@@ -129,25 +129,36 @@ export default function PettyCashTransactionsPage() {
     });
   };
 
-  // Fix B — fetch ALL transactions before building the CSV
+  // Export uses the same bounded pages as the table. Never request a
+  // tenant-sized page from the API; stop at a hard browser export budget.
   const exportTransactions = async () => {
     if (!id) return;
     setExportLoading(true);
     try {
-      // Fetch the full dataset — limit 10000 covers any realistic fund
-      const params: any = { page: 1, limit: 10000 };
-      if (typeFilter !== "all") params.type = typeFilter;
-      if (startDate) params.startDate = startDate;
-      if (endDate) params.endDate = endDate;
+      const baseParams: any = { limit: 100 };
+      if (typeFilter !== "all") baseParams.type = typeFilter;
+      if (startDate) baseParams.startDate = startDate;
+      if (endDate) baseParams.endDate = endDate;
 
-      const response = await pettyCashApi.getFundTransactions(id, params);
-
-      if (!response.success || !response.data) {
-        toast.error("Failed to fetch transactions for export");
-        return;
-      }
-
-      const allTx: any[] = response.data.transactions;
+      const allTx: any[] = [];
+      let exportPage = 1;
+      let total = 0;
+      const maxExportRows = 5000;
+      do {
+        const response = await pettyCashApi.getFundTransactions(id, { ...baseParams, page: exportPage });
+        if (!response.success || !response.data) {
+          toast.error("Failed to fetch transactions for export");
+          return;
+        }
+        allTx.push(...response.data.transactions);
+        total = response.pagination?.total ?? response.total ?? allTx.length;
+        if (allTx.length >= total) break;
+        if (allTx.length >= maxExportRows) {
+          toast.error(`Export is limited to ${maxExportRows.toLocaleString()} rows. Narrow the date range and try again.`);
+          return;
+        }
+        exportPage += 1;
+      } while (exportPage <= 50);
 
       const headers = [
         "Date",

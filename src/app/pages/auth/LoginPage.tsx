@@ -50,7 +50,19 @@ export default function LoginPage() {
       const response = await authService.login({ email, password });
       if (response.success) {
         const token = response.token || '';
-        if (token) localStorage.setItem('token', token);
+        const refreshToken = response.refreshToken || '';
+        if (!token) {
+          setErrorCode('LOGIN_FAILED');
+          toast.error(t('auth.login.loginFailed'));
+          return;
+        }
+
+        // Stage the newly issued token before the optional /auth/me fallback.
+        // The PostgreSQL login response includes the user now, but this keeps
+        // older deployments from sending a persisted expired token during the
+        // fallback request.
+        useAuthStore.getState().setAccessToken(token);
+        useAuthStore.getState().setRefreshToken(refreshToken || null);
         const userResponse = response.user
           ? { success: true, data: response.user }
           : await authService.getMe();

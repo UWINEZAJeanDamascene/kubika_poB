@@ -107,8 +107,12 @@ api.interceptors.response.use(
     
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
-      // Extract error code from response
-      const errorCode = error.response.data?.error?.code || ERROR_CODES.UNAUTHORIZED;
+      // Accept both the structured error envelope and the flat legacy code
+      // used by older backend deployments.
+      const errorCode =
+        error.response.data?.error?.code ||
+        (error.response.data as { code?: string } | undefined)?.code ||
+        ERROR_CODES.UNAUTHORIZED;
       
       // Handle TOKEN_EXPIRED - try to refresh token
       if (errorCode === ERROR_CODES.TOKEN_EXPIRED) {
@@ -147,14 +151,24 @@ api.interceptors.response.use(
             { withCredentials: true }
           );
           
-          const { accessToken, refreshToken: newRefreshToken } = response.data;
-          
+          const {
+            access_token: accessToken,
+            refresh_token: newRefreshToken,
+          } = response.data as {
+            access_token?: string;
+            refresh_token?: string;
+          };
+
+          if (!accessToken || !newRefreshToken) {
+            throw new Error('Refresh response did not contain a complete token pair');
+          }
+
           // Update tokens in store
           useAuthStore.getState().refreshTokens(accessToken, newRefreshToken);
-          
+
           // Process queued requests
           processQueue(null, accessToken);
-          
+
           // Retry original request with new token
           if (originalRequest.headers) {
             originalRequest.headers.Authorization = `Bearer ${accessToken}`;
