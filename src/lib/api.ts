@@ -1602,7 +1602,7 @@ export const productsApi = {
   registerAllWithEBM: () =>
     request<{
       success: boolean;
-      data: { attempted: number; registered: number; failed: number; results: unknown[] };
+      data: { attempted: number; registered: number; failed: number; alreadyRegistered: number; results: unknown[] };
       message?: string;
     }>("/products/ebm/register-all", { method: "POST" }),
   getLowStock: () =>
