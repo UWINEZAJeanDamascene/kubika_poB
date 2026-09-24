@@ -33,8 +33,8 @@ export function DashboardCommandNav({ className }: { className?: string }) {
             title={t(item.nameKey)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative inline-flex min-h-11 items-center gap-2 border-r border-(--dashboard-rule) px-3 text-xs font-semibold text-(--dashboard-muted) transition-colors first:border-l hover:bg-white hover:text-(--dashboard-ink) sm:px-4",
-              active && "bg-white text-(--dashboard-ink)",
+              "relative inline-flex min-h-11 items-center gap-2 border-r border-(--dashboard-rule) px-3 text-xs font-semibold text-(--dashboard-muted) transition-colors first:border-l hover:bg-(--dashboard-surface) hover:text-(--dashboard-ink) sm:px-4",
+              active && "bg-(--dashboard-surface) text-(--dashboard-ink)",
             )}
           >
             {active && <span className="absolute inset-x-0 bottom-0 h-0.5 bg-(--dashboard-amber)" aria-hidden="true" />}
