@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { invoicesApi, bankAccountsApi } from '@/lib/api';
+import { invoicesApi, bankAccountsApi, creditNotesApi, deliveryNotesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
@@ -132,11 +132,11 @@ interface Invoice {
   revenueJournalEntry?: {
     _id: string;
     entryNumber: string;
-  };
+  } | string;
   cogsJournalEntry?: {
     _id: string;
     entryNumber: string;
-  };
+  } | string;
   ebm?: {
     rcptSign?: string | null;
     intrlData?: string | null;
@@ -192,8 +192,8 @@ export default function InvoiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const [creditNotes] = useState<CreditNote[]>([]);
-  const [deliveryNotes] = useState<DeliveryNote[]>([]);
+  const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
+  const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -229,10 +229,35 @@ export default function InvoiceDetailPage() {
     }
   }, []);
 
+  const fetchRelatedDocuments = useCallback(async () => {
+    if (!id) return;
+    try {
+      const [creditNotesResponse, deliveryNotesResponse] = await Promise.all([
+        creditNotesApi.getAll({ invoiceId: id, limit: 100 }),
+        deliveryNotesApi.getAll({ invoiceId: id, limit: 100 }),
+      ]);
+      if (creditNotesResponse.success) {
+        const responseData = creditNotesResponse.data as any;
+        const data = Array.isArray(responseData) ? responseData : responseData?.data || [];
+        setCreditNotes(data as CreditNote[]);
+      }
+      if (deliveryNotesResponse.success) {
+        const responseData = deliveryNotesResponse.data as any;
+        const data = Array.isArray(responseData) ? responseData : responseData?.data || [];
+        setDeliveryNotes(data as DeliveryNote[]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch invoice related documents:', error);
+      setCreditNotes([]);
+      setDeliveryNotes([]);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchInvoice();
     fetchBankAccounts();
-  }, [fetchInvoice, fetchBankAccounts]);
+    fetchRelatedDocuments();
+  }, [fetchInvoice, fetchBankAccounts, fetchRelatedDocuments]);
 
   const handleVerifyCustomerTin = async () => {
     if (!id) return;
@@ -393,8 +418,17 @@ export default function InvoiceDetailPage() {
   };
 
   const money = (value: unknown) => {
-    const n = typeof value === 'number' ? value : parseFloat(String(value ?? '0'));
+    const n = typeof value === 'number'
+      ? value
+      : typeof value === 'object' && value !== null && '$numberDecimal' in value
+        ? Number((value as { $numberDecimal?: unknown }).$numberDecimal)
+        : parseFloat(String(value ?? '0'));
     return Number.isFinite(n) ? n : 0;
+  };
+
+  const journalEntryLabel = (entry: Invoice['revenueJournalEntry']) => {
+    if (!entry) return '-';
+    return typeof entry === 'string' ? entry : entry.entryNumber || entry._id || '-';
   };
 
   if (loading) {
@@ -1063,7 +1097,7 @@ export default function InvoiceDetailPage() {
                             </div>
                             <div>
                               <p className="text-sm font-medium text-slate-900 dark:text-white">Revenue Entry</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {invoice.revenueJournalEntry.entryNumber}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {journalEntryLabel(invoice.revenueJournalEntry)}</p>
                             </div>
                           </div>
                           <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">Posted</span>
@@ -1077,7 +1111,7 @@ export default function InvoiceDetailPage() {
                             </div>
                             <div>
                               <p className="text-sm font-medium text-slate-900 dark:text-white">COGS Entry</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {invoice.cogsJournalEntry.entryNumber}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {journalEntryLabel(invoice.cogsJournalEntry)}</p>
                             </div>
                           </div>
                           <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">Posted</span>

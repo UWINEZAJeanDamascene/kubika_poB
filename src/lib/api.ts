@@ -2574,6 +2574,7 @@ export const creditNotesApi = {
   getAll: (params?: {
     status?: string;
     client?: string;
+    invoiceId?: string;
     type?: string;
     dateFrom?: string;
     dateTo?: string;
