@@ -97,8 +97,8 @@ export default function TransferCreatePage() {
   // worse than one extra round-trip.
   const { data: products = [] } = useQuery({
     queryKey: ['products', 'transfer-source'],
-    queryFn: async () => {
-      const res = await productsApi.getAll({ limit: 1000 });
+    queryFn: async ({ signal }) => {
+      const res = await productsApi.getAll({ limit: 1000 }, signal);
       return res.success ? (res.data as Product[]) : [];
     },
     staleTime: 0,
@@ -108,8 +108,8 @@ export default function TransferCreatePage() {
 
   const { data: warehouses = [] } = useQuery({
     queryKey: ['warehouses', 'transfer-target'],
-    queryFn: async () => {
-      const res: any = await stockApi.getLevels({ limit: 1000 });
+    queryFn: async ({ signal }) => {
+      const res: any = await stockApi.getLevels({ limit: 1000 }, signal);
       return res.success && res.warehouses ? (res.warehouses as Warehouse[]) : [];
     },
     staleTime: 0,

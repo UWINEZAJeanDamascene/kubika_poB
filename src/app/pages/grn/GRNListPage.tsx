@@ -172,7 +172,7 @@ export default function GRNListPage() {
   // cached list risks confirming a GRN someone else already confirmed.
   const { data: grnData, isPending: loading, refetch: fetchGRNs } = useQuery({
     queryKey: grnQueryKey,
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const params: any = { page, limit: 20 };
       if (statusFilter && statusFilter !== "all") params.status = statusFilter;
       if (ebmStatusFilter && ebmStatusFilter !== "all") params.ebmStatus = ebmStatusFilter;
@@ -180,7 +180,7 @@ export default function GRNListPage() {
       if (dateFrom) params.date_from = dateFrom;
       if (dateTo) params.date_to = dateTo;
 
-      const response = await grnApi.getAll(params);
+      const response = await grnApi.getAll(params, signal);
       if (!response.success) throw new Error("Failed to fetch GRNs");
       return {
         items: (Array.isArray(response.data) ? response.data : (response.data as unknown[])) as GRN[],

@@ -74,8 +74,8 @@ export function StockAdjustmentDialog({
 
   const productsQuery = useQuery({
     queryKey: ["products", "adjustment-picker"],
-    queryFn: async (): Promise<Product[]> => {
-      const response: any = await productsApi.getAll({ limit: 1000 });
+    queryFn: async ({ signal }): Promise<Product[]> => {
+      const response: any = await productsApi.getAll({ limit: 1000 }, signal);
       if (!response.success) throw new Error("Failed to fetch products");
       return response.data?.data || response.data || [];
     },
@@ -88,8 +88,8 @@ export function StockAdjustmentDialog({
 
   const warehousesQuery = useQuery({
     queryKey: ["warehouses", "adjustment-picker"],
-    queryFn: async (): Promise<Warehouse[]> => {
-      const response: any = await warehousesApi.getAll();
+    queryFn: async ({ signal }): Promise<Warehouse[]> => {
+      const response: any = await warehousesApi.getAll(undefined, signal);
       if (!response.success) throw new Error("Failed to fetch warehouses");
       return response.data || [];
     },

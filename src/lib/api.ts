@@ -1562,10 +1562,11 @@ export const productsApi = {
     refresh?: string;
     forPicker?: string;
     forStockLevels?: string;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown; pagination?: unknown }>(
       `/products${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string, signal?: AbortSignal) =>
@@ -2188,14 +2189,14 @@ export const stockApi = {
     limit?: number;
     sortBy?: string;
     order?: "asc" | "desc";
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{
       success: boolean;
       data: unknown;
       warehouses?: unknown[];
       pagination?: unknown;
-    }>(`/stock/levels${query ? `?${query}` : ""}`);
+    }>(`/stock/levels${query ? `?${query}` : ""}`, { signal });
   },
   getMovements: (params?: {
     productId?: string;
@@ -3148,10 +3149,11 @@ export const grnApi = {
     date_to?: string;
     page?: number;
     limit?: number;
-  }) => {
+  }, signal?: AbortSignal) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{ success: boolean; data: unknown; pagination?: unknown }>(
       `/stock/advanced/grn${query ? `?${query}` : ""}`,
+      { signal },
     );
   },
   getById: (id: string) =>
