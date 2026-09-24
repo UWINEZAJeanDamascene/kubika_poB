@@ -251,6 +251,20 @@ export default function ProductsListPage() {
     }
   };
 
+  const handleRegisterAllEbm = async () => {
+    setActionLoading(true);
+    try {
+      const response = await productsApi.registerAllWithEBM();
+      toast.success(response.message || `${response.data.registered} product(s) registered with EBM.`);
+      loadProducts();
+    } catch (error: any) {
+      toast.error(error.message || 'Bulk EBM registration failed');
+      loadProducts();
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // Optimistic quick-edit: the row flips the moment it is clicked, then the
   // server confirms. On failure the previous list is restored and the error
   // surfaced, so a rejected write can never leave the UI showing a state the
@@ -440,6 +454,10 @@ export default function ProductsListPage() {
               <Button onClick={handleCheckLowStock} variant="outline" size="sm" disabled={actionLoading}>
                 {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Bell className="h-4 w-4" />}
                 <span className="hidden sm:inline">{t('products.checkLowStock') || 'Check Low Stock'}</span>
+              </Button>
+              <Button onClick={handleRegisterAllEbm} variant="outline" size="sm" disabled={actionLoading}>
+                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                <span className="hidden sm:inline">Register all EBM</span>
               </Button>
               <Button onClick={handleExport} variant="outline" size="sm">
                 <Download className="h-4 w-4" />

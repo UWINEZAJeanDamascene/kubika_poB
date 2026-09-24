@@ -1599,6 +1599,12 @@ export const productsApi = {
       `/products/${id}/ebm/register`,
       { method: "POST" },
     ),
+  registerAllWithEBM: () =>
+    request<{
+      success: boolean;
+      data: { attempted: number; registered: number; failed: number; results: unknown[] };
+      message?: string;
+    }>("/products/ebm/register-all", { method: "POST" }),
   getLowStock: () =>
     request<{ success: boolean; data: unknown }>("/products/low-stock"),
   checkLowStockAndNotify: () =>
