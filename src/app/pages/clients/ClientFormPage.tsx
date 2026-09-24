@@ -61,6 +61,11 @@ const initialFormData: ClientFormData = {
   isActive: true
 };
 
+function generateClientCode(): string {
+  const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `CLI-${Date.now().toString(36).toUpperCase()}-${randomPart}`;
+}
+
 export default function ClientFormPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -157,7 +162,7 @@ export default function ClientFormPage() {
       
       const clientData = {
         name: formData.name,
-        code: formData.code,
+        code: isEditMode ? formData.code?.trim() : (formData.code?.trim() || generateClientCode()),
         type: formData.type,
         taxId: formData.taxId?.trim(),
         contact: formData.contact,

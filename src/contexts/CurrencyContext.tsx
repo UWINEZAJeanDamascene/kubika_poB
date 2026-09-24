@@ -43,6 +43,17 @@ const FALLBACK_SYMBOLS: Record<string, string> = {
 
 const DISPLAY_CURRENCY_KEY = 'displayCurrency';
 
+function toNumericAmount(value: unknown): number {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (typeof value === 'object' && value !== null && '$numberDecimal' in value) {
+    const decimal = (value as { $numberDecimal?: unknown }).$numberDecimal;
+    const parsed = Number(decimal);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 interface CurrencyProviderProps {
   children: ReactNode;
 }
@@ -120,14 +131,15 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   }, [rates, baseCurrency]);
 
   const convertAmount = useCallback((amount: number, from?: string): number => {
+    const numericAmount = toNumericAmount(amount);
     const sourceCurrency = from || baseCurrency;
-    if (sourceCurrency === displayCurrency) return amount;
+    if (sourceCurrency === displayCurrency) return numericAmount;
 
     const fromRate = rateToBase(sourceCurrency);
     const toRate = rateToBase(displayCurrency);
-    if (fromRate == null || toRate == null) return amount;
+    if (fromRate == null || toRate == null) return numericAmount;
 
-    const converted = (amount * fromRate) / toRate;
+    const converted = (numericAmount * fromRate) / toRate;
     return Math.round(converted * 100) / 100;
   }, [baseCurrency, displayCurrency, rateToBase]);
 
@@ -138,7 +150,7 @@ export function CurrencyProvider({ children }: CurrencyProviderProps) {
   }, [displayCurrency, currencies]);
 
   const formatCurrency = useCallback((amount: number, from?: string): string => {
-    const convertedAmount = convertAmount(amount, from);
+    const convertedAmount = convertAmount(toNumericAmount(amount), from);
     const symbol = getCurrencySymbol(displayCurrency);
     const known = currencies.find((c) => c.code === displayCurrency);
     const decimals = known?.decimal_places ?? (displayCurrency === 'RWF' ? 0 : 2);
