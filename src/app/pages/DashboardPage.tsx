@@ -228,7 +228,6 @@ export default function DashboardPage() {
           <IndustrialDashboardHeader
             title="Executive overview"
             subtitle="A decision-ready view of cash, margin, collections, and operational exposure."
-            endpoint="/dashboard/executive"
             generatedAt={data?.generated_at}
             loading={loading}
             refreshing={refreshing}
@@ -302,10 +301,10 @@ export default function DashboardPage() {
                 </Table>
               </IndustrialTableFrame>
             )}
-            <IndustrialSourceNote>Sources: /dashboard/executive + /dashboard/inventory + /dashboard/purchase · rows are omitted when an optional source endpoint is unavailable.</IndustrialSourceNote>
+            <IndustrialSourceNote>Data is consolidated from the latest available operating metrics. Optional sources are included only when they are available.</IndustrialSourceNote>
           </IndustrialSection>
 
-          <IndustrialSection eyebrow="03 · Audit record" title="Recent journal activity" subtitle="Latest entries returned by the executive endpoint, aligned for review and export." action={<span className="industrial-mono text-[10px] text-(--dashboard-muted)">{formatCount(entries.length)} records</span>}>
+          <IndustrialSection eyebrow="03 · Audit record" title="Recent journal activity" subtitle="Latest operating entries for review, reconciliation, and export." action={<span className="industrial-mono text-[10px] text-(--dashboard-muted)">{formatCount(entries.length)} records</span>}>
             {loading ? <IndustrialState status="loading" /> : entries.length === 0 ? <IndustrialState status="empty" message="No journal entries for the selected period." /> : (
               <IndustrialTableFrame>
                 <Table>
@@ -314,12 +313,12 @@ export default function DashboardPage() {
                 </Table>
               </IndustrialTableFrame>
             )}
-            <IndustrialSourceNote>Journal values are fetched from the executive snapshot and exclude presentation-only placeholder records.</IndustrialSourceNote>
+            <IndustrialSourceNote>Journal values are drawn from the latest operating snapshot and exclude placeholder or presentation-only records.</IndustrialSourceNote>
           </IndustrialSection>
 
           <div className="flex flex-col gap-2 border-t border-(--dashboard-rule-strong) pt-3 text-[10px] text-(--dashboard-muted) sm:flex-row sm:items-center sm:justify-between">
             <span>State coverage · Loading preserves geometry · Error provides retry · Empty states explain scope</span>
-            <span className="industrial-mono">KUBIKA · live dashboard system</span>
+            <span className="industrial-mono">KUBIKA · dashboard</span>
           </div>
         </div>
       </div>

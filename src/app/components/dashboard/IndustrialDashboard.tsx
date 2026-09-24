@@ -117,7 +117,7 @@ export interface IndustrialDashboardHeaderProps {
   eyebrow?: string;
   title: string;
   subtitle: string;
-  endpoint: string;
+  endpoint?: string;
   generatedAt?: string | Date | null;
   loading?: boolean;
   refreshing?: boolean;
@@ -128,10 +128,9 @@ export interface IndustrialDashboardHeaderProps {
 }
 
 export function IndustrialDashboardHeader({
-  eyebrow = "Executive command sheet",
+  eyebrow = "Executive overview",
   title,
   subtitle,
-  endpoint,
   generatedAt,
   loading = false,
   refreshing = false,
@@ -140,7 +139,7 @@ export function IndustrialDashboardHeader({
   context,
   actions,
 }: IndustrialDashboardHeaderProps) {
-  const statusLabel = loading ? "Loading snapshot" : tone === "critical" ? "Snapshot needs attention" : "Live API snapshot";
+  const statusLabel = loading ? "Loading overview" : tone === "critical" ? "Needs attention" : "Current status";
   return (
     <div className="industrial-dashboard-header">
       <div className="flex flex-col gap-5 border-b border-(--dashboard-rule-strong) pb-5 xl:flex-row xl:items-end xl:justify-between">
@@ -178,11 +177,9 @@ export function IndustrialDashboardHeader({
             {statusLabel}
           </span>
           <span className="text-(--dashboard-rule-strong)" aria-hidden="true">|</span>
-          <span className="industrial-mono">GET {endpoint}</span>
-          <span className="text-(--dashboard-rule-strong)" aria-hidden="true">·</span>
-          <span>{loading ? "Awaiting response" : `Generated ${formatDashboardDateTime(generatedAt)}`}</span>
+          <span>{loading ? "Awaiting data" : `Updated ${formatDashboardDateTime(generatedAt)}`}</span>
         </div>
-        <span className="industrial-mono text-(--dashboard-muted)">Values are sourced from the latest successful API response</span>
+        <span className="text-(--dashboard-muted)">Latest available operating metrics</span>
       </div>
     </div>
   );
