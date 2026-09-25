@@ -7,7 +7,7 @@ const publicCopy = {
           branches: 'For every branch',
         },
         heroLabel: 'KUBIKA / COMPANY OPERATIONS',
-        heroTitle: 'See the business clearly, branch by branch.',
+        heroTitle: 'Stock management and accounting for Rwandan SMEs.',
         heroSubtitle:
           'KUBIKA brings stock, purchasing, accounting, payroll and VAT reporting into one secure workspace for growing Rwandan companies.',
         createShort: 'Create',
@@ -48,7 +48,7 @@ const publicCopy = {
           },
         },
         platformLabel: 'HOW WORK CONNECTS',
-        platformTitle: 'Every record has somewhere to go.',
+        platformTitle: 'Inventory, purchasing and accounting in one system.',
         platformSubtitle:
           'Connect the daily work of a warehouse, branch and finance team without asking people to maintain the same number in several places.',
         path: {
@@ -78,7 +78,7 @@ const publicCopy = {
           },
         },
         branchesLabel: 'FOR THE WORK BETWEEN BRANCHES',
-        branchesTitle: 'Made for the work between branches.',
+        branchesTitle: 'Inventory management across Rwanda.',
         branchesSubtitle:
           'From a shop in Kigali to a warehouse in Musanze, KUBIKA keeps the handoffs visible without turning every team into a spreadsheet administrator.',
         branches: {

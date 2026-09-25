@@ -96,6 +96,7 @@ const fr = {
     taxes: "Taxes",
     accountingPeriods: "Périodes comptables",
     reportsHub: "Centre de rapports",
+    aiIntelligence: "Intelligence artificielle",
     profitLoss: "Compte de résultat",
     balanceSheet: "Bilan",
     cashFlow: "Flux de trésorerie",

@@ -10,27 +10,7 @@ import { chatApi, type ChatMessage } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatPanelStore } from '@/store/chatPanelStore';
 import { chatMemory } from '@/lib/chatMemory';
-import { buildBusinessContext } from '@/lib/businessContext';
-import { getChartInstructions } from '@/lib/chartSelector';
-import { getInvoiceInstructions } from '@/lib/invoiceTemplates';
-import { getPredictiveInstructions, isPredictiveQuery } from '@/lib/predictiveAnalytics';
-import { getMorningBriefingInstructions, isBriefingQuery } from '@/lib/morningBriefing';
-import {
-  retrieveKnowledgeChunks, formatKnowledgeContext, isKnowledgeQuery, getKnowledgeInstructions,
-} from '@/lib/knowledgeBase';
-import {
-  formatBenchmarkContext, isBenchmarkQuery, detectIndustryFromContext, getBenchmarkInstructions,
-  formatPeerComparisonContext, getCompetitiveIntelligenceInstructions,
-} from '@/lib/benchmarking';
-import {
-  formatTaxCalendarContext, isTaxCalendarQuery, getTaxCalendarInstructions,
-} from '@/lib/taxCalendar';
-import {
-  formatIndustryInstructions, isIndustryQuery, detectIndustry,
-} from '@/lib/industryModules';
-import {
-  getWorkflowInstructions, startWorkflowRunner,
-} from '@/lib/workflows';
+import { startWorkflowRunner } from '@/lib/workflows';
 import InvoicePreview from './InvoicePreview';
 import { exportChartToExcel } from '@/lib/chartExport';
 import {
@@ -44,6 +24,7 @@ interface Message {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
+  evidence?: Array<{ id: string; label: string; value: unknown; unit?: string; domain?: string; sourceService?: string; sourceMethod?: string; sourceIds?: string[] }>;
 }
 
 const MAX_HISTORY_MESSAGES = 6;
@@ -857,7 +838,7 @@ function convertTableToInvoice(tableData: { columns: string[]; rows: any[][] }, 
 
 // ─── Render a prediction block ────────────────────────────────────────────
 function PredictionBlock({ data }: { data: any }) {
-  const { predictionType = 'custom', title = 'Forecast', confidence = 'medium', trend = 'neutral', currentValue, forecast = [], recommendations = [], unit = 'RWF' } = data;
+  const { title = 'Forecast', confidence = 'medium', trend = 'neutral', currentValue, forecast = [], recommendations = [], unit = 'RWF' } = data;
   const chartRef = useRef<HTMLDivElement>(null);
 
   const confidenceColor = confidence === 'high' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' :
@@ -1395,6 +1376,24 @@ function MessageContent({ text }: { text: string }) {
   );
 }
 
+function ChatEvidence({ facts }: { facts?: Message['evidence'] }) {
+  if (!facts?.length) return null;
+  return (
+    <details className="mt-1 w-full rounded-xl border border-cyan-900/50 bg-slate-900/70 px-3 py-2 text-xs">
+      <summary className="cursor-pointer font-semibold text-cyan-300">Show evidence ({facts.length})</summary>
+      <div className="mt-2 max-h-64 space-y-2 overflow-auto">
+        {facts.map((fact) => (
+          <div key={fact.id} className="rounded-lg border border-slate-700 bg-slate-950/70 p-2.5">
+            <div className="flex flex-wrap justify-between gap-2"><span className="font-semibold text-slate-100">{fact.label}</span><span className="text-[10px] text-slate-400">{fact.domain || fact.sourceMethod || 'Source fact'}{fact.unit ? ` · ${fact.unit}` : ''}</span></div>
+            <pre className="mt-1.5 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-slate-300">{typeof fact.value === 'string' ? fact.value : JSON.stringify(fact.value, null, 2)}</pre>
+            {(fact.sourceService || fact.sourceMethod || fact.sourceIds?.length) && <p className="mt-1 text-[9px] text-slate-500">{[fact.sourceService, fact.sourceMethod, fact.sourceIds?.length ? fact.sourceIds.join(', ') : ''].filter(Boolean).join(' · ')}</p>}
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 // ─── Time formatter ──────────────────────────────────────────────────────────
 function formatTime(date: Date): string {
   return date.toLocaleTimeString('en-RW', { hour: '2-digit', minute: '2-digit' });
@@ -1496,10 +1495,8 @@ export default function AIChatBot() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [isLg, setIsLg] = useState(false);
   const sessionIdRef = useRef<string>('');
-  const isContextReadyRef = useRef(false);
 
   // Initialize memory session on mount (and when auth changes)
   useEffect(() => {
@@ -1511,17 +1508,6 @@ export default function AIChatBot() {
       setMessages([makePolishedInitialMessage()]);
     }
   }, [isAuthenticated]);
-
-  // Pre-warm business context cache when panel opens
-  useEffect(() => {
-    if (open && isAuthenticated && !isContextReadyRef.current) {
-      buildBusinessContext().then(() => {
-        isContextReadyRef.current = true;
-      }).catch(() => {
-        // Non-critical; will retry on next message
-      });
-    }
-  }, [open, isAuthenticated]);
 
   // Phase 6.3: Start auto-workflow runner on mount
   useEffect(() => {
@@ -1547,7 +1533,6 @@ export default function AIChatBot() {
 
   useEffect(() => {
     if (open) {
-      setUnreadCount(0);
       setTimeout(() => {
         textareaRef.current?.focus();
         scrollToBottom(false);
@@ -1583,78 +1568,13 @@ export default function AIChatBot() {
     setLoading(true);
 
     try {
-      // Build context: business snapshot + memory + chart instructions
-      let contextParts: string[] = [];
-
-      if (isAuthenticated) {
-        const bizContext = await buildBusinessContext();
-        if (bizContext) contextParts.push(bizContext);
-
-        const memoryContext = chatMemory.getMemoryContext(sessionIdRef.current);
-        if (memoryContext) contextParts.push(memoryContext);
-      }
-
-      const lowerMsg = messageText.toLowerCase();
-      const wantsChart = /\b(chart|graph|trend|visual|plot|show me|compare|analyze|breakdown|overview|report|data)\b/.test(lowerMsg);
-      const wantsInvoice = /\b(invoice|bill|proforma|quotation|quote|receipt|vat|payment due|client bill)\b/.test(lowerMsg);
-      const wantsPrediction = isPredictiveQuery(messageText);
-      const wantsBriefing = isBriefingQuery(messageText);
-      const wantsKnowledge = isKnowledgeQuery(messageText);
-      const wantsBenchmark = isBenchmarkQuery(messageText);
-      const wantsTaxCalendar = isTaxCalendarQuery(messageText);
-      const wantsIndustry = isIndustryQuery(messageText);
-      const wantsWorkflow = /\b(auto|workflow|automate|schedule|remind|trigger|cron|recurring|every (day|week|month)|on (monday|tuesday|wednesday|thursday|friday))\b/i.test(messageText);
-
-      if (wantsChart) contextParts.push(getChartInstructions());
-      if (wantsInvoice) contextParts.push(getInvoiceInstructions());
-      if (wantsPrediction) contextParts.push(getPredictiveInstructions());
-      if (wantsBriefing) contextParts.push(getMorningBriefingInstructions());
-
-      // Phase 3: External Knowledge — retrieve relevant chunks and inject
-      if (wantsKnowledge) {
-        const chunks = retrieveKnowledgeChunks(messageText, 3);
-        if (chunks.length) contextParts.push(formatKnowledgeContext(chunks));
-        contextParts.push(getKnowledgeInstructions());
-      }
-
-      if (wantsBenchmark) {
-        const industry = detectIndustryFromContext(messageText);
-        const benchCtx = formatBenchmarkContext(industry);
-        if (benchCtx) contextParts.push(benchCtx);
-        // Phase 6: Peer comparison
-        const peerCtx = formatPeerComparisonContext(industry);
-        if (peerCtx) contextParts.push(peerCtx);
-        contextParts.push(getBenchmarkInstructions());
-        contextParts.push(getCompetitiveIntelligenceInstructions());
-      }
-
-      if (wantsTaxCalendar) {
-        const taxCtx = formatTaxCalendarContext();
-        if (taxCtx) contextParts.push(taxCtx);
-        contextParts.push(getTaxCalendarInstructions());
-      }
-
-      // Phase 6.1: Industry-specific AI modules
-      if (wantsIndustry) {
-        const detectedIndustry = detectIndustry(messageText);
-        const industryInstructions = formatIndustryInstructions(detectedIndustry);
-        if (industryInstructions) contextParts.push(industryInstructions);
-      }
-
-      // Phase 6.3: Workflow automation
-      if (wantsWorkflow) {
-        contextParts.push(getWorkflowInstructions());
-      }
-
-      const fullContext = contextParts.join('\n\n---\n\n');
-
+      // The backend builds and permission-filters the context for each question.
       const history = toApiHistory(messages);
-      const data = await chatApi.send(messageText, history, fullContext);
+      const data = await chatApi.send(messageText, history);
       const cleanReply = sanitizeBotReply(data.reply);
-      const botMsg: Message = { role: 'assistant', content: cleanReply, timestamp: new Date() };
+      const botMsg: Message = { role: 'assistant', content: cleanReply, timestamp: new Date(), evidence: data.ai?.context?.facts || [] };
       const finalMessages = [...updatedMessages, botMsg];
       setMessages(finalMessages);
-      if (!open) setUnreadCount(c => c + 1);
 
       // Persist to memory
       chatMemory.appendMessages(
@@ -1827,7 +1747,7 @@ export default function AIChatBot() {
                   >
                     {msg.role === 'user'
                       ? <p className="leading-relaxed">{msg.content}</p>
-                      : <MessageContent text={msg.content} />
+                      : <><MessageContent text={msg.content} /><ChatEvidence facts={msg.evidence} /></>
                     }
                   </div>
                   <span className="px-1 text-[10px] text-slate-600">
@@ -2006,7 +1926,7 @@ export default function AIChatBot() {
                   >
                     {msg.role === 'user'
                       ? <p className="leading-relaxed">{msg.content}</p>
-                      : <MessageContent text={msg.content} />
+                      : <><MessageContent text={msg.content} /><ChatEvidence facts={msg.evidence} /></>
                     }
                   </div>
                   <span className="px-1 text-[10px] text-slate-600">

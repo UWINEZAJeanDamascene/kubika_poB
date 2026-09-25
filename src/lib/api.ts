@@ -3931,24 +3931,14 @@ export const chatApi = {
   send: async (
     message: string,
     history: ChatMessage[] = [],
-    context?: string,
-  ): Promise<{ success: boolean; reply: string; provider?: string; cached?: boolean }> => {
+  ): Promise<{ success: boolean; reply: string; provider?: string; cached?: boolean; ai?: { context?: { facts?: Array<{ id: string; label: string; value: unknown; unit?: string; domain?: string; sourceService?: string; sourceMethod?: string; sourceIds?: string[] }> }; [key: string]: unknown } }> => {
     const token = localStorage.getItem("token");
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
     };
     if (token) headers["Authorization"] = `Bearer ${token}`;
 
-    // Build augmented history with system context injected
-    let augmentedHistory = history;
-    if (context && context.trim()) {
-      const systemMsg: ChatMessage = {
-        role: "user",
-        content: `[SYSTEM CONTEXT — Do not repeat this back to the user. Use this information to answer their questions accurately.]\n\n${context.trim()}`,
-      };
-      // Insert system context as first message, then the rest
-      augmentedHistory = [systemMsg, ...history];
-    }
+    // Context and evidence are assembled and permission-filtered by the backend.
 
     // 90s timeout to accommodate 6-provider fallback chain (Groq→Mistral→OpenRouter→DeepSeek→Together→Gemini)
     const controller = new AbortController();
@@ -3958,7 +3948,7 @@ export const chatApi = {
       const response = await fetch(`${API_BASE_URL}/chat`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ message, history: augmentedHistory }),
+        body: JSON.stringify({ message, history }),
         signal: controller.signal,
       });
 
@@ -3976,6 +3966,7 @@ export const chatApi = {
           reply: data.reply,
           provider: data.provider,
           cached: data.cached,
+          ai: data.ai,
         };
 
       if (!response.ok) {

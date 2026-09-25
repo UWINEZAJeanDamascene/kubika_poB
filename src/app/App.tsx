@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
+import { SeoManager } from "./components/SeoManager";
 
 // Create a client
 const queryClient = new QueryClient({
@@ -55,6 +56,7 @@ const PurchaseDashboardPage = lazy(
   () => import("./pages/PurchaseDashboardPage"),
 );
 const FinanceDashboardPage = lazy(() => import("./pages/FinanceDashboardPage"));
+const IntelligencePage = lazy(() => import("./pages/IntelligencePage"));
 // The assistant renders charts, so keeping it out of the application shell
 // prevents Recharts from being downloaded by users who cannot use Enterprise AI.
 const AIChatBot = lazy(() => import("./components/AIChatBot"));
@@ -81,6 +83,15 @@ function EnterpriseAIChatBot() {
       <AIChatBot />
     </Suspense>
   ) : null;
+}
+
+function IntelligenceRoute() {
+  const company = useCompanyStore((state) => state.company);
+  const hasEnterpriseAI = Boolean(
+    company?.subscription_plan === "enterprise" || company?.feature_access?.ai_assistant,
+  );
+  if (!hasEnterpriseAI) return <Navigate to="/dashboard" replace />;
+  return <ProtectedRoute permissions={["reports:read", "inventory:read", "sales:read", "finance:read", "purchases:read", "customers:read"]}><IntelligencePage /></ProtectedRoute>;
 }
 // All page modules below are lazy-loaded for route-level code splitting.
 // Named-export-only modules use the `.then` trick to expose `default`.
@@ -719,6 +730,7 @@ function AppRoutes() {
 
           {/* System routes - pages already have Layout component */}
           <Route path="/dashboard" element={<DashboardPageWrapper />} />
+          <Route path="/intelligence" element={<IntelligenceRoute />} />
           <Route
             path="/dashboard/inventory"
             element={
@@ -2118,6 +2130,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <SeoManager />
         <ThemeProvider>
           <LanguageProvider>
             <AuthProvider>

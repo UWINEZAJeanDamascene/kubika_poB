@@ -96,6 +96,7 @@ const rw = {
     taxes: "Imisoro",
     accountingPeriods: "Igihe cy'ubucuruzi",
     reportsHub: "Ikigo cy'raporo",
+    aiIntelligence: "Ubwenge bw'ubukorano",
     profitLoss: "Inyungu n'igihombo",
     balanceSheet: "Imari y'ubucuruzi",
     cashFlow: "Imiterere y'amafaranga",

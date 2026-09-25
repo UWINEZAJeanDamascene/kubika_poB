@@ -98,6 +98,7 @@ const en = {
     taxes: "Taxes",
     accountingPeriods: "Accounting Periods",
     reportsHub: "Reports Center",
+    aiIntelligence: "AI Intelligence",
     profitLoss: "Profit & Loss",
     balanceSheet: "Balance Sheet",
     cashFlow: "Cash Flow",
