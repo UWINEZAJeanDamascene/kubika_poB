@@ -3858,6 +3858,16 @@ export const usersApi = {
       "/users",
       { method: "POST", body: user },
     ),
+  invite: (user: {
+    name?: string;
+    email: string;
+    role?: string;
+    companyId?: string;
+  }) =>
+    request<{ success: boolean; data: unknown; isNewUser?: boolean; message?: string }>(
+      "/users/invite",
+      { method: "POST", body: user },
+    ),
   update: (id: string, user: unknown) =>
     request<{ success: boolean; data: unknown }>(`/users/${id}`, {
       method: "PUT",

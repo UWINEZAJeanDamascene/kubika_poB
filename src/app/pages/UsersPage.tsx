@@ -155,7 +155,7 @@ function getStatusBadgeClass(isActive: boolean) {
 
 export default function UsersPage() {
   const navigate = useNavigate();
-  const { isAdmin } = useAuth();
+  const { isAdmin, companyId } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -236,7 +236,12 @@ export default function UsersPage() {
     e.preventDefault();
     setActionLoading('invite');
     try {
-      await usersApi.create(inviteForm);
+      await usersApi.invite({
+        name: inviteForm.name,
+        email: inviteForm.email,
+        role: inviteForm.role,
+        companyId: companyId || localStorage.getItem('companyId') || undefined,
+      });
       toast.success(`Invite sent to ${inviteForm.email}`);
       closeDrawer();
       fetchUsers();
