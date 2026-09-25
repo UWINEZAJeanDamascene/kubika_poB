@@ -381,6 +381,7 @@ export default function HomePage() {
             </Link>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-(--public-ink-muted)">
               <address className="not-italic">Kicukiro, Kigali, Rwanda</address>
+              <a href="tel:+250780936645" className="public-footer-link">+250 780 936 645</a>
               <Link to="/pricing" className="public-footer-link">{t('landing.home.footer.pricing')}</Link>
               <Link to="/trust" className="public-footer-link">{t('landing.home.footer.security')}</Link>
               <a href="mailto:jayfcode@gmail.com" className="public-footer-link">{t('landing.home.footer.contact')}</a>

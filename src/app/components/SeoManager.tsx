@@ -85,6 +85,15 @@ const organizationSchema = {
     addressLocality: 'Kicukiro, Kigali',
     addressCountry: 'RW',
   },
+  telephone: '+250780936645',
+  email: 'jayfcode@gmail.com',
+  contactPoint: {
+    '@type': 'ContactPoint',
+    telephone: '+250780936645',
+    email: 'jayfcode@gmail.com',
+    contactType: 'customer support',
+    areaServed: 'RW',
+  },
   // Add verified social profile URLs here when the company profiles are published.
   sameAs: [],
 };
