@@ -144,7 +144,9 @@ export default function ClientDetailPage() {
     try {
       const response = await clientsApi.getInvoices(clientId, { limit: 50 });
       if (response.success) {
-        setInvoices(response.data as Invoice[]);
+        const responseData = response.data as any;
+        const data = Array.isArray(responseData) ? responseData : responseData?.data || [];
+        setInvoices(data as Invoice[]);
         if (response.summary) {
           const summaryWithTypes = response.summary as unknown as { totalAmount: number; totalPaid: number; totalBalance: number };
           setInvoiceSummary(summaryWithTypes);
@@ -170,7 +172,9 @@ export default function ClientDetailPage() {
     try {
       const response = await clientsApi.getReceipts(clientId, { limit: 50 });
       if (response.success) {
-        setReceipts(response.data as Receipt[]);
+        const responseData = response.data as any;
+        const data = Array.isArray(responseData) ? responseData : responseData?.data || [];
+        setReceipts(data as Receipt[]);
       }
     } catch (error) {
       console.error('Failed to fetch receipts:', error);
@@ -401,7 +405,7 @@ export default function ClientDetailPage() {
                   </div>
                   <div>
                     <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Outstanding</p>
-                    <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(client.outstandingBalance || 0)}</p>
+                    <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(client.outstandingBalance || invoiceSummary.totalBalance || 0)}</p>
                   </div>
                 </div>
               </CardContent>
