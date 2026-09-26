@@ -55,7 +55,7 @@ async function flushMetrics() {
     await fetch(`${API_BASE_URL}/performance/client`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
+      credentials: 'omit',
       body: JSON.stringify({
         route: currentRoute(),
         captured_at: new Date().toISOString(),
