@@ -471,8 +471,25 @@ export default function InvoiceDetailPage() {
   }
 
   const currentStatusStep = getStatusStep(invoice.status);
-  const outstandingAmount = money(invoice.balance ?? invoice.amountOutstanding);
-  const paidAmount = money(invoice.amountPaid);
+  const lineSubtotal = (invoice.lines || []).reduce((sum, line) => {
+    const quantity = money(line.qty ?? line.quantity);
+    const subtotal = money(line.lineSubtotal);
+    return sum + (subtotal || quantity * money(line.unitPrice));
+  }, 0);
+  const lineTax = (invoice.lines || []).reduce((sum, line) => {
+    return sum + money(line.lineTax ?? line.taxAmount);
+  }, 0);
+  const lineTotal = (invoice.lines || []).reduce((sum, line) => {
+    const total = money(line.lineTotal);
+    const subtotal = money(line.lineSubtotal) || money(line.qty ?? line.quantity) * money(line.unitPrice);
+    return sum + (total || subtotal + money(line.lineTax ?? line.taxAmount));
+  }, 0);
+  const paymentTotal = (invoice.payments || []).reduce((sum, payment) => sum + money(payment.amount), 0);
+  const subtotalAmount = money(invoice.subtotal) || lineSubtotal;
+  const taxAmount = money(invoice.totalTax) || money(invoice.taxAmount) || lineTax;
+  const totalAmount = money(invoice.grandTotal) || lineTotal || subtotalAmount + taxAmount;
+  const paidAmount = money(invoice.amountPaid) || paymentTotal || (invoice.status === 'fully_paid' || invoice.status === 'paid' ? totalAmount : 0);
+  const outstandingAmount = Math.max(0, money(invoice.balance ?? invoice.amountOutstanding) || totalAmount - paidAmount);
   const canRecordPayment =
     outstandingAmount > 0 &&
     ['confirmed', 'partially_paid', 'partial'].includes(invoice.status);
@@ -584,7 +601,7 @@ export default function InvoiceDetailPage() {
                 {/* Total */}
                 <div className="rounded-lg bg-slate-50 p-4 text-right dark:bg-slate-800/60 lg:min-w-[200px]">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Grand Total</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.grandTotal)}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Currency: {invoice.currencyCode}</p>
                 </div>
               </div>
@@ -679,7 +696,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Subtotal</p>
-                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.subtotal)}</p>
+                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(subtotalAmount)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -691,11 +708,7 @@ export default function InvoiceDetailPage() {
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Tax</p>
                   <p className="text-base font-bold text-slate-900 dark:text-white">
-                    {formatCurrency((() => {
-                      const tax = invoice.totalTax as any;
-                      if (tax && typeof tax === 'object') return parseFloat(tax.$numberDecimal || tax.toString?.() || 0);
-                      return parseFloat(String(tax ?? invoice.taxAmount ?? 0));
-                    })())}
+                    {formatCurrency(taxAmount)}
                   </p>
                 </div>
               </CardContent>
@@ -707,7 +720,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.grandTotal)}</p>
+                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -814,19 +827,19 @@ export default function InvoiceDetailPage() {
                     <div className="ml-auto max-w-sm space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
-                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(invoice.subtotal)}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(subtotalAmount)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">Tax</span>
-                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency((() => { const tax = invoice.totalTax as any; if (tax && typeof tax === 'object') return parseFloat(tax.$numberDecimal || tax.toString?.() || 0); return parseFloat(String(tax ?? invoice.taxAmount ?? 0)); })())}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(taxAmount)}</span>
                       </div>
                       <div className="flex justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
                         <span className="font-semibold text-slate-900 dark:text-white">Total</span>
-                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.grandTotal)}</span>
+                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">Amount Paid</span>
-                        <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(invoice.amountPaid)}</span>
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(paidAmount)}</span>
                       </div>
                       <div className="flex justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
                         <span className="font-semibold text-slate-900 dark:text-white">Outstanding</span>
