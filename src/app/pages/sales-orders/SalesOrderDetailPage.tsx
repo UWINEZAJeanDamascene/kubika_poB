@@ -285,6 +285,17 @@ export default function SalesOrderDetailPage() {
   const fulfillmentPercent = order.lines.length > 0
     ? Math.round((order.lines.reduce((s, l) => s + toNumber(l.qtyReserved), 0) / order.lines.reduce((s, l) => s + toNumber(l.qty), 0)) * 100)
     : 0;
+  const derivedSubtotal = order.lines.reduce((sum, line) => {
+    const gross = toNumber(line.qty) * toNumber(line.unitPrice);
+    return sum + gross * (1 - toNumber(line.discountPct) / 100);
+  }, 0);
+  const derivedTax = order.lines.reduce((sum, line) => {
+    const net = toNumber(line.qty) * toNumber(line.unitPrice) * (1 - toNumber(line.discountPct) / 100);
+    return sum + net * (toNumber(line.taxRate) / 100);
+  }, 0);
+  const subtotalAmount = toNumber(order.subtotal) || derivedSubtotal;
+  const taxAmount = toNumber(order.taxTotal) || toNumber((order as any).taxAmount) || derivedTax;
+  const grandTotalAmount = toNumber(order.grandTotal) || toNumber((order as any).totalAmount) || subtotalAmount + taxAmount;
 
   return (
     <Layout>
@@ -378,15 +389,15 @@ export default function SalesOrderDetailPage() {
               <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Subtotal</p>
-                  <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(order.subtotal ?? (order as any).subtotal, order.currencyCode)}</p>
+                  <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(subtotalAmount, order.currencyCode)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Tax</p>
-                  <p className="mt-1 text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(order.taxTotal ?? (order as any).taxAmount, order.currencyCode)}</p>
+                  <p className="mt-1 text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(taxAmount, order.currencyCode)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Grand Total</p>
-                  <p className="mt-1 text-lg font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(order.grandTotal ?? (order as any).totalAmount, order.currencyCode)}</p>
+                  <p className="mt-1 text-lg font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(grandTotalAmount, order.currencyCode)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Lines</p>
@@ -444,7 +455,7 @@ export default function SalesOrderDetailPage() {
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Grand Total</p>
                     <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                      {formatCurrency(order.grandTotal ?? (order as any).totalAmount, order.currencyCode)}
+                      {formatCurrency(grandTotalAmount, order.currencyCode)}
                     </p>
                   </div>
                   <div className="rounded-lg bg-indigo-50 p-2.5 text-indigo-700 ring-1 ring-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-900/60">
@@ -655,15 +666,15 @@ export default function SalesOrderDetailPage() {
                   <div className="border-t border-slate-200 pt-3 dark:border-slate-800">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
-                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(order.subtotal ?? (order as any).subtotal, order.currencyCode)}</span>
+                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(subtotalAmount, order.currencyCode)}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Tax</span>
-                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(order.taxTotal ?? (order as any).taxAmount, order.currencyCode)}</span>
+                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(taxAmount, order.currencyCode)}</span>
                     </div>
                     <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
                       <span className="text-base font-bold text-slate-950 dark:text-white">Grand Total</span>
-                      <span className="text-base font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(order.grandTotal ?? (order as any).totalAmount, order.currencyCode)}</span>
+                      <span className="text-base font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(grandTotalAmount, order.currencyCode)}</span>
                     </div>
                   </div>
                 </CardContent>
