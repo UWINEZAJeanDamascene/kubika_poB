@@ -42,6 +42,79 @@ function displayValue(value: unknown) {
   try { return JSON.stringify(value, null, 2); } catch { return String(value); }
 }
 
+const INTERNAL_VALUE_FIELD = /^(id|.*_id|.*id|source.*|evidence.*|permissions?|metadata|company.*|tenant.*|created.*|updated.*|request.*|generated.*)$/i;
+
+function readableLabel(value: string) {
+  return value.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\w/, (letter) => letter.toUpperCase());
+}
+
+function readableValue(value: unknown, depth = 0): string {
+  if (value == null) return 'Not available';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return Number.isFinite(value) ? new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 }).format(value) : 'Not available';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value)) {
+    if (!value.length) return 'None recorded';
+    return value.slice(0, 8).map((item) => readableValue(item, depth + 1)).join('; ') + (value.length > 8 ? `; ${value.length - 8} more items` : '');
+  }
+  if (typeof value === 'object') {
+    if (depth >= 2) return 'Additional details available';
+    const fields = Object.entries(value as Record<string, unknown>)
+      .filter(([key]) => !INTERNAL_VALUE_FIELD.test(key))
+      .slice(0, 8)
+      .map(([key, field]) => `${readableLabel(key)}: ${readableValue(field, depth + 1)}`);
+    return fields.length ? fields.join(' · ') : 'Details recorded';
+  }
+  return String(value);
+}
+
+function humanize(value: string) {
+  return readableLabel(value);
+}
+
+function formatRwf(value: unknown) {
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return 'Not available';
+  return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'RWF', maximumFractionDigits: 0 }).format(amount);
+}
+
+function formatForecastPeriod(value: unknown) {
+  const period = String(value || '');
+  const match = /^(\d{4})-(\d{2})$/.exec(period);
+  if (!match) return period || 'Period unavailable';
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 1)).toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
+function formatForecastDate(value: unknown) {
+  if (!value) return 'Not estimated';
+  const date = new Date(String(value));
+  return Number.isFinite(date.getTime()) ? date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : 'Not estimated';
+}
+
+function ForecastPredictions({ forecastType, forecast }: { forecastType: string; forecast: Record<string, unknown> }) {
+  const predictions = Array.isArray(forecast.predictions) ? forecast.predictions as Array<Record<string, unknown>> : [];
+  const inventory = forecastType === 'inventory_stockout';
+  if (!predictions.length) {
+    return <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">There is not enough historical data to show a reliable projection yet. Record more transactions and generate the forecast again.</div>;
+  }
+  if (inventory) {
+    return <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-950"><tr><th className="p-3">Product</th><th className="p-3">Available stock</th><th className="p-3">Stock outlook</th><th className="p-3">Estimated stockout</th></tr></thead><tbody>{predictions.map((row, index) => <tr key={`${String(row.sku || row.productName || 'product')}-${index}`} className="border-t border-slate-200 dark:border-slate-700"><td className="p-3 font-medium">{String(row.productName || 'Unnamed product')}{row.sku ? <span className="ml-2 text-xs text-slate-500">SKU {String(row.sku)}</span> : null}</td><td className="p-3">{readableValue(row.currentStock)}</td><td className="p-3">{humanize(String(row.status || 'unknown'))}</td><td className="p-3">{formatForecastDate(row.estimatedStockoutDate)}</td></tr>)}</tbody></table></div>;
+  }
+  const intervalFor = (value: unknown) => {
+    if (!value || typeof value !== 'object') return 'Range unavailable';
+    const interval = value as Record<string, unknown>;
+    if (!Number.isFinite(Number(interval.lower)) || !Number.isFinite(Number(interval.upper))) return 'Range unavailable';
+    return `${formatRwf(interval.lower)} to ${formatRwf(interval.upper)}`;
+  };
+  const valueLabel = forecastType === 'cash_balance' ? 'Projected cash balance'
+    : forecastType === 'receivable_collection' ? 'Remaining receivables'
+      : forecastType === 'payable_pressure' ? 'Remaining payables' : 'Projected revenue';
+  const movementLabel = forecastType === 'cash_balance' ? 'Expected net cash movement'
+    : forecastType === 'receivable_collection' ? 'Expected collections'
+      : forecastType === 'payable_pressure' ? 'Expected supplier payments' : '';
+  return <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700"><table className="w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-950"><tr><th className="p-3">Period</th><th className="p-3">{valueLabel}</th>{movementLabel && <th className="p-3">{movementLabel}</th>}<th className="p-3">Approximate range</th></tr></thead><tbody>{predictions.map((row, index) => <tr key={`${String(row.period || 'period')}-${index}`} className="border-t border-slate-200 dark:border-slate-700"><td className="p-3 font-medium">{formatForecastPeriod(row.period)}</td><td className="p-3">{formatRwf(row.value)}</td>{movementLabel && <td className="p-3">{formatRwf(row.netCashChange ?? row.projectedPayments)}</td>}<td className="p-3">{intervalFor(row.confidenceInterval)}</td></tr>)}</tbody></table></div>;
+}
+
 function errorText(error: unknown) {
   const value = error as { message?: string; response?: { data?: { message?: string } } };
   return value?.response?.data?.message || value?.message || 'The request failed. Please try again.';
@@ -71,7 +144,7 @@ function EvidenceList({ facts }: { facts: AIFact[] }) {
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{fact.label}</p>
             <span className="text-[11px] text-slate-500">{fact.domain || fact.sourceMethod || 'Source fact'}{fact.unit ? ` · ${fact.unit}` : ''}</span>
           </div>
-          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-600 dark:text-slate-300">{displayValue(fact.value)}</pre>
+          <p className="mt-2 whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-600 dark:text-slate-300">{readableValue(fact.value)}</p>
           {(fact.sourceService || fact.sourceMethod || fact.sourceIds?.length) && (
             <p className="mt-2 text-[10px] text-slate-400">{[fact.sourceService, fact.sourceMethod, fact.sourceIds?.length ? `Source IDs: ${fact.sourceIds.join(', ')}` : ''].filter(Boolean).join(' · ')}</p>
           )}
