@@ -111,7 +111,13 @@ export default function SalesOrderCreatePage() {
     try {
       const response = await clientsApi.getAll({ limit: 1000, isActive: true });
       if (response.success) {
-        setClients(response.data as Client[]);
+        const responseData = response.data as any;
+        const clientData = Array.isArray(responseData)
+          ? responseData
+          : Array.isArray(responseData?.data)
+            ? responseData.data
+            : [];
+        setClients(clientData as Client[]);
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
@@ -122,7 +128,16 @@ export default function SalesOrderCreatePage() {
     try {
       const response = await productsApi.getAll({ limit: 1000 });
       if (response.success) {
-        setProducts((response.data as Product[]) || []);
+        const responseData = response.data as any;
+        const productData = Array.isArray(responseData)
+          ? responseData
+          : Array.isArray(responseData?.data)
+            ? responseData.data
+            : [];
+        setProducts(productData.map((product: Product) => ({
+          ...product,
+          sellingPrice: toNumber(product.sellingPrice),
+        })));
       }
     } catch (error) {
       console.error('Error fetching products:', error);
