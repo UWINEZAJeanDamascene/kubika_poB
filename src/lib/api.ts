@@ -1307,6 +1307,7 @@ export interface FinanceDashboardBankAccount {
 export interface FinanceDashboardUpcomingPayment {
   type: string;
   reference: string;
+    forPicker?: string;
   party_name: string;
   amount: number;
   due_date: string;

@@ -110,7 +110,7 @@ export default function SalesOrderCreatePage() {
 
   const fetchClients = async () => {
     try {
-      const response = await clientsApi.getAll({ limit: 1000, isActive: true, forPicker: '1' });
+      const response = await clientsApi.getAll({ limit: 500, isActive: true, forPicker: '1' });
       if (response.success) {
         let responseData: any = response.data;
         while (responseData && !Array.isArray(responseData) && responseData.data) {
@@ -132,7 +132,7 @@ export default function SalesOrderCreatePage() {
 
   const fetchProducts = async () => {
     try {
-      const response = await productsApi.getAll({ limit: 1000 });
+      const response = await productsApi.getAll({ limit: 500 });
       if (response.success) {
         const responseData = response.data as any;
         const productData = Array.isArray(responseData)
