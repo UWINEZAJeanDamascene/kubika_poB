@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { invoicesApi, bankAccountsApi, creditNotesApi, deliveryNotesApi } from '@/lib/api';
+import { invoicesApi, bankAccountsApi, creditNotesApi, deliveryNotesApi, journalEntriesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
@@ -176,6 +176,16 @@ interface DeliveryNote {
   status: string;
 }
 
+interface InvoiceJournalEntry {
+  _id: string;
+  entryNumber?: string;
+  description?: string;
+  sourceType?: string;
+  sourceId?: string;
+  sourceReference?: string;
+  status?: string;
+}
+
 const STATUS_FLOW = [
   { status: 'draft', label: 'Draft' },
   { status: 'confirmed', label: 'Confirmed' },
@@ -194,6 +204,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
+  const [journalEntries, setJournalEntries] = useState<InvoiceJournalEntry[]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -253,11 +264,31 @@ export default function InvoiceDetailPage() {
     }
   }, [id]);
 
+  const fetchJournalEntries = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await journalEntriesApi.getAll({ sourceType: 'invoice', search: invoice?.referenceNo, limit: 100 });
+      if (response.success) {
+        const entries = (response.data || []) as InvoiceJournalEntry[];
+        const reference = invoice?.referenceNo;
+        setJournalEntries(entries.filter((entry) => {
+          return entry.sourceId === id || (reference && (
+            entry.sourceReference === reference || entry.description?.includes(reference)
+          ));
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch invoice journal entries:', error);
+      setJournalEntries([]);
+    }
+  }, [id, invoice?.referenceNo]);
+
   useEffect(() => {
     fetchInvoice();
     fetchBankAccounts();
     fetchRelatedDocuments();
-  }, [fetchInvoice, fetchBankAccounts, fetchRelatedDocuments]);
+    fetchJournalEntries();
+  }, [fetchInvoice, fetchBankAccounts, fetchRelatedDocuments, fetchJournalEntries]);
 
   const handleVerifyCustomerTin = async () => {
     if (!id) return;
@@ -471,8 +502,38 @@ export default function InvoiceDetailPage() {
   }
 
   const currentStatusStep = getStatusStep(invoice.status);
-  const outstandingAmount = money(invoice.balance ?? invoice.amountOutstanding);
-  const paidAmount = money(invoice.amountPaid);
+  const lineSubtotal = (invoice.lines || []).reduce((sum, line) => {
+    const quantity = money(line.qty ?? line.quantity);
+    const subtotal = money(line.lineSubtotal);
+    return sum + (subtotal || quantity * money(line.unitPrice));
+  }, 0);
+  const lineTax = (invoice.lines || []).reduce((sum, line) => {
+    return sum + money(line.lineTax ?? line.taxAmount);
+  }, 0);
+  const lineTotal = (invoice.lines || []).reduce((sum, line) => {
+    const total = money(line.lineTotal);
+    const subtotal = money(line.lineSubtotal) || money(line.qty ?? line.quantity) * money(line.unitPrice);
+    return sum + (total || subtotal + money(line.lineTax ?? line.taxAmount));
+  }, 0);
+  const paymentTotal = (invoice.payments || []).reduce((sum, payment) => sum + money(payment.amount), 0);
+  const subtotalAmount = money(invoice.subtotal) || lineSubtotal;
+  const taxAmount = money(invoice.totalTax) || money(invoice.taxAmount) || lineTax;
+  const totalAmount = money(invoice.grandTotal) || lineTotal || subtotalAmount + taxAmount;
+  const paidAmount = money(invoice.amountPaid) || paymentTotal || (invoice.status === 'fully_paid' || invoice.status === 'paid' ? totalAmount : 0);
+  const outstandingAmount = Math.max(0, money(invoice.balance ?? invoice.amountOutstanding) || totalAmount - paidAmount);
+  const linkedJournalEntries: InvoiceJournalEntry[] = [
+    ...journalEntries,
+    ...(invoice.revenueJournalEntry ? [{
+      _id: typeof invoice.revenueJournalEntry === 'string' ? invoice.revenueJournalEntry : invoice.revenueJournalEntry._id,
+      entryNumber: typeof invoice.revenueJournalEntry === 'string' ? invoice.revenueJournalEntry : invoice.revenueJournalEntry.entryNumber,
+      description: 'Revenue Recognition',
+    }] : []),
+    ...(invoice.cogsJournalEntry ? [{
+      _id: typeof invoice.cogsJournalEntry === 'string' ? invoice.cogsJournalEntry : invoice.cogsJournalEntry._id,
+      entryNumber: typeof invoice.cogsJournalEntry === 'string' ? invoice.cogsJournalEntry : invoice.cogsJournalEntry.entryNumber,
+      description: 'COGS Recognition',
+    }] : []),
+  ].filter((entry, index, entries) => entries.findIndex((candidate) => candidate._id === entry._id) === index);
   const canRecordPayment =
     outstandingAmount > 0 &&
     ['confirmed', 'partially_paid', 'partial'].includes(invoice.status);
@@ -584,7 +645,7 @@ export default function InvoiceDetailPage() {
                 {/* Total */}
                 <div className="rounded-lg bg-slate-50 p-4 text-right dark:bg-slate-800/60 lg:min-w-[200px]">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Grand Total</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.grandTotal)}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</p>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Currency: {invoice.currencyCode}</p>
                 </div>
               </div>
@@ -679,7 +740,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Subtotal</p>
-                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.subtotal)}</p>
+                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(subtotalAmount)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -691,11 +752,7 @@ export default function InvoiceDetailPage() {
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Tax</p>
                   <p className="text-base font-bold text-slate-900 dark:text-white">
-                    {formatCurrency((() => {
-                      const tax = invoice.totalTax as any;
-                      if (tax && typeof tax === 'object') return parseFloat(tax.$numberDecimal || tax.toString?.() || 0);
-                      return parseFloat(String(tax ?? invoice.taxAmount ?? 0));
-                    })())}
+                    {formatCurrency(taxAmount)}
                   </p>
                 </div>
               </CardContent>
@@ -707,7 +764,7 @@ export default function InvoiceDetailPage() {
                 </div>
                 <div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.grandTotal)}</p>
+                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -814,19 +871,19 @@ export default function InvoiceDetailPage() {
                     <div className="ml-auto max-w-sm space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
-                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(invoice.subtotal)}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(subtotalAmount)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">Tax</span>
-                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency((() => { const tax = invoice.totalTax as any; if (tax && typeof tax === 'object') return parseFloat(tax.$numberDecimal || tax.toString?.() || 0); return parseFloat(String(tax ?? invoice.taxAmount ?? 0)); })())}</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(taxAmount)}</span>
                       </div>
                       <div className="flex justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
                         <span className="font-semibold text-slate-900 dark:text-white">Total</span>
-                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(invoice.grandTotal)}</span>
+                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">Amount Paid</span>
-                        <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(invoice.amountPaid)}</span>
+                        <span className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(paidAmount)}</span>
                       </div>
                       <div className="flex justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
                         <span className="font-semibold text-slate-900 dark:text-white">Outstanding</span>
@@ -1087,36 +1144,25 @@ export default function InvoiceDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4">
-                  {invoice.revenueJournalEntry || invoice.cogsJournalEntry ? (
+                  {linkedJournalEntries.length > 0 ? (
                     <div className="space-y-3">
-                      {invoice.revenueJournalEntry && (
-                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+                      {linkedJournalEntries.map((entry) => {
+                        const isCogs = entry.description?.toLowerCase().includes('cogs');
+                        return (
+                        <div key={entry._id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
                           <div className="flex items-center gap-3">
-                            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              <Receipt className="h-4 w-4" />
+                            <div className={`rounded-lg p-2 ${isCogs ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
+                              {isCogs ? <BookOpen className="h-4 w-4" /> : <Receipt className="h-4 w-4" />}
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">Revenue Entry</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {journalEntryLabel(invoice.revenueJournalEntry)}</p>
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">{isCogs ? 'COGS Entry' : 'Revenue Entry'}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {entry.entryNumber || entry._id}</p>
                             </div>
                           </div>
-                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">Posted</span>
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{entry.status || 'Posted'}</span>
                         </div>
-                      )}
-                      {invoice.cogsJournalEntry && (
-                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                          <div className="flex items-center gap-3">
-                            <div className="rounded-lg bg-blue-50 p-2 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
-                              <BookOpen className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">COGS Entry</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {journalEntryLabel(invoice.cogsJournalEntry)}</p>
-                            </div>
-                          </div>
-                          <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">Posted</span>
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12">

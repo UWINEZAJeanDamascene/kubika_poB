@@ -36,6 +36,7 @@ import {
   AlertDialogTitle,
 } from '@/app/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 // Helper to convert MongoDB Decimal128 to number
 const toNumber = (value: any): number => {
@@ -110,6 +111,7 @@ const WORKFLOW_STEPS = ['draft', 'confirmed', 'picking', 'packed', 'delivered', 
 export default function SalesOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { baseCurrency, displayCurrency, formatCurrency } = useCurrency();
 
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<SalesOrder | null>(null);
@@ -186,14 +188,6 @@ export default function SalesOrderDetailPage() {
 
   const handleCreatePickPack = () => {
     navigate(`/pick-packs/create?salesOrderId=${id}`);
-  };
-
-  const formatCurrency = (amount: any, currency: string) => {
-    const value = toNumber(amount);
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-    }).format(value);
   };
 
   const formatDate = (date: string) => {
@@ -285,6 +279,17 @@ export default function SalesOrderDetailPage() {
   const fulfillmentPercent = order.lines.length > 0
     ? Math.round((order.lines.reduce((s, l) => s + toNumber(l.qtyReserved), 0) / order.lines.reduce((s, l) => s + toNumber(l.qty), 0)) * 100)
     : 0;
+  const derivedSubtotal = order.lines.reduce((sum, line) => {
+    const gross = toNumber(line.qty) * toNumber(line.unitPrice);
+    return sum + gross * (1 - toNumber(line.discountPct) / 100);
+  }, 0);
+  const derivedTax = order.lines.reduce((sum, line) => {
+    const net = toNumber(line.qty) * toNumber(line.unitPrice) * (1 - toNumber(line.discountPct) / 100);
+    return sum + net * (toNumber(line.taxRate) / 100);
+  }, 0);
+  const subtotalAmount = toNumber(order.subtotal) || derivedSubtotal;
+  const taxAmount = toNumber(order.taxTotal) || toNumber((order as any).taxAmount) || derivedTax;
+  const grandTotalAmount = toNumber(order.grandTotal) || toNumber((order as any).totalAmount) || subtotalAmount + taxAmount;
 
   return (
     <Layout>
@@ -378,15 +383,15 @@ export default function SalesOrderDetailPage() {
               <div className="grid grid-cols-2 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Subtotal</p>
-                  <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(order.subtotal ?? (order as any).subtotal, order.currencyCode)}</p>
+                  <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(subtotalAmount, baseCurrency)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Tax</p>
-                  <p className="mt-1 text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(order.taxTotal ?? (order as any).taxAmount, order.currencyCode)}</p>
+                  <p className="mt-1 text-lg font-bold text-blue-600 dark:text-blue-400">{formatCurrency(taxAmount, baseCurrency)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Grand Total</p>
-                  <p className="mt-1 text-lg font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(order.grandTotal ?? (order as any).totalAmount, order.currencyCode)}</p>
+                  <p className="mt-1 text-lg font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(grandTotalAmount, baseCurrency)}</p>
                 </div>
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Lines</p>
@@ -444,14 +449,14 @@ export default function SalesOrderDetailPage() {
                   <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Grand Total</p>
                     <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                      {formatCurrency(order.grandTotal ?? (order as any).totalAmount, order.currencyCode)}
+                      {formatCurrency(grandTotalAmount, baseCurrency)}
                     </p>
                   </div>
                   <div className="rounded-lg bg-indigo-50 p-2.5 text-indigo-700 ring-1 ring-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-900/60">
                     <DollarSign className="h-5 w-5" />
                   </div>
                 </div>
-                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Order value in {order.currencyCode}</p>
+                <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">Displayed in {displayCurrency} · document currency {order.currencyCode}</p>
               </CardContent>
             </Card>
             <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -544,10 +549,10 @@ export default function SalesOrderDetailPage() {
                                 <td className="py-3 text-right text-sm text-slate-700 dark:text-slate-300">{toNumber(line.qty)}</td>
                                 <td className="py-3 text-right text-sm text-slate-700 dark:text-slate-300">{toNumber(line.qtyReserved)}</td>
                                 <td className="py-3 text-right text-sm text-slate-700 dark:text-slate-300">
-                                  {formatCurrency(toNumber(line.unitPrice), order.currencyCode)}
+                                  {formatCurrency(toNumber(line.unitPrice), baseCurrency)}
                                 </td>
                                 <td className="py-3 text-right text-sm font-semibold text-slate-950 dark:text-white">
-                                  {formatCurrency(toNumber(line.lineTotal), order.currencyCode)}
+                                  {formatCurrency(toNumber(line.lineTotal), baseCurrency)}
                                 </td>
                               </tr>
                             ))}
@@ -655,15 +660,15 @@ export default function SalesOrderDetailPage() {
                   <div className="border-t border-slate-200 pt-3 dark:border-slate-800">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
-                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(order.subtotal ?? (order as any).subtotal, order.currencyCode)}</span>
+                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(subtotalAmount, baseCurrency)}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Tax</span>
-                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(order.taxTotal ?? (order as any).taxAmount, order.currencyCode)}</span>
+                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(taxAmount, baseCurrency)}</span>
                     </div>
                     <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
                       <span className="text-base font-bold text-slate-950 dark:text-white">Grand Total</span>
-                      <span className="text-base font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(order.grandTotal ?? (order as any).totalAmount, order.currencyCode)}</span>
+                      <span className="text-base font-bold text-indigo-600 dark:text-indigo-400">{formatCurrency(grandTotalAmount, baseCurrency)}</span>
                     </div>
                   </div>
                 </CardContent>

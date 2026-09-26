@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v5-local-api-auth-bypass';
+const CACHE_VERSION = 'v6-socket-telemetry-bypass';
 const STATIC_CACHE = `stock-mgt-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `stock-mgt-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `stock-mgt-api-${CACHE_VERSION}`;
@@ -81,11 +81,16 @@ async function removeFromQueue(id) {
   });
 }
 
-async function removeQueuedAuthRequests() {
+async function removeQueuedNonReplayableRequests() {
   const items = await getQueuedItems();
   await Promise.all(
     items
-      .filter((item) => new URL(item.url).pathname.startsWith('/api/auth/'))
+      .filter((item) => {
+        const pathname = new URL(item.url).pathname;
+        return pathname.startsWith('/api/auth/')
+          || pathname === '/api/performance/client'
+          || pathname.startsWith('/socket.io/');
+      })
       .map((item) => removeFromQueue(item.id))
   );
 }
@@ -137,7 +142,7 @@ self.addEventListener('activate', (event) => {
         );
       })
       .then(() => self.clients.claim())
-      .then(() => removeQueuedAuthRequests())
+      .then(() => removeQueuedNonReplayableRequests())
   );
 });
 
@@ -148,9 +153,21 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   const isReportExport = /^\/api\/reports\/.+\/(pdf|excel)$/.test(url.pathname);
 
+  // Socket.IO polling uses POST for transport packets, not replayable app writes.
+  if (url.pathname.startsWith('/socket.io/')) return;
+
   // Authentication must always be handled directly by the page. Do not cache
   // or queue login, registration, or password requests for background sync.
   if (url.pathname.startsWith('/api/auth/')) return;
+
+  // Anonymous telemetry is best-effort and cannot use credentialed wildcard CORS.
+  if (url.pathname === '/api/performance/client') {
+    event.respondWith(
+      fetch(request.clone(), { credentials: 'omit', mode: 'cors' })
+        .catch(() => new Response(null, { status: 204 }))
+    );
+    return;
+  }
 
   if (request.method === 'POST' || request.method === 'PUT' || request.method === 'DELETE' || request.method === 'PATCH') {
     const isAuth = /\/api\/auth\//.test(url.pathname);
@@ -268,18 +285,24 @@ self.addEventListener('fetch', (event) => {
   // JS/CSS bundles: Stale-while-revalidate
   if (/\.(?:js|css)$/.test(url.pathname)) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        const fetchPromise = fetch(request).then(async (response) => {
+      (async () => {
+        const cachedResponse = await caches.match(request);
+        try {
+          const response = await fetch(request);
           if (response.ok) {
             const cache = await caches.open(DYNAMIC_CACHE);
-            cache.put(request, response.clone());
-            trimCache(DYNAMIC_CACHE, DYNAMIC_CACHE_LIMIT);
+            await cache.put(request, response.clone());
+            await trimCache(DYNAMIC_CACHE, DYNAMIC_CACHE_LIMIT);
+            return response;
           }
-          return response;
-        }).catch(() => cachedResponse);
-
-        return cachedResponse || fetchPromise;
-      })
+          return cachedResponse || response;
+        } catch {
+          return cachedResponse || new Response('/* Offline: asset unavailable */', {
+            status: 503,
+            headers: { 'Content-Type': 'application/javascript' },
+          });
+        }
+      })()
     );
     return;
   }
@@ -295,7 +318,10 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(async () => {
           const cached = await caches.match(request);
-          return cached || caches.match(OFFLINE_URL);
+          return (await cached) || (await caches.match(OFFLINE_URL)) || new Response('Offline', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain' },
+          });
         })
     );
     return;
@@ -312,7 +338,10 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(async () => (await caches.match(request)) || new Response(
+        JSON.stringify({ success: false, error: 'offline', message: 'You are offline' }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } },
+      ))
   );
 });
 
