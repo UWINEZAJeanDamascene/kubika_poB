@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { invoicesApi, bankAccountsApi, creditNotesApi, deliveryNotesApi } from '@/lib/api';
+import { invoicesApi, bankAccountsApi, creditNotesApi, deliveryNotesApi, journalEntriesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
@@ -176,6 +176,16 @@ interface DeliveryNote {
   status: string;
 }
 
+interface InvoiceJournalEntry {
+  _id: string;
+  entryNumber?: string;
+  description?: string;
+  sourceType?: string;
+  sourceId?: string;
+  sourceReference?: string;
+  status?: string;
+}
+
 const STATUS_FLOW = [
   { status: 'draft', label: 'Draft' },
   { status: 'confirmed', label: 'Confirmed' },
@@ -194,6 +204,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
+  const [journalEntries, setJournalEntries] = useState<InvoiceJournalEntry[]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -253,11 +264,31 @@ export default function InvoiceDetailPage() {
     }
   }, [id]);
 
+  const fetchJournalEntries = useCallback(async () => {
+    if (!id) return;
+    try {
+      const response = await journalEntriesApi.getAll({ sourceType: 'invoice', search: invoice?.referenceNo, limit: 100 });
+      if (response.success) {
+        const entries = (response.data || []) as InvoiceJournalEntry[];
+        const reference = invoice?.referenceNo;
+        setJournalEntries(entries.filter((entry) => {
+          return entry.sourceId === id || (reference && (
+            entry.sourceReference === reference || entry.description?.includes(reference)
+          ));
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch invoice journal entries:', error);
+      setJournalEntries([]);
+    }
+  }, [id, invoice?.referenceNo]);
+
   useEffect(() => {
     fetchInvoice();
     fetchBankAccounts();
     fetchRelatedDocuments();
-  }, [fetchInvoice, fetchBankAccounts, fetchRelatedDocuments]);
+    fetchJournalEntries();
+  }, [fetchInvoice, fetchBankAccounts, fetchRelatedDocuments, fetchJournalEntries]);
 
   const handleVerifyCustomerTin = async () => {
     if (!id) return;
@@ -490,6 +521,19 @@ export default function InvoiceDetailPage() {
   const totalAmount = money(invoice.grandTotal) || lineTotal || subtotalAmount + taxAmount;
   const paidAmount = money(invoice.amountPaid) || paymentTotal || (invoice.status === 'fully_paid' || invoice.status === 'paid' ? totalAmount : 0);
   const outstandingAmount = Math.max(0, money(invoice.balance ?? invoice.amountOutstanding) || totalAmount - paidAmount);
+  const linkedJournalEntries: InvoiceJournalEntry[] = [
+    ...journalEntries,
+    ...(invoice.revenueJournalEntry ? [{
+      _id: typeof invoice.revenueJournalEntry === 'string' ? invoice.revenueJournalEntry : invoice.revenueJournalEntry._id,
+      entryNumber: typeof invoice.revenueJournalEntry === 'string' ? invoice.revenueJournalEntry : invoice.revenueJournalEntry.entryNumber,
+      description: 'Revenue Recognition',
+    }] : []),
+    ...(invoice.cogsJournalEntry ? [{
+      _id: typeof invoice.cogsJournalEntry === 'string' ? invoice.cogsJournalEntry : invoice.cogsJournalEntry._id,
+      entryNumber: typeof invoice.cogsJournalEntry === 'string' ? invoice.cogsJournalEntry : invoice.cogsJournalEntry.entryNumber,
+      description: 'COGS Recognition',
+    }] : []),
+  ].filter((entry, index, entries) => entries.findIndex((candidate) => candidate._id === entry._id) === index);
   const canRecordPayment =
     outstandingAmount > 0 &&
     ['confirmed', 'partially_paid', 'partial'].includes(invoice.status);
@@ -1100,36 +1144,25 @@ export default function InvoiceDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4">
-                  {invoice.revenueJournalEntry || invoice.cogsJournalEntry ? (
+                  {linkedJournalEntries.length > 0 ? (
                     <div className="space-y-3">
-                      {invoice.revenueJournalEntry && (
-                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+                      {linkedJournalEntries.map((entry) => {
+                        const isCogs = entry.description?.toLowerCase().includes('cogs');
+                        return (
+                        <div key={entry._id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
                           <div className="flex items-center gap-3">
-                            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
-                              <Receipt className="h-4 w-4" />
+                            <div className={`rounded-lg p-2 ${isCogs ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
+                              {isCogs ? <BookOpen className="h-4 w-4" /> : <Receipt className="h-4 w-4" />}
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">Revenue Entry</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {journalEntryLabel(invoice.revenueJournalEntry)}</p>
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">{isCogs ? 'COGS Entry' : 'Revenue Entry'}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {entry.entryNumber || entry._id}</p>
                             </div>
                           </div>
-                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">Posted</span>
+                          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{entry.status || 'Posted'}</span>
                         </div>
-                      )}
-                      {invoice.cogsJournalEntry && (
-                        <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                          <div className="flex items-center gap-3">
-                            <div className="rounded-lg bg-blue-50 p-2 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
-                              <BookOpen className="h-4 w-4" />
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">COGS Entry</p>
-                              <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {journalEntryLabel(invoice.cogsJournalEntry)}</p>
-                            </div>
-                          </div>
-                          <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300">Posted</span>
-                        </div>
-                      )}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12">
