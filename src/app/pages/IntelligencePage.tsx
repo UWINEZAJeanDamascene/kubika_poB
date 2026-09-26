@@ -211,6 +211,15 @@ export default function IntelligencePage() {
     finally { setActionLoading(''); }
   };
 
+  const generateBriefing = async () => {
+    setActionLoading('briefing'); setError('');
+    try {
+      const result = await aiIntelligenceService.generateBriefing();
+      setBriefing(result.briefing || null);
+    } catch (requestError) { setError(errorText(requestError)); }
+    finally { setActionLoading(''); }
+  };
+
   const updatePreference = async (patch: Partial<AIPreferences>) => {
     if (!preferences) return;
     setActionLoading('preferences'); setError('');
@@ -293,14 +302,22 @@ export default function IntelligencePage() {
           {loading && <div className="flex items-center gap-2 text-sm text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading intelligence data…</div>}
 
           {tab === 'briefing' && <section className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><h2 className="text-lg font-semibold">Daily business briefing</h2><p className="text-sm text-slate-500">A permission-aware summary of current findings, recommended next steps, and source data.</p></div>
+              <Button onClick={() => void generateBriefing()} disabled={Boolean(actionLoading)} className="gap-2">
+                {actionLoading === 'briefing' ? <Loader2 className="h-4 w-4 animate-spin"/> : <RefreshCw className="h-4 w-4"/>}
+                {actionLoading === 'briefing' ? 'Generating briefing…' : briefing ? 'Refresh briefing now' : 'Generate briefing now'}
+              </Button>
+            </div>
             {briefing ? <>
               <Card className="border-cyan-200 bg-gradient-to-br from-cyan-50 to-white dark:border-cyan-900 dark:from-cyan-950/40 dark:to-slate-900"><CardContent className="p-5"><div className="flex items-start gap-3"><Activity className="mt-1 h-5 w-5 text-cyan-700 dark:text-cyan-300"/><div><p className="text-xs font-bold uppercase tracking-wider text-cyan-800 dark:text-cyan-200">Latest briefing · {String(briefing.briefingDate || '')}</p><p className="mt-2 text-base leading-relaxed text-slate-800 dark:text-slate-100">{String(briefing.summary || 'No briefing summary was returned.')}</p></div></div></CardContent></Card>
+              {Array.isArray(briefing.warnings) && briefing.warnings.length > 0 && <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200"><p className="font-semibold">Data coverage notes</p><ul className="mt-2 list-disc space-y-1 pl-5">{(briefing.warnings as string[]).map((warning, index) => <li key={index}>{warning}</li>)}</ul></div>}
               <div className="grid gap-4 lg:grid-cols-2">
                 {Array.isArray(briefing.findings) && (briefing.findings as AIFinding[]).map((finding) => <ItemCard key={finding.id} title={finding.title} summary={finding.summary} badge={<Badge variant={statusTone(finding.severity)}>{finding.severity}</Badge>}><EvidenceDisclosure facts={(briefing.facts as AIFact[] || []).filter((fact) => (finding.evidenceFactIds || []).includes(fact.id))} finding={finding}/></ItemCard>)}
                 {Array.isArray(briefing.recommendations) && (briefing.recommendations as AIRecommendation[]).map((recommendation) => <ItemCard key={recommendation.id} title={recommendation.title} summary={recommendation.rationale || recommendation.description}><EvidenceDisclosure facts={(briefing.facts as AIFact[] || []).filter((fact) => (recommendation.evidenceFactIds || []).includes(fact.id))}/></ItemCard>)}
               </div>
               <ItemCard title="Briefing evidence" summary="The source facts used to prepare this briefing."><EvidenceList facts={Array.isArray(briefing.facts) ? briefing.facts as AIFact[] : []}/></ItemCard>
-            </> : <EmptyState title="No briefing has been generated yet" detail="The scheduled monitoring worker creates the latest briefing. You can still run a finding scan from the Findings tab."/>}
+            </> : <EmptyState title="No briefing has been generated yet" detail="Generate one now to summarize the business data your role can access. The background worker also refreshes briefings daily."/>}
             {preferences && <Card><CardHeader className="p-4 pb-2"><CardTitle className="text-sm">Finding notification preferences</CardTitle></CardHeader><CardContent className="flex flex-wrap items-center gap-4 p-4 pt-2 text-sm">
               <label className="flex items-center gap-2"><input type="checkbox" checked={preferences.enabled} disabled={actionLoading === 'preferences'} onChange={(event) => void updatePreference({ enabled: event.target.checked })}/> Receive high-severity AI finding alerts</label>
               <label className="flex items-center gap-2 text-slate-600 dark:text-slate-300">Daily cap <select className="rounded-md border bg-background px-2 py-1" value={preferences.maxAlertsPerDay} onChange={(event) => void updatePreference({ maxAlertsPerDay: Number(event.target.value) })}>{[0, 1, 3, 5, 10, 20, 50].map((value) => <option key={value} value={value}>{value}</option>)}</select></label>

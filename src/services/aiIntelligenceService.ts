@@ -25,6 +25,7 @@ export const aiIntelligenceService = {
   context: (query: string, domains?: string[]) =>
     apiClient.post<AIEnvelope<{ context: { facts: AIFact[]; warnings?: string[] } }>>(`${AI}/context`, { query, domains }),
   getBriefing: () => apiClient.get<AIEnvelope<{ briefing: Record<string, unknown> | null }>>(`${AI}/monitoring/briefings/latest`),
+  generateBriefing: () => apiClient.post<AIEnvelope<{ briefing: Record<string, unknown> | null; scan: { findingCount: number; warningCount: number } }>>(`${AI}/monitoring/briefings/generate`, {}),
   getPreferences: () => apiClient.get<AIEnvelope<{ preferences: AIPreferences }>>(`${AI}/monitoring/preferences`),
   updatePreferences: (preferences: Partial<AIPreferences>) =>
     apiClient.put<AIEnvelope<{ preferences: AIPreferences }>>(`${AI}/monitoring/preferences`, preferences),
