@@ -110,15 +110,20 @@ export default function SalesOrderCreatePage() {
 
   const fetchClients = async () => {
     try {
-      const response = await clientsApi.getAll({ limit: 1000, isActive: true });
+      const response = await clientsApi.getAll({ limit: 1000, isActive: true, forPicker: '1' });
       if (response.success) {
-        const responseData = response.data as any;
-        const clientData = Array.isArray(responseData)
-          ? responseData
-          : Array.isArray(responseData?.data)
-            ? responseData.data
-            : [];
-        setClients(clientData as Client[]);
+        let responseData: any = response.data;
+        while (responseData && !Array.isArray(responseData) && responseData.data) {
+          responseData = responseData.data;
+        }
+        const clientData = Array.isArray(responseData) ? responseData : [];
+        setClients(clientData
+          .map((client: any) => ({
+            ...client,
+            _id: String(client._id ?? client.id ?? ''),
+            name: String(client.name ?? client.customerName ?? client.companyName ?? '').trim(),
+          }))
+          .filter((client: Client) => client._id && client.name));
       }
     } catch (error) {
       console.error('Error fetching clients:', error);
