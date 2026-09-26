@@ -285,21 +285,24 @@ self.addEventListener('fetch', (event) => {
   // JS/CSS bundles: Stale-while-revalidate
   if (/\.(?:js|css)$/.test(url.pathname)) {
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        const fetchPromise = fetch(request).then(async (response) => {
+      (async () => {
+        const cachedResponse = await caches.match(request);
+        try {
+          const response = await fetch(request);
           if (response.ok) {
             const cache = await caches.open(DYNAMIC_CACHE);
-            cache.put(request, response.clone());
-            trimCache(DYNAMIC_CACHE, DYNAMIC_CACHE_LIMIT);
+            await cache.put(request, response.clone());
+            await trimCache(DYNAMIC_CACHE, DYNAMIC_CACHE_LIMIT);
+            return response;
           }
-          return response;
-        }).catch(() => cachedResponse || new Response('/* Offline: asset unavailable */', {
-          status: 503,
-          headers: { 'Content-Type': 'application/javascript' },
-        }));
-
-        return cachedResponse || fetchPromise;
-      })
+          return cachedResponse || response;
+        } catch {
+          return cachedResponse || new Response('/* Offline: asset unavailable */', {
+            status: 503,
+            headers: { 'Content-Type': 'application/javascript' },
+          });
+        }
+      })()
     );
     return;
   }

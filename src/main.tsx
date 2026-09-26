@@ -26,6 +26,21 @@ if (!rootElement) {
 }
 
 // Global error handlers
+window.addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+  const payload = (event as CustomEvent<unknown>).detail ?? (event as CustomEvent<unknown>).payload;
+  const errorKey = `vite-preload-reload:${window.location.pathname}:${String(payload)}`;
+
+  try {
+    if (sessionStorage.getItem(errorKey)) return;
+    sessionStorage.setItem(errorKey, '1');
+  } catch {
+    return;
+  }
+
+  window.location.reload();
+});
+
 window.addEventListener('error', (event) => {
   console.error('[Global error]', event.error);
 });
