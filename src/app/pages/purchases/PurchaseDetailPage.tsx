@@ -45,6 +45,7 @@ import {
 import { Label } from "@/app/components/ui/label";
 import { useTranslation } from "react-i18next";
 import { formatDocumentCurrency, parseCurrencyValue } from "@/lib/currencyUtils";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface PurchaseItem {
   product: { _id: string; name: string; sku: string; unit?: string };
@@ -103,6 +104,7 @@ interface Purchase {
   supplierInvoiceDate?: string;
   status: 'draft' | 'ordered' | 'received' | 'partial' | 'paid' | 'cancelled';
   currency: string;
+  exchangeRate?: number | string;
   paymentTerms: string;
   purchaseDate: string;
   expectedDeliveryDate?: string;
@@ -127,6 +129,7 @@ interface Purchase {
 
 export default function PurchaseDetailPage() {
   const { t } = useTranslation();
+  const { baseCurrency, rates } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
@@ -420,6 +423,17 @@ export default function PurchaseDetailPage() {
                   <p className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">{t('purchases.detail.paymentTerms', 'Payment Terms')}</p>
                   <p className="text-sm text-slate-900 dark:text-white">{formatPaymentMethod(purchase.paymentTerms || '')}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchases.detail.currency', 'Currency')}: {purchase.currency}</p>
+                  {purchase.currency !== baseCurrency && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                      {(() => {
+                        const storedRate = purchase.exchangeRate == null ? null : Number(purchase.exchangeRate);
+                        const rate = storedRate && storedRate > 0 ? storedRate : rates?.[purchase.currency];
+                        return rate
+                          ? `Exchange rate: 1 ${purchase.currency} = ${formatDocumentCurrency(rate, baseCurrency)}`
+                          : 'Exchange rate unavailable';
+                      })()}
+                    </p>
+                  )}
                 </div>
                 {purchase.supplierInvoiceNumber && (
                   <div className="space-y-2">

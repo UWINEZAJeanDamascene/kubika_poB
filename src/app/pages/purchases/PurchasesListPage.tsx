@@ -40,6 +40,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { useTranslation } from 'react-i18next';
 import { formatDocumentCurrency, parseCurrencyValue } from '@/lib/currencyUtils';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface PurchaseItem {
   product: { _id: string; name: string; sku: string; unit?: string };
@@ -57,6 +58,7 @@ interface Purchase {
   purchaseDate: string;
   expectedDeliveryDate?: string;
   currency: string;
+  exchangeRate?: number | string;
   grandTotal: string;
   totalAmount?: string | number;
   roundedAmount?: string | number;
@@ -92,6 +94,7 @@ interface PaginationInfo {
 
 export default function PurchasesListPage() {
   const { t } = useTranslation();
+  const { baseCurrency, rates } = useCurrency();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -150,14 +153,17 @@ export default function PurchasesListPage() {
     const total = purchaseList.length;
     const draft = purchaseList.filter((p) => p.status === 'draft').length;
     const received = purchaseList.filter((p) => p.status === 'received' || p.status === 'paid').length;
-    const totalValue = purchaseList.reduce((sum, p) => sum + getPurchaseTotal(p), 0);
+    const totalValue = purchaseList.reduce((sum, p) => {
+      const storedRate = p.exchangeRate == null ? null : Number(p.exchangeRate);
+      const rate = storedRate && storedRate > 0 ? storedRate : (rates?.[p.currency] || 1);
+      return sum + getPurchaseTotal(p) * rate;
+    }, 0);
     return { total, draft, received, totalValue };
-  }, [purchaseList]);
+  }, [purchaseList, baseCurrency, rates]);
 
   const formatCurrency = (amount: string | number) => {
     const num = parseCurrencyValue(amount);
-    const currency = purchaseList[0]?.currency || 'RWF';
-    return formatDocumentCurrency(num, currency);
+    return formatDocumentCurrency(num, baseCurrency);
   };
 
   function StatusBadge({ status }: { status: string }) {
@@ -415,10 +421,24 @@ export default function PurchasesListPage() {
                           <TableCell className="text-slate-600 dark:text-slate-300">{p.supplier?.name || '-'}</TableCell>
                           <TableCell className="text-slate-600 dark:text-slate-300">{formatDate(p.purchaseDate)}</TableCell>
                           <TableCell><StatusBadge status={p.status} /></TableCell>
-                          <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(getPurchaseTotal(p))}</TableCell>
+                          <TableCell className="text-right font-medium text-slate-900 dark:text-white">
+                            <div>{formatDocumentCurrency(getPurchaseTotal(p), p.currency || baseCurrency)}</div>
+                            {p.currency && p.currency !== baseCurrency && (
+                              <div className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                                {(() => {
+                                  const storedRate = p.exchangeRate == null ? null : Number(p.exchangeRate);
+                                  const rate = storedRate && storedRate > 0 ? storedRate : rates?.[p.currency];
+                                  return rate
+                                    ? `1 ${p.currency} = ${formatDocumentCurrency(rate, baseCurrency)}`
+                                    : 'Exchange rate unavailable';
+                                })()}
+                              </div>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">
-                            {formatCurrency(
+                            {formatDocumentCurrency(
                               Math.max(0, getPurchaseTotal(p) - getPaymentTotal(p)),
+                              p.currency || baseCurrency,
                             )}
                           </TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">{p.lineCount ?? p.items?.length ?? 0}</TableCell>

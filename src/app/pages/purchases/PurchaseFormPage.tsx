@@ -107,6 +107,7 @@ interface PurchaseLine {
 interface PurchaseFormData {
   supplier: string;
   currency: string;
+  exchangeRate: number | null;
   paymentTerms: string;
   purchaseDate: string;
   expectedDeliveryDate: string;
@@ -147,6 +148,7 @@ export default function PurchaseFormPage() {
   const [formData, setFormData] = useState<PurchaseFormData>({
     supplier: '',
     currency: 'RWF',
+    exchangeRate: 1,
     paymentTerms: 'cash',
     purchaseDate: new Date().toISOString().split('T')[0],
     expectedDeliveryDate: '',
@@ -231,6 +233,7 @@ export default function PurchaseFormPage() {
         setFormData({
           supplier: p.supplier?._id || '',
           currency: p.currency || 'RWF',
+          exchangeRate: p.exchangeRate == null ? null : Number(p.exchangeRate),
           paymentTerms: p.paymentTerms || 'cash',
           purchaseDate: p.purchaseDate ? new Date(p.purchaseDate).toISOString().split('T')[0] : '',
           expectedDeliveryDate: p.expectedDeliveryDate ? new Date(p.expectedDeliveryDate).toISOString().split('T')[0] : '',
@@ -430,6 +433,7 @@ export default function PurchaseFormPage() {
       const payload = {
         supplier: formData.supplier,
         currency: formData.currency,
+        exchangeRate: formData.exchangeRate,
         paymentTerms: formData.paymentTerms,
         purchaseDate: formData.purchaseDate,
         expectedDeliveryDate: formData.expectedDeliveryDate || undefined,
@@ -538,7 +542,11 @@ export default function PurchaseFormPage() {
                       <DocumentCurrencySelect
                         value={formData.currency}
                         date={formData.purchaseDate}
-                        onChange={(currency) => setFormData((prev) => ({ ...prev, currency }))}
+                        onChange={(currency, rateToBase) => setFormData((prev) => ({
+                          ...prev,
+                          currency,
+                          exchangeRate: rateToBase,
+                        }))}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -663,7 +671,7 @@ export default function PurchaseFormPage() {
                           <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">
                             <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t('purchase.form.product', 'Product')}</TableHead>
                             <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t('purchase.form.qty', 'Qty')}</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t('purchase.form.unitCost', 'Unit')}</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t('purchase.form.unitCost', 'Unit')} ({formData.currency})</TableHead>
                             <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t('purchase.form.discount', 'Disc')}</TableHead>
                             <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t('purchase.form.taxRate', 'Tax %')}</TableHead>
                             <TableHead className="text-right text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t('purchase.form.tax', 'Tax')}</TableHead>
