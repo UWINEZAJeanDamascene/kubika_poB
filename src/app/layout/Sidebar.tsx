@@ -56,7 +56,6 @@ import {
   HelpCircle,
   ChevronDown,
   Check,
-  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -656,22 +655,6 @@ const reportsNav: NavSection = {
   glow: "bg-lime-300/12",
   icon: BarChart3,
   items: [
-    {
-      nameKey: "nav.aiIntelligence",
-      href: "/intelligence",
-      icon: Sparkles,
-      permission: "reports:read",
-      featureKey: "ai_assistant",
-    },
-    {
-      nameKey: "nav.dashboard",
-      shortNameKey: "nav.dashboardShort",
-      href: "/dashboard",
-      icon: LayoutDashboard,
-      permission: "reports:read",
-      featureKey: "inventory",
-      moduleNames: ["Dashboards"],
-    },
     {
       nameKey: "nav.reportsHub",
       href: "/reports",

@@ -2,10 +2,11 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';
 import { useIsMobile } from '@/app/components/ui/use-mobile';
-import { Menu, Sun, Moon, Home, Sparkles, Search } from 'lucide-react';
+import { Menu, Sun, Moon, Home, Sparkles, Search, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useNavigate, useLocation } from 'react-router';
+import { Link, useNavigate, useLocation } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import NotificationBell from '@/app/components/NotificationBell';
 import { GlobalSearch, GlobalSearchTrigger, useGlobalSearchShortcut } from '@/app/components/GlobalSearch';
 import { Breadcrumbs } from '@/app/components/Breadcrumbs';
@@ -14,10 +15,16 @@ import { DashboardCommandNav } from '@/app/components/dashboard/DashboardCommand
 import { useChatPanelStore } from '@/store/chatPanelStore';
 import { useCompanyStore } from '@/store/companyStore';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LayoutProps {
   children: ReactNode;
 }
+
+const HEADER_NAV_LINKS = [
+  { href: '/intelligence', labelKey: 'nav.aiIntelligence', featureKey: 'ai_assistant', icon: Sparkles },
+  { href: '/dashboard', labelKey: 'nav.dashboard', featureKey: 'inventory', icon: LayoutDashboard },
+];
 
 export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,6 +41,8 @@ export function Layout({ children }: LayoutProps) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
+  const { hasPermission } = useAuth();
   const isDashboardRoute =
     location.pathname === '/dashboard' || location.pathname.startsWith('/dashboard/');
   const { open: chatOpen, width: chatWidth, toggle: toggleChat, setOpen: setChatOpen } = useChatPanelStore();
@@ -42,6 +51,53 @@ export function Layout({ children }: LayoutProps) {
   const [isLg, setIsLg] = useState(false);
   const hasEnterpriseAI = Boolean(company?.subscription_plan === 'enterprise' || company?.feature_access?.ai_assistant);
   const effectiveChatOpen = chatOpen && hasEnterpriseAI;
+
+  const hasHeaderFeatureAccess = (featureKey: string) => {
+    const featureAccess = company?.feature_access;
+    if (!featureAccess || typeof featureAccess !== 'object') return !company;
+    if (Object.keys(featureAccess).length === 0) return true;
+    return !Object.prototype.hasOwnProperty.call(featureAccess, featureKey) || Boolean(featureAccess[featureKey]);
+  };
+
+  const renderHeaderNavigation = (compact = false) => (
+    <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-1">
+      {HEADER_NAV_LINKS.filter((item) => hasHeaderFeatureAccess(item.featureKey)).map((item) => {
+        const Icon = item.icon;
+        const active = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
+        const permitted = hasPermission('reports:read');
+        const className = `inline-flex h-9 items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors ${
+          active
+            ? 'bg-accent text-accent-foreground'
+            : permitted
+              ? 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              : 'cursor-not-allowed text-muted-foreground/50'
+        }`;
+
+        if (!permitted) {
+          return (
+            <span key={item.href} aria-disabled="true" aria-label={t(item.labelKey)} title={t(item.labelKey)} className={className}>
+              <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {!compact && <span className="hidden xl:inline">{t(item.labelKey)}</span>}
+            </span>
+          );
+        }
+
+        return (
+          <Link
+            key={item.href}
+            to={item.href}
+            aria-current={active ? 'page' : undefined}
+            aria-label={t(item.labelKey)}
+            title={compact ? t(item.labelKey) : undefined}
+            className={className}
+          >
+            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {!compact && <span className="hidden xl:inline">{t(item.labelKey)}</span>}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 
   useEffect(() => {
     const mql = window.matchMedia('(min-width: 1024px)');
@@ -163,6 +219,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
 
             <div className="flex items-center gap-2 rounded-lg border border-border bg-background p-1.5">
+              {renderHeaderNavigation()}
               <GlobalSearchTrigger onClick={() => setSearchOpen(true)} />
               <QuickCreateMenu />
               <NotificationBell />
@@ -210,8 +267,9 @@ export function Layout({ children }: LayoutProps) {
         )}
 
         {/* Mobile breadcrumbs */}
-        <div className="border-b border-border bg-card/80 px-3 py-2 lg:hidden">
-          <Breadcrumbs />
+        <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-2 lg:hidden">
+          <div className="min-w-0"><Breadcrumbs /></div>
+          {renderHeaderNavigation(true)}
         </div>
 
         {isDashboardRoute && (

@@ -193,6 +193,42 @@ const STATUS_FLOW = [
   { status: 'fully_paid', label: 'Fully Paid' },
 ];
 
+function getInvoiceOutstandingAmount(invoice: Invoice | null): number {
+  if (!invoice) return 0;
+
+  const amount = (value: unknown) => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    if (typeof value === 'object' && value !== null && '$numberDecimal' in value) {
+      const parsed = Number((value as { $numberDecimal?: unknown }).$numberDecimal);
+      return Number.isFinite(parsed) ? parsed : 0;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
+  const lineSubtotal = (invoice.lines || []).reduce((sum, line) => {
+    const subtotal = amount(line.lineSubtotal);
+    return sum + (subtotal || amount(line.qty ?? line.quantity) * amount(line.unitPrice));
+  }, 0);
+  const lineTax = (invoice.lines || []).reduce(
+    (sum, line) => sum + amount(line.lineTax ?? line.taxAmount),
+    0,
+  );
+  const subtotal = amount(invoice.subtotal) || lineSubtotal;
+  const tax = amount(invoice.totalTax) || amount(invoice.taxAmount) || lineTax;
+  const lineTotal = (invoice.lines || []).reduce((sum, line) => {
+    const subtotal = amount(line.lineSubtotal) || amount(line.qty ?? line.quantity) * amount(line.unitPrice);
+    return sum + (amount(line.lineTotal) || subtotal + amount(line.lineTax ?? line.taxAmount));
+  }, 0);
+  const total = amount(invoice.grandTotal) || lineTotal || subtotal + tax;
+  const paymentTotal = (invoice.payments || []).reduce((sum, payment) => sum + amount(payment.amount), 0);
+  const paid = amount(invoice.amountPaid) || paymentTotal ||
+    (invoice.status === 'fully_paid' || invoice.status === 'paid' ? total : 0);
+
+  const recordedBalance = amount(invoice.balance ?? invoice.amountOutstanding);
+  return Math.max(0, total > 0 ? total - paid : recordedBalance);
+}
+
 export default function InvoiceDetailPage() {
   const { t } = useTranslation();
   const { formatCurrency } = useCurrency();
@@ -358,7 +394,7 @@ export default function InvoiceDetailPage() {
   };
 
   const handleRecordPayment = () => {
-    const outstanding = Number(invoice?.balance ?? invoice?.amountOutstanding ?? 0) || 0;
+    const outstanding = getInvoiceOutstandingAmount(invoice);
     if (outstanding <= 0) {
       toast.info('Invoice is already fully paid');
       return;
@@ -372,7 +408,7 @@ export default function InvoiceDetailPage() {
 
   const handlePaymentSubmit = async () => {
     if (!paymentAmount || !id) return;
-    const outstanding = Number(invoice?.balance ?? invoice?.amountOutstanding ?? 0) || 0;
+    const outstanding = getInvoiceOutstandingAmount(invoice);
     const payAmount = parseFloat(paymentAmount);
     if (!Number.isFinite(payAmount) || payAmount <= 0) {
       toast.error('Enter a valid payment amount');
@@ -520,7 +556,7 @@ export default function InvoiceDetailPage() {
   const taxAmount = money(invoice.totalTax) || money(invoice.taxAmount) || lineTax;
   const totalAmount = money(invoice.grandTotal) || lineTotal || subtotalAmount + taxAmount;
   const paidAmount = money(invoice.amountPaid) || paymentTotal || (invoice.status === 'fully_paid' || invoice.status === 'paid' ? totalAmount : 0);
-  const outstandingAmount = Math.max(0, money(invoice.balance ?? invoice.amountOutstanding) || totalAmount - paidAmount);
+  const outstandingAmount = getInvoiceOutstandingAmount(invoice);
   const linkedJournalEntries: InvoiceJournalEntry[] = [
     ...journalEntries,
     ...(invoice.revenueJournalEntry ? [{

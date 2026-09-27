@@ -35,7 +35,7 @@ export const aiIntelligenceService = {
     apiClient.post<AIEnvelope<{ state: unknown }>>(`${AI}/findings/${encodeURIComponent(id)}/${state}`),
   snoozeFinding: (id: string, snoozedUntil: string) =>
     apiClient.post<AIEnvelope<{ state: unknown }>>(`${AI}/findings/${encodeURIComponent(id)}/snooze`, { snoozedUntil }),
-  runRecommendations: () => apiClient.post<AIEnvelope<{ recommendations: AIRecommendation[] }>>(`${AI}/recommendations/run`, {
+  runRecommendations: () => apiClient.post<AIEnvelope<{ recommendations: AIRecommendation[] | AIRecommendationEngineResult }>>(`${AI}/recommendations/run`, {
     query: 'Generate practical recommendations from the current business context.',
     domains: ['sales', 'inventory', 'finance', 'purchases', 'customers'],
   }),
@@ -55,6 +55,15 @@ export const aiIntelligenceService = {
     return response.data as Blob;
   },
   getProposals: () => apiClient.get<AIEnvelope<{ proposals: AIProposal[] }>>(`${AI}/proposals?limit=100`),
+  createProposal: (proposal: {
+    type: string;
+    payload: Record<string, unknown>;
+    evidenceFactIds?: string[];
+    sourceRecommendationIds?: string[];
+    sourceFindingIds?: string[];
+    submitForApproval?: boolean;
+    metadata?: Record<string, unknown>;
+  }) => apiClient.post<AIEnvelope<{ proposal: AIProposal }>>(`${AI}/proposals`, proposal),
   approveProposal: (id: string) => apiClient.post<AIEnvelope<{ proposal: AIProposal }>>(`${AI}/proposals/${encodeURIComponent(id)}/approve`),
   rejectProposal: (id: string, reason: string) =>
     apiClient.post<AIEnvelope<{ proposal: AIProposal }>>(`${AI}/proposals/${encodeURIComponent(id)}/reject`, { reason }),
@@ -86,11 +95,20 @@ export interface AIRecommendation {
   title: string;
   rationale?: string;
   description?: string;
+  recommendedNextStep?: string;
   priorityScore?: number;
   evidenceFactIds?: string[];
   sourceFindingIds?: string[];
+  kind?: string;
+  actionIntent?: string | null;
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
+}
+
+export interface AIRecommendationEngineResult {
+  version?: string;
+  recommendations: AIRecommendation[];
+  metadata?: Record<string, unknown>;
 }
 
 export interface AIForecast {
@@ -130,6 +148,7 @@ export interface AIProposal {
   riskLevel?: string;
   approvalRequiredByRole?: string[];
   executionResult?: { ok?: boolean; [key: string]: unknown } | null;
+  sourceRecommendationIds?: string[];
   createdAt?: string;
   [key: string]: unknown;
 }
