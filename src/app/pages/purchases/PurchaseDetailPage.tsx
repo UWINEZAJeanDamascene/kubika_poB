@@ -60,10 +60,14 @@ interface PurchaseItem {
 }
 
 interface Payment {
-  amount: string;
-  paymentMethod: string;
+  amount?: string | number;
+  amountPaid?: string | number;
+  paymentMethod?: string;
+  method?: string;
   reference?: string;
-  paidDate: string;
+  paidDate?: string;
+  date?: string;
+  paymentDate?: string;
   notes?: string;
   recordedBy?: { name: string; email: string };
 }
@@ -276,11 +280,11 @@ export default function PurchaseDetailPage() {
     return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const formatPaymentMethod = (method: string) => method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const formatPaymentMethod = (method?: string) => (method || 'other').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   const needsBankAccount = paymentMethod === 'bank_transfer' || paymentMethod === 'cheque' || paymentMethod === 'mobile_money';
-  const totalPaid = purchase?.payments?.reduce((sum, p) => sum + parseCurrencyValue(p.amount), 0) || 0;
-  const remainingBalance = parseCurrencyValue(purchase?.grandTotal) - totalPaid;
+  const totalPaid = purchase?.payments?.reduce((sum, p) => sum + parseCurrencyValue(p.amount ?? p.amountPaid), 0) || 0;
+  const remainingBalance = Math.max(0, parseCurrencyValue(purchase?.grandTotal) - totalPaid);
 
   const handlePrint = () => window.print();
 
@@ -651,10 +655,10 @@ export default function PurchaseDetailPage() {
                           <TableBody>
                             {purchase.payments.map((payment, idx) => (
                               <TableRow key={idx} className="transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-900/40">
-                                <TableCell className="text-slate-600 dark:text-slate-300">{formatDate(payment.paidDate)}</TableCell>
-                                <TableCell className="text-slate-600 dark:text-slate-300">{formatPaymentMethod(payment.paymentMethod)}</TableCell>
+                                <TableCell className="text-slate-600 dark:text-slate-300">{formatDate(payment.paidDate || payment.date || payment.paymentDate)}</TableCell>
+                                <TableCell className="text-slate-600 dark:text-slate-300">{formatPaymentMethod(payment.paymentMethod || payment.method)}</TableCell>
                                 <TableCell className="text-slate-600 dark:text-slate-300 hidden sm:table-cell">{payment.reference || '-'}</TableCell>
-                                <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(payment.amount)}</TableCell>
+                                <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(payment.amount ?? payment.amountPaid)}</TableCell>
                                 <TableCell className="text-slate-600 dark:text-slate-300 hidden md:table-cell">{payment.recordedBy?.name || '-'}</TableCell>
                               </TableRow>
                             ))}

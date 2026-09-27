@@ -58,12 +58,24 @@ interface Purchase {
   expectedDeliveryDate?: string;
   currency: string;
   grandTotal: string;
+  totalAmount?: string | number;
+  roundedAmount?: string | number;
   amountPaid: string;
   balance: string;
   items: PurchaseItem[];
-  payments?: { _id?: string; amount?: string; date?: string; method?: string }[];
+  lineCount?: number;
+  payments?: { _id?: string; amount?: string | number; amountPaid?: string | number; total?: string | number; date?: string; method?: string }[];
   createdBy?: { name: string; email: string };
 }
+
+const getPurchaseTotal = (purchase: Purchase) => parseCurrencyValue(
+  purchase.grandTotal ?? purchase.totalAmount ?? purchase.roundedAmount,
+);
+
+const getPaymentTotal = (purchase: Purchase) => (purchase.payments || []).reduce(
+  (sum, payment) => sum + parseCurrencyValue(payment.amount ?? payment.amountPaid ?? payment.total),
+  0,
+);
 
 interface Supplier {
   _id: string;
@@ -138,7 +150,7 @@ export default function PurchasesListPage() {
     const total = purchaseList.length;
     const draft = purchaseList.filter((p) => p.status === 'draft').length;
     const received = purchaseList.filter((p) => p.status === 'received' || p.status === 'paid').length;
-    const totalValue = purchaseList.reduce((sum, p) => sum + parseCurrencyValue(p.grandTotal), 0);
+    const totalValue = purchaseList.reduce((sum, p) => sum + getPurchaseTotal(p), 0);
     return { total, draft, received, totalValue };
   }, [purchaseList]);
 
@@ -403,14 +415,13 @@ export default function PurchasesListPage() {
                           <TableCell className="text-slate-600 dark:text-slate-300">{p.supplier?.name || '-'}</TableCell>
                           <TableCell className="text-slate-600 dark:text-slate-300">{formatDate(p.purchaseDate)}</TableCell>
                           <TableCell><StatusBadge status={p.status} /></TableCell>
-                          <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(p.grandTotal)}</TableCell>
+                          <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(getPurchaseTotal(p))}</TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">
                             {formatCurrency(
-                              parseCurrencyValue(p.grandTotal) -
-                                (p.payments?.reduce((sum: number, payment: { amount?: string } | undefined) => sum + parseCurrencyValue(payment?.amount), 0) || 0),
+                              Math.max(0, getPurchaseTotal(p) - getPaymentTotal(p)),
                             )}
                           </TableCell>
-                          <TableCell className="text-right text-slate-600 dark:text-slate-300">{p.items?.length || 0}</TableCell>
+                          <TableCell className="text-right text-slate-600 dark:text-slate-300">{p.lineCount ?? p.items?.length ?? 0}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
                               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => navigate(`/purchases/${p._id}`)} title={t('common.view', 'View')}>
