@@ -278,6 +278,17 @@ export default function PurchaseDetailPage() {
     return formatDocumentCurrency(num, purchase?.currency || 'RWF');
   };
 
+  const formatBaseEquivalent = (amount: string | number | undefined | null) => {
+    if (amount === undefined || amount === null || amount === '' || !purchase) return null;
+    if (purchase.currency === baseCurrency) return null;
+    const storedRate = purchase.exchangeRate == null ? null : Number(purchase.exchangeRate);
+    const rate = storedRate && storedRate > 0 ? storedRate : rates?.[purchase.currency];
+    const value = parseCurrencyValue(amount);
+    return rate && rate > 0 && Number.isFinite(value)
+      ? `Base: ${formatDocumentCurrency(value * rate, baseCurrency)}`
+      : null;
+  };
+
   const formatDate = (dateStr: string | undefined) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
@@ -382,6 +393,7 @@ export default function PurchaseDetailPage() {
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('purchases.detail.total', 'Grand Total')}</p>
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(purchase.grandTotal)}</p>
+                  {formatBaseEquivalent(purchase.grandTotal) && <p className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(purchase.grandTotal)}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -393,6 +405,7 @@ export default function PurchaseDetailPage() {
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('purchases.detail.balance', 'Balance')}</p>
                   <p className={`text-sm font-semibold ${remainingBalance > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatCurrency(remainingBalance)}</p>
+                  {formatBaseEquivalent(remainingBalance) && <p className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(remainingBalance)}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -588,7 +601,10 @@ export default function PurchaseDetailPage() {
                               <p className="text-xs text-slate-500 dark:text-slate-400">{typeof item.product?.sku === 'string' ? item.product.sku : ''}</p>
                             </TableCell>
                             <TableCell className="text-right text-slate-600 dark:text-slate-300">{item.quantity}</TableCell>
-                            <TableCell className="text-right font-mono text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">{formatCurrency(item.unitCost)}</TableCell>
+                            <TableCell className="text-right font-mono text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">
+                              {formatCurrency(item.unitCost)}
+                              {formatBaseEquivalent(item.unitCost) && <p className="text-xs font-sans">{formatBaseEquivalent(item.unitCost)}</p>}
+                            </TableCell>
                             <TableCell className="text-right font-mono text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">
                               {formatCurrency(
                                 item.taxAmount
@@ -597,8 +613,24 @@ export default function PurchaseDetailPage() {
                                     - (Number(item.quantity ?? item.qty) || 0) * (Number(item.unitCost) || 0)
                                   )
                               )}
+                              {formatBaseEquivalent(
+                                item.taxAmount
+                                  ?? (
+                                    (Number(item.totalWithTax ?? item.lineTotal) || 0)
+                                    - (Number(item.quantity ?? item.qty) || 0) * (Number(item.unitCost) || 0)
+                                  )
+                              ) && <p className="text-xs font-sans">{formatBaseEquivalent(
+                                item.taxAmount
+                                  ?? (
+                                    (Number(item.totalWithTax ?? item.lineTotal) || 0)
+                                    - (Number(item.quantity ?? item.qty) || 0) * (Number(item.unitCost) || 0)
+                                  )
+                              )}</p>}
                             </TableCell>
-                            <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(item.totalWithTax ?? item.lineTotal)}</TableCell>
+                            <TableCell className="text-right font-medium text-slate-900 dark:text-white">
+                              {formatCurrency(item.totalWithTax ?? item.lineTotal)}
+                              {formatBaseEquivalent(item.totalWithTax ?? item.lineTotal) && <p className="text-xs font-normal text-slate-500 dark:text-slate-400">{formatBaseEquivalent(item.totalWithTax ?? item.lineTotal)}</p>}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -611,20 +643,24 @@ export default function PurchaseDetailPage() {
                       <div className="text-right">
                         <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchases.detail.subtotal', 'Subtotal')}</p>
                         <p className="font-medium text-slate-900 dark:text-white">{formatCurrency(purchase.subtotal)}</p>
+                        {formatBaseEquivalent(purchase.subtotal) && <p className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(purchase.subtotal)}</p>}
                       </div>
                       {parseCurrencyValue(purchase.totalDiscount) > 0 && (
                         <div className="text-right">
                           <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchases.detail.discount', 'Discount')}</p>
                           <p className="font-medium text-slate-900 dark:text-white">-{formatCurrency(purchase.totalDiscount)}</p>
+                          {formatBaseEquivalent(purchase.totalDiscount) && <p className="text-xs text-slate-500 dark:text-slate-400">-{formatBaseEquivalent(purchase.totalDiscount)}</p>}
                         </div>
                       )}
                       <div className="text-right">
                         <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchases.detail.tax', 'Tax')}</p>
                         <p className="font-medium text-slate-900 dark:text-white">{formatCurrency(purchase.totalTax)}</p>
+                        {formatBaseEquivalent(purchase.totalTax) && <p className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(purchase.totalTax)}</p>}
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-slate-900 dark:text-white">{t('purchases.detail.grandTotal', 'Grand Total')}</p>
                         <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(purchase.grandTotal)}</p>
+                        {formatBaseEquivalent(purchase.grandTotal) && <p className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(purchase.grandTotal)}</p>}
                       </div>
                     </div>
                   </div>
@@ -672,7 +708,10 @@ export default function PurchaseDetailPage() {
                                 <TableCell className="text-slate-600 dark:text-slate-300">{formatDate(payment.paidDate || payment.date || payment.paymentDate)}</TableCell>
                                 <TableCell className="text-slate-600 dark:text-slate-300">{formatPaymentMethod(payment.paymentMethod || payment.method)}</TableCell>
                                 <TableCell className="text-slate-600 dark:text-slate-300 hidden sm:table-cell">{payment.reference || '-'}</TableCell>
-                                <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(payment.amount ?? payment.amountPaid)}</TableCell>
+                                <TableCell className="text-right font-medium text-slate-900 dark:text-white">
+                                  {formatCurrency(payment.amount ?? payment.amountPaid)}
+                                  {formatBaseEquivalent(payment.amount ?? payment.amountPaid) && <p className="text-xs font-normal text-slate-500 dark:text-slate-400">{formatBaseEquivalent(payment.amount ?? payment.amountPaid)}</p>}
+                                </TableCell>
                                 <TableCell className="text-slate-600 dark:text-slate-300 hidden md:table-cell">{payment.recordedBy?.name || '-'}</TableCell>
                               </TableRow>
                             ))}
@@ -685,10 +724,12 @@ export default function PurchaseDetailPage() {
                           <div className="text-right">
                             <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchases.detail.totalPaid', 'Total Paid')}</p>
                             <p className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(totalPaid)}</p>
+                            {formatBaseEquivalent(totalPaid) && <p className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(totalPaid)}</p>}
                           </div>
                           <div className="text-right">
                             <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchases.detail.balance', 'Balance')}</p>
                             <p className={`font-medium ${remainingBalance > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}`}>{formatCurrency(remainingBalance)}</p>
+                            {formatBaseEquivalent(remainingBalance) && <p className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(remainingBalance)}</p>}
                           </div>
                         </div>
                       </div>

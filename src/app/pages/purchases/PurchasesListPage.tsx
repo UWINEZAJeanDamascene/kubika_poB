@@ -166,6 +166,16 @@ export default function PurchasesListPage() {
     return formatDocumentCurrency(num, baseCurrency);
   };
 
+  const formatBaseEquivalent = (amount: number, purchase: Purchase) => {
+    const currency = purchase.currency || baseCurrency;
+    if (currency === baseCurrency) return null;
+    const storedRate = purchase.exchangeRate == null ? null : Number(purchase.exchangeRate);
+    const rate = storedRate && storedRate > 0 ? storedRate : rates?.[currency];
+    return rate && rate > 0
+      ? `Base: ${formatDocumentCurrency(amount * rate, baseCurrency)}`
+      : null;
+  };
+
   function StatusBadge({ status }: { status: string }) {
     const styles: Record<string, string> = {
       draft: 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60',
@@ -423,6 +433,9 @@ export default function PurchasesListPage() {
                           <TableCell><StatusBadge status={p.status} /></TableCell>
                           <TableCell className="text-right font-medium text-slate-900 dark:text-white">
                             <div>{formatDocumentCurrency(getPurchaseTotal(p), p.currency || baseCurrency)}</div>
+                            {formatBaseEquivalent(getPurchaseTotal(p), p) && (
+                              <div className="text-xs font-normal text-slate-500 dark:text-slate-400">{formatBaseEquivalent(getPurchaseTotal(p), p)}</div>
+                            )}
                             {p.currency && p.currency !== baseCurrency && (
                               <div className="text-xs font-normal text-slate-500 dark:text-slate-400">
                                 {(() => {
@@ -436,10 +449,15 @@ export default function PurchasesListPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">
-                            {formatDocumentCurrency(
-                              Math.max(0, getPurchaseTotal(p) - getPaymentTotal(p)),
-                              p.currency || baseCurrency,
-                            )}
+                            {(() => {
+                              const balance = Math.max(0, getPurchaseTotal(p) - getPaymentTotal(p));
+                              return <>
+                                <div>{formatDocumentCurrency(balance, p.currency || baseCurrency)}</div>
+                                {formatBaseEquivalent(balance, p) && (
+                                  <div className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(balance, p)}</div>
+                                )}
+                              </>;
+                            })()}
                           </TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">{p.lineCount ?? p.items?.length ?? 0}</TableCell>
                           <TableCell className="text-right">

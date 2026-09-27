@@ -37,6 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Label } from "@/app/components/ui/label";
 import { useTranslation } from "react-i18next";
 import { formatDocumentCurrency, parseCurrencyValue } from "@/lib/currencyUtils";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface Supplier {
   _id: string;
@@ -55,7 +56,11 @@ interface Product {
   name: string;
   sku: string;
   unit?: string;
-  taxRate?: number;
+  costPrice?: number | string;
+  averageCost?: number | string;
+  cost?: number | string;
+  sellingPrice?: number | string;
+  taxRate?: number | string;
   taxCode?: string;
   trackingType?: 'none' | 'batch' | 'serial';
   trackBatch?: boolean;
@@ -84,6 +89,8 @@ interface PurchaseLine {
   product: string;
   productName?: string;
   productSku?: string;
+  productUnit?: string;
+  baseUnitCost?: number;
   quantity: number;
   unitCost: number;
   discount: number;
@@ -132,6 +139,7 @@ const PAYMENT_TERMS = [
 
 export default function PurchaseFormPage() {
   const { t } = useTranslation();
+  const { baseCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
@@ -176,7 +184,7 @@ export default function PurchaseFormPage() {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await productsApi.getAll({ limit: 500 });
+      const response = await productsApi.getAll({ limit: 500, forPicker: '1' });
       if (response.success && Array.isArray(response.data)) {
         setProducts(response.data as Product[]);
       }
@@ -248,8 +256,10 @@ export default function PurchaseFormPage() {
             product: item.product?._id || item.product,
             productName: item.product?.name || '',
             productSku: item.product?.sku || '',
+            productUnit: item.product?.unit || item.unit || '',
             quantity: parseFloat(item.quantity) || 0,
             unitCost: parseFloat(item.unitCost) || 0,
+            baseUnitCost: p.exchangeRate != null ? (parseFloat(item.unitCost) || 0) * Number(p.exchangeRate) : undefined,
             discount: parseFloat(item.discount) || 0,
             taxCode: item.taxCode || 'A',
             taxRate: parseFloat(item.taxRate) || 0,
@@ -329,6 +339,11 @@ export default function PurchaseFormPage() {
   const handleProductSelect = (index: number, productId: string) => {
     const product = products.find((p) => p._id === productId);
     if (product) {
+      const baseUnitCost = [product.costPrice, product.averageCost, product.cost, product.sellingPrice]
+        .map((value) => Number(value))
+        .find((value) => Number.isFinite(value) && value > 0) || 0;
+      const rateToBase = Number(formData.exchangeRate) > 0 ? Number(formData.exchangeRate) : 1;
+      const unitCost = formData.currency === baseCurrency ? baseUnitCost : baseUnitCost / rateToBase;
       setFormData((prev) => {
         const newLines = [...prev.items];
         // Determine tracking type from product
@@ -351,8 +366,10 @@ export default function PurchaseFormPage() {
           product: productId,
           productName: product.name,
           productSku: product.sku,
-          unitCost: (product as any).cost || (product as any).purchasePrice || 0,
-          taxRate: product.taxRate || 0,
+          productUnit: product.unit || '',
+          baseUnitCost,
+          unitCost,
+          taxRate: Number(product.taxRate) || 0,
           taxCode: product.taxCode || 'A',
           warehouse: defaultWarehouse,
           trackingType,
@@ -366,7 +383,13 @@ export default function PurchaseFormPage() {
         newLines[index].subtotal = calculated.subtotal;
         newLines[index].taxAmount = calculated.taxAmount;
         newLines[index].totalWithTax = calculated.totalWithTax;
-        return { ...prev, items: newLines };
+        return {
+          ...prev,
+          warehouse: prev.warehouse || (product.defaultWarehouse
+            ? (typeof product.defaultWarehouse === 'string' ? product.defaultWarehouse : product.defaultWarehouse._id)
+            : ''),
+          items: newLines,
+        };
       });
     }
   };
@@ -542,11 +565,20 @@ export default function PurchaseFormPage() {
                       <DocumentCurrencySelect
                         value={formData.currency}
                         date={formData.purchaseDate}
-                        onChange={(currency, rateToBase) => setFormData((prev) => ({
-                          ...prev,
-                          currency,
-                          exchangeRate: rateToBase,
-                        }))}
+                        onChange={(currency, rateToBase) => setFormData((prev) => {
+                          const nextRate = currency === baseCurrency
+                            ? 1
+                            : rateToBase != null && rateToBase > 0 ? rateToBase : null;
+                          const lines = prev.items.map((line) => {
+                            if (line.baseUnitCost == null) return line;
+                            const unitCost = currency === baseCurrency
+                              ? line.baseUnitCost
+                              : nextRate ? line.baseUnitCost / nextRate : line.unitCost;
+                            const calculated = calculateLineTotals({ ...line, unitCost });
+                            return { ...line, unitCost, ...calculated };
+                          });
+                          return { ...prev, currency, exchangeRate: nextRate, items: lines };
+                        })}
                       />
                     </div>
                     <div className="space-y-1.5">
@@ -693,6 +725,9 @@ export default function PurchaseFormPage() {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                {line.productUnit && (
+                                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Unit: {line.productUnit}</p>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <Input type="number" min="0.0001" step="any" className="h-9 w-20 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', parseFloat(e.target.value) || 0)} />
