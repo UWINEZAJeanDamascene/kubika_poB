@@ -84,6 +84,50 @@ export function formatDocumentCurrency(
   }).format(num);
 }
 
+/**
+ * Parse money from plain numbers or localized strings like "RWF 64,900,000",
+ * "$1,250.50", "1 234,56", or "25000.00".
+ */
+export function parseCurrencyValue(value: number | string | null | undefined): number {
+  if (value === null || value === undefined || value === '') return 0;
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  const text = String(value).trim();
+  if (!text) return 0;
+
+  const sanitized = text
+    .replace(/\s+/g, '')
+    .replace(/[A-Za-z]/g, '')
+    .replace(/[^0-9,.-]/g, '');
+
+  if (!sanitized || sanitized === '-' || sanitized === '.' || sanitized === ',') return 0;
+
+  let normalized = sanitized;
+
+  if (normalized.includes(',') && normalized.includes('.')) {
+    const lastComma = normalized.lastIndexOf(',');
+    const lastDot = normalized.lastIndexOf('.');
+    const decimalSeparator = lastComma > lastDot ? ',' : '.';
+    const thousandSeparator = decimalSeparator === ',' ? '.' : ',';
+    normalized = normalized.replace(new RegExp(`\\${thousandSeparator}`, 'g'), '');
+    normalized = normalized.replace(decimalSeparator, '.');
+  } else if (normalized.includes(',')) {
+    const commaParts = normalized.split(',');
+    const lastPart = commaParts[commaParts.length - 1];
+    if (commaParts.length > 1 && lastPart.length === 3 && commaParts.slice(0, -1).every((part) => part.length <= 3)) {
+      normalized = commaParts.join('');
+    } else {
+      normalized = normalized.replace(/,/g, '.');
+    }
+  }
+
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 // Currency symbols mapping
 export const CURRENCY_SYMBOLS: Record<string, string> = {
   USD: '$',

@@ -39,6 +39,7 @@ import {
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { useTranslation } from 'react-i18next';
+import { formatDocumentCurrency, parseCurrencyValue } from '@/lib/currencyUtils';
 
 interface PurchaseItem {
   product: { _id: string; name: string; sku: string; unit?: string };
@@ -137,9 +138,15 @@ export default function PurchasesListPage() {
     const total = purchaseList.length;
     const draft = purchaseList.filter((p) => p.status === 'draft').length;
     const received = purchaseList.filter((p) => p.status === 'received' || p.status === 'paid').length;
-    const totalValue = purchaseList.reduce((sum, p) => sum + (Number(p.grandTotal) || 0), 0);
+    const totalValue = purchaseList.reduce((sum, p) => sum + parseCurrencyValue(p.grandTotal), 0);
     return { total, draft, received, totalValue };
   }, [purchaseList]);
+
+  const formatCurrency = (amount: string | number) => {
+    const num = parseCurrencyValue(amount);
+    const currency = purchaseList[0]?.currency || 'RWF';
+    return formatDocumentCurrency(num, currency);
+  };
 
   function StatusBadge({ status }: { status: string }) {
     const styles: Record<string, string> = {
@@ -164,14 +171,6 @@ export default function PurchasesListPage() {
       </Badge>
     );
   }
-
-  const formatCurrency = (amount: string | number) => {
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(num || 0);
-  };
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
@@ -407,8 +406,8 @@ export default function PurchasesListPage() {
                           <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(p.grandTotal)}</TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">
                             {formatCurrency(
-                              Number(p.grandTotal) -
-                                (p.payments?.reduce((sum: number, payment: { amount?: string } | undefined) => sum + (Number(payment?.amount) || 0), 0) || 0),
+                              parseCurrencyValue(p.grandTotal) -
+                                (p.payments?.reduce((sum: number, payment: { amount?: string } | undefined) => sum + parseCurrencyValue(payment?.amount), 0) || 0),
                             )}
                           </TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">{p.items?.length || 0}</TableCell>

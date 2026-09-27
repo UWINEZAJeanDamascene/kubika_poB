@@ -36,6 +36,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Label } from "@/app/components/ui/label";
 import { useTranslation } from "react-i18next";
+import { formatDocumentCurrency, parseCurrencyValue } from "@/lib/currencyUtils";
 
 interface Supplier {
   _id: string;
@@ -467,10 +468,7 @@ export default function PurchaseFormPage() {
 
   const summary = calculateSummary();
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: formData.currency,
-    }).format(amount);
+    return formatDocumentCurrency(parseCurrencyValue(amount), formData.currency || 'RWF');
   };
 
   if (loading) {

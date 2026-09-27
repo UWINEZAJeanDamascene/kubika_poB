@@ -44,6 +44,7 @@ import {
 } from "@/app/components/ui/select";
 import { Label } from "@/app/components/ui/label";
 import { useTranslation } from "react-i18next";
+import { formatDocumentCurrency, parseCurrencyValue } from "@/lib/currencyUtils";
 
 interface PurchaseItem {
   product: { _id: string; name: string; sku: string; unit?: string };
@@ -204,7 +205,7 @@ export default function PurchaseDetailPage() {
   const handleShowPaymentForm = () => {
     setShowPaymentForm(true);
     fetchBankAccounts();
-    if (purchase && parseFloat(purchase.balance) > 0) {
+    if (purchase && parseCurrencyValue(purchase.balance) > 0) {
       setPaymentAmount(purchase.balance);
     }
   };
@@ -214,7 +215,7 @@ export default function PurchaseDetailPage() {
     setPaymentLoading(true);
     try {
       const data: any = {
-        amount: parseFloat(paymentAmount),
+        amount: parseCurrencyValue(paymentAmount),
         paymentMethod: paymentMethod as any,
         reference: paymentReference || undefined,
         notes: paymentNotes || undefined,
@@ -265,12 +266,9 @@ export default function PurchaseDetailPage() {
 
   const formatCurrency = (amount: string | number | undefined | null) => {
     if (amount === undefined || amount === null || amount === '') return '-';
-    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
-    if (isNaN(num)) return '-';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: purchase?.currency || 'USD',
-    }).format(num || 0);
+    const num = parseCurrencyValue(amount);
+    if (!Number.isFinite(num)) return '-';
+    return formatDocumentCurrency(num, purchase?.currency || 'RWF');
   };
 
   const formatDate = (dateStr: string | undefined) => {
@@ -278,16 +276,11 @@ export default function PurchaseDetailPage() {
     return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
-  const formatDateTime = (dateStr: string | undefined) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  };
-
   const formatPaymentMethod = (method: string) => method.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   const needsBankAccount = paymentMethod === 'bank_transfer' || paymentMethod === 'cheque' || paymentMethod === 'mobile_money';
-  const totalPaid = purchase?.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
-  const remainingBalance = Number(purchase?.grandTotal || 0) - totalPaid;
+  const totalPaid = purchase?.payments?.reduce((sum, p) => sum + parseCurrencyValue(p.amount), 0) || 0;
+  const remainingBalance = parseCurrencyValue(purchase?.grandTotal) - totalPaid;
 
   const handlePrint = () => window.print();
 
@@ -601,7 +594,7 @@ export default function PurchaseDetailPage() {
                         <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchases.detail.subtotal', 'Subtotal')}</p>
                         <p className="font-medium text-slate-900 dark:text-white">{formatCurrency(purchase.subtotal)}</p>
                       </div>
-                      {parseFloat(purchase.totalDiscount) > 0 && (
+                      {parseCurrencyValue(purchase.totalDiscount) > 0 && (
                         <div className="text-right">
                           <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchases.detail.discount', 'Discount')}</p>
                           <p className="font-medium text-slate-900 dark:text-white">-{formatCurrency(purchase.totalDiscount)}</p>
