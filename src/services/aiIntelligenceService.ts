@@ -55,6 +55,15 @@ export const aiIntelligenceService = {
     return response.data as Blob;
   },
   getProposals: () => apiClient.get<AIEnvelope<{ proposals: AIProposal[] }>>(`${AI}/proposals?limit=100`),
+  createProposal: (proposal: {
+    type: string;
+    payload: Record<string, unknown>;
+    evidenceFactIds?: string[];
+    sourceRecommendationIds?: string[];
+    sourceFindingIds?: string[];
+    submitForApproval?: boolean;
+    metadata?: Record<string, unknown>;
+  }) => apiClient.post<AIEnvelope<{ proposal: AIProposal }>>(`${AI}/proposals`, proposal),
   approveProposal: (id: string) => apiClient.post<AIEnvelope<{ proposal: AIProposal }>>(`${AI}/proposals/${encodeURIComponent(id)}/approve`),
   rejectProposal: (id: string, reason: string) =>
     apiClient.post<AIEnvelope<{ proposal: AIProposal }>>(`${AI}/proposals/${encodeURIComponent(id)}/reject`, { reason }),
@@ -90,6 +99,8 @@ export interface AIRecommendation {
   priorityScore?: number;
   evidenceFactIds?: string[];
   sourceFindingIds?: string[];
+  kind?: string;
+  actionIntent?: string | null;
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -137,6 +148,7 @@ export interface AIProposal {
   riskLevel?: string;
   approvalRequiredByRole?: string[];
   executionResult?: { ok?: boolean; [key: string]: unknown } | null;
+  sourceRecommendationIds?: string[];
   createdAt?: string;
   [key: string]: unknown;
 }

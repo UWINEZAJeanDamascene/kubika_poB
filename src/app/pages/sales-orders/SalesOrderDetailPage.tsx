@@ -407,7 +407,7 @@ export default function SalesOrderDetailPage() {
             <div className="flex min-w-[700px] items-center">
               {WORKFLOW_STEPS.map((step, i) => {
                 const stepIndex = i;
-                const isActive = stepIndex <= currentStepIndex && order.status !== 'cancelled';
+                const isComplete = stepIndex <= currentStepIndex && order.status !== 'cancelled';
                 const isCurrent = step === order.status;
                 const isLast = i === WORKFLOW_STEPS.length - 1;
                 return (
@@ -416,14 +416,14 @@ export default function SalesOrderDetailPage() {
                       <div className={`flex h-10 w-10 items-center justify-center rounded-full text-xs font-bold ring-2 transition-colors ${
                         isCurrent
                           ? 'bg-indigo-600 text-white ring-indigo-600 dark:bg-indigo-500 dark:ring-indigo-500'
-                          : isActive
+                          : isComplete
                             ? 'bg-emerald-50 text-emerald-700 ring-emerald-300 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-800'
                             : 'bg-slate-50 text-slate-400 ring-slate-200 dark:bg-slate-900 dark:text-slate-600 dark:ring-slate-700'
                       }`}>
-                        {isActive && !isCurrent ? <CheckCircle className="h-4 w-4" /> : i + 1}
+                        {isComplete ? <CheckCircle className="h-4 w-4" /> : i + 1}
                       </div>
                       <span className={`mt-2 text-[10px] font-semibold uppercase tracking-wide ${
-                        isCurrent ? 'text-indigo-600 dark:text-indigo-400' : isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
+                        isCurrent ? 'text-indigo-600 dark:text-indigo-400' : isComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
                       }`}>
                         {step}
                       </span>
