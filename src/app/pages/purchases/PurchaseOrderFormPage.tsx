@@ -44,6 +44,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { Label } from '@/app/components/ui/label';
 import { Switch } from '@/app/components/ui/switch';
 import { useTranslation } from 'react-i18next';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface Supplier {
   _id: string;
@@ -63,15 +64,21 @@ interface Product {
   sku: string;
   unit?: string;
   costPrice?: number | string;
+  cost?: number | string;
   averageCost?: number | string;
+  sellingPrice?: number | string;
   taxRate?: number | string;
   taxCode?: string;
+  defaultWarehouse?: string | { _id: string } | null;
+  preferredSupplier?: string | { _id: string } | null;
 }
 
 interface POLine {
   _id?: string;
   product: string;
   productName?: string;
+  productUnit?: string;
+  baseUnitCost?: number;
   qtyOrdered: number;
   unitCost: number;
   taxRate: number;
@@ -104,6 +111,7 @@ interface PurchaseOrderFormData {
 
 export default function PurchaseOrderFormPage() {
   const { t } = useTranslation();
+  const { baseCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEdit = !!id;
@@ -160,7 +168,7 @@ export default function PurchaseOrderFormPage() {
 
   const fetchProducts = useCallback(async () => {
     try {
-      const response = await productsApi.getAll({ limit: 500 });
+      const response = await productsApi.getAll({ limit: 500, forPicker: '1' });
       if (response.success && Array.isArray(response.data)) {
         setProducts(response.data as Product[]);
       }
@@ -242,8 +250,10 @@ export default function PurchaseOrderFormPage() {
             _id: line._id,
             product: line.product?._id || line.product,
             productName: line.product?.name,
+            productUnit: line.product?.unit || line.productUnit || '',
             qtyOrdered: line.qtyOrdered || 0,
             unitCost: line.unitCost || 0,
+            baseUnitCost: (Number(line.unitCost) || 0) * (Number(po.exchangeRate) || 1),
             taxRate: line.taxRate || 0,
             taxAmount: line.taxAmount || 0,
             lineTotal: line.lineTotal || 0,
@@ -356,8 +366,15 @@ export default function PurchaseOrderFormPage() {
   const handleProductSelect = (index: number, productId: string) => {
     const product = products.find(p => p._id === productId);
     if (product) {
-      const unitCost = parseFloat(String(product.costPrice || product.averageCost || 0)) || 0;
-      const taxRate = parseFloat(String(product.taxRate || 0)) || 0;
+      const baseUnitCost = [product.costPrice, product.averageCost, product.cost, product.sellingPrice]
+        .map((value) => Number(value))
+        .find((value) => Number.isFinite(value) && value > 0) || 0;
+      const rateToBase = Number(formData.exchangeRate) > 0 ? Number(formData.exchangeRate) : 1;
+      const unitCost = formData.currencyCode === baseCurrency ? baseUnitCost : baseUnitCost / rateToBase;
+      const taxRate = Number(product.taxRate) || 0;
+      const defaultWarehouseId = typeof product.defaultWarehouse === 'object'
+        ? product.defaultWarehouse?._id
+        : product.defaultWarehouse;
       setFormData(prev => {
         const newLines = [...prev.lines];
         const subtotal = (newLines[index].qtyOrdered || 1) * unitCost;
@@ -366,12 +383,21 @@ export default function PurchaseOrderFormPage() {
           ...newLines[index],
           product: productId,
           productName: product.name,
+          productUnit: product.unit || '',
+          baseUnitCost,
           unitCost,
           taxRate,
           taxAmount,
           lineTotal: subtotal + taxAmount,
         };
-        return { ...prev, lines: newLines };
+        return {
+          ...prev,
+          warehouse: prev.warehouse || defaultWarehouseId || '',
+          supplier: prev.supplier || (typeof product.preferredSupplier === 'object'
+            ? product.preferredSupplier?._id
+            : product.preferredSupplier) || '',
+          lines: newLines,
+        };
       });
     }
   };
@@ -682,9 +708,18 @@ export default function PurchaseOrderFormPage() {
                       <DocumentCurrencySelect
                         value={formData.currencyCode || 'RWF'}
                         date={formData.orderDate}
-                        onChange={(currency, rateToBase) =>
-                          setFormData((prev) => ({ ...prev, currencyCode: currency, exchangeRate: rateToBase ?? 1 }))
-                        }
+                        onChange={(currency, rateToBase) => setFormData((prev) => {
+                          const nextRate = currency === baseCurrency
+                            ? 1
+                            : rateToBase != null && rateToBase > 0 ? rateToBase : 1;
+                          const lines = prev.lines.map((line) => {
+                            if (line.baseUnitCost == null) return line;
+                            const unitCost = line.baseUnitCost / nextRate;
+                            const calculated = calculateLineTotals({ ...line, unitCost });
+                            return { ...line, unitCost, ...calculated };
+                          });
+                          return { ...prev, currencyCode: currency, exchangeRate: nextRate, lines };
+                        })}
                       />
                     </div>
                   </div>
@@ -776,6 +811,9 @@ export default function PurchaseOrderFormPage() {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                                {line.productUnit && (
+                                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Unit: {line.productUnit}</p>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <Input
