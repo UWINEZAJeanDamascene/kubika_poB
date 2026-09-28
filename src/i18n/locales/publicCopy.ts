@@ -7,9 +7,9 @@ const publicCopy = {
           branches: 'For every branch',
         },
         heroLabel: 'KUBIKA / COMPANY OPERATIONS',
-        heroTitle: 'Stock management and accounting for Rwandan SMEs.',
+        heroTitle: 'A clearer view of your business.',
         heroSubtitle:
-          'KUBIKA brings stock, purchasing, accounting, payroll and VAT reporting into one secure workspace for growing Rwandan companies.',
+          'Stock, purchasing and finance—connected across every branch.',
         createShort: 'Create',
         openWorkspace: 'Open workspace',
         alreadyHaveWorkspace: 'Already have a workspace? Sign in',

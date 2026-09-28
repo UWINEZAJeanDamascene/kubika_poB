@@ -83,7 +83,7 @@ export function PublicHeader({
         alignItems="center"
         justifyContent="space-between"
         gap={3}
-        className="public-header__inner mx-auto w-full max-w-[1240px] px-5 sm:px-8 lg:px-10"
+        className="public-header__inner mx-auto w-full max-w-[2400px] px-5 sm:px-8 lg:px-10 xl:px-14 2xl:px-16"
       >
         <Link to="/" aria-label="KUBIKA home" className="shrink-0">
           <BrandMark />

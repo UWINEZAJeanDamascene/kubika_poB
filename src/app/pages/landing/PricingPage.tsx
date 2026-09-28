@@ -223,10 +223,10 @@ export default function PricingPage() {
   const tierKeys = uiPlans.map((p) => p.key);
 
   return (
-    <div className="min-h-screen bg-[#f7f9fb] text-slate-950 dark:bg-[#06080d] dark:text-white">
-      <section className="relative overflow-hidden px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+    <div className="pricing-page min-h-screen bg-[#f7f9fb] text-slate-950 dark:bg-[#06080d] dark:text-white">
+      <section className="relative overflow-hidden px-4 pb-12 pt-6 sm:px-6 sm:pb-16 lg:px-8 xl:px-12 2xl:px-16">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_10%,rgba(14,165,233,0.22),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(16,185,129,0.18),transparent_24%)] dark:bg-[radial-gradient(circle_at_20%_10%,rgba(34,211,238,0.14),transparent_28%),radial-gradient(circle_at_84%_16%,rgba(74,222,128,0.12),transparent_24%)]" />
-        <div className="relative mx-auto max-w-7xl">
+        <div className="relative mx-auto max-w-[2400px]">
           <header className="flex h-16 items-center justify-between">
             <Link to="/" className="inline-flex items-center gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-lg bg-slate-950 text-white dark:bg-white dark:text-slate-950">
@@ -262,13 +262,13 @@ export default function PricingPage() {
             </div>
           </header>
 
-          <div className="grid gap-10 py-14 lg:grid-cols-[0.78fr_1.22fr] lg:items-end">
+          <div className="pricing-hero grid gap-10 py-10 sm:py-14 lg:grid-cols-[0.78fr_1.22fr] lg:items-end xl:gap-16 xl:py-20">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/25 bg-white/70 px-3.5 py-1.5 text-xs font-bold uppercase tracking-widest text-cyan-800 shadow-sm backdrop-blur dark:bg-white/8 dark:text-cyan-200">
                 <Sparkles className="h-3.5 w-3.5" />
                 Subscription Pricing
               </div>
-              <h1 className="mt-6 text-[3.2rem] font-bold leading-[1.05] tracking-tight sm:text-7xl">
+              <h1 className="pricing-hero__title mt-6 text-[clamp(2.75rem,5.5vw,5rem)] font-bold leading-[1.02] tracking-tight">
                 <span className="bg-gradient-to-r from-slate-950 via-cyan-700 to-emerald-600 bg-clip-text text-transparent dark:from-white dark:via-cyan-300 dark:to-emerald-400">
                   Scale your
                 </span>
@@ -292,7 +292,7 @@ export default function PricingPage() {
               ]).map((metric) => (
                 <div key={metric.label} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
                   <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400" />
-                  <p className="text-3xl font-bold tracking-tight text-slate-950 dark:text-white">{metric.value}</p>
+                  <p className="text-3xl font-bold tracking-tight text-slate-950 dark:text-white 2xl:text-5xl">{metric.value}</p>
                   <p className="mt-1.5 text-xs font-medium leading-relaxed text-slate-500 dark:text-slate-400">{metric.label}</p>
                 </div>
               ))}
@@ -301,21 +301,21 @@ export default function PricingPage() {
         </div>
       </section>
 
-      <main className="px-4 pb-20 sm:px-6 lg:px-8">
+      <main className="pricing-main px-4 pb-20 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
         {loading ? (
-          <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-3">
+          <div className="pricing-grid mx-auto grid max-w-[2400px] gap-5 md:grid-cols-2 2xl:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex h-[640px] items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-800">
+              <div key={i} className="flex h-[520px] items-center justify-center rounded-lg bg-slate-200 dark:bg-slate-800 sm:h-[600px] 2xl:h-[680px]">
                 <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
               </div>
             ))}
           </div>
         ) : (
-          <div className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-3">
+          <div className="pricing-grid mx-auto grid max-w-[2400px] gap-5 md:grid-cols-2 2xl:grid-cols-3">
             {uiPlans.map((plan) => (
               <article
                 key={plan.key}
-                className={`relative flex min-h-[640px] flex-col overflow-hidden rounded-lg border bg-white p-6 shadow-sm dark:bg-white/[0.04] ${
+                className={`relative flex min-h-[560px] flex-col overflow-hidden rounded-lg border bg-white p-5 shadow-sm dark:bg-white/[0.04] sm:min-h-[600px] sm:p-6 2xl:p-10 ${
                   plan.featured
                     ? 'border-slate-950 shadow-2xl shadow-cyan-900/10 dark:border-cyan-300/60'
                     : 'border-slate-200 dark:border-white/10'
@@ -330,13 +330,13 @@ export default function PricingPage() {
                 <div className="grid h-12 w-12 place-items-center rounded-lg bg-slate-950 text-white dark:bg-white dark:text-slate-950">
                   <plan.icon className="h-5 w-5" />
                 </div>
-                <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300">{plan.badge}</p>
-                <h2 className="mt-2 text-2xl font-semibold">{plan.name}</h2>
+                <p className="mt-5 text-sm font-semibold uppercase tracking-[0.18em] text-cyan-700 dark:text-cyan-300 2xl:text-base">{plan.badge}</p>
+                <h2 className="mt-2 text-2xl font-semibold 2xl:text-3xl">{plan.name}</h2>
                 <div className="mt-5 flex items-baseline gap-2">
-                  <span className="text-5xl font-semibold tracking-tight">{plan.priceAmount}</span>
-                  <span className="text-lg font-medium text-slate-500 dark:text-slate-400">{plan.pricePeriod}</span>
+                  <span className="text-4xl font-semibold tracking-tight sm:text-5xl 2xl:text-6xl">{plan.priceAmount}</span>
+                  <span className="text-base font-medium text-slate-500 dark:text-slate-400 sm:text-lg 2xl:text-2xl">{plan.pricePeriod}</span>
                 </div>
-                <p className="mt-5 min-h-[48px] text-sm leading-6 text-slate-600 dark:text-slate-300">{plan.summary}</p>
+                <p className="mt-5 min-h-[48px] text-sm leading-6 text-slate-600 dark:text-slate-300 2xl:text-base 2xl:leading-7">{plan.summary}</p>
 
                 <div className="mt-6 space-y-5 border-t border-slate-200 pt-5 dark:border-white/10">
                   {plan.groups.map((group) => (
@@ -346,7 +346,7 @@ export default function PricingPage() {
                         {group.items.map((item) => {
                           const Icon = featureIcon(item);
                           return (
-                            <div key={`${group.title}-${item}`} className="flex gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            <div key={`${group.title}-${item}`} className="flex gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200 2xl:text-base">
                               <Icon className="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-500 dark:text-slate-400" />
                               <span>{item}</span>
                             </div>
@@ -387,7 +387,7 @@ export default function PricingPage() {
         )}
 
         {!loading && moduleMatrix.length > 0 && (
-          <section className="mx-auto mt-10 max-w-7xl rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] lg:p-8">
+        <section className="mx-auto mt-10 max-w-[2400px] rounded-lg border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-6 lg:p-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">Module matrix</p>
@@ -400,7 +400,7 @@ export default function PricingPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-2">
+            <div className="pricing-matrix mt-6 grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
               {moduleMatrix.map((module) => (
                 <div key={module.key} className="flex items-center justify-between gap-4 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
                   <div className="flex items-center gap-3">
@@ -429,7 +429,7 @@ export default function PricingPage() {
           </section>
         )}
 
-        <section className="mx-auto mt-10 grid max-w-7xl gap-5 lg:grid-cols-[1fr_0.62fr]">
+        <section className="mx-auto mt-10 grid max-w-[2400px] gap-5 lg:grid-cols-[1fr_0.62fr] 2xl:gap-8">
           <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
             <div className="grid h-11 w-11 place-items-center rounded-xl bg-cyan-50 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300">
               <Zap className="h-5 w-5" />

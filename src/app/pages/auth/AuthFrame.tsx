@@ -48,7 +48,7 @@ export function AuthFrame({
     <MuiThemeProvider theme={pageTheme}>
       <div className="public-shell public-access-shell min-h-screen overflow-x-hidden">
         <PublicHeader mode="access" />
-        <main className="public-access-layout mx-auto grid w-full max-w-[1240px] gap-8 px-5 py-8 sm:px-8 sm:py-10 lg:grid-cols-[5fr_7fr] lg:gap-12 lg:px-10 lg:py-14">
+        <main className="public-access-layout mx-auto grid w-full max-w-[2400px] gap-8 px-5 py-8 sm:px-8 sm:py-10 lg:grid-cols-[5fr_7fr] lg:gap-12 lg:px-10 lg:py-14 xl:gap-16 xl:px-14 2xl:px-16">
           <section className="public-access-context" aria-labelledby="access-context-title">
             <RegistrationMark className="mb-8" />
             <RuleLabel>{t('auth.folio.label')}</RuleLabel>
