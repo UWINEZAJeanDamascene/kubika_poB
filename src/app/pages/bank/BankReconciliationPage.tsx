@@ -281,6 +281,7 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
           <div className="grid gap-4 lg:grid-cols-2">
             <TransactionPanel
               title="Bank Statement Transactions"
+              currencyCode={account?.currencyCode || "RWF"}
               items={statementTx}
               selected={selectedStatement}
               onSelect={setSelectedStatement}
@@ -291,6 +292,7 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
             />
             <TransactionPanel
               title="Book Transactions"
+              currencyCode={account?.currencyCode || "RWF"}
               items={bookTx}
               selected={selectedBook}
               onSelect={setSelectedBook}
@@ -307,17 +309,17 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
             <CardTitle className="text-base">Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            <SummaryLine label="Closing book balance" value={summary?.closingBookBalance} />
-            <SummaryLine label="Add: unrecorded bank credits" value={summary?.unrecordedBankCredits} />
-            <SummaryLine label="Less: unrecorded bank charges" value={-Number(summary?.unrecordedBankCharges || 0)} />
-            <SummaryLine label="Adjusted book balance" value={summary?.adjustedBookBalance} strong />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Closing book balance" value={summary?.closingBookBalance} />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Add: unrecorded bank credits" value={summary?.unrecordedBankCredits} />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Less: unrecorded bank charges" value={-Number(summary?.unrecordedBankCharges || 0)} />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Adjusted book balance" value={summary?.adjustedBookBalance} strong />
             <div className="border-t pt-3" />
-            <SummaryLine label="Closing statement balance" value={summary?.closingStatementBalance} />
-            <SummaryLine label="Add: deposits in transit" value={summary?.outstandingDeposits} />
-            <SummaryLine label="Less: outstanding checks" value={-Number(summary?.outstandingChecks || 0)} />
-            <SummaryLine label="Adjusted bank balance" value={summary?.adjustedBankBalance} strong />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Closing statement balance" value={summary?.closingStatementBalance} />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Add: deposits in transit" value={summary?.outstandingDeposits} />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Less: outstanding checks" value={-Number(summary?.outstandingChecks || 0)} />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Adjusted bank balance" value={summary?.adjustedBankBalance} strong />
             <div className="border-t pt-3" />
-            <SummaryLine label="Difference" value={summary?.difference} strong />
+            <SummaryLine currencyCode={account?.currencyCode || "RWF"} label="Difference" value={summary?.difference} strong />
             {summary?.isBalanced ? (
               <Badge className="bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"><Check className="mr-1 h-3 w-3" /> Balanced</Badge>
             ) : (
@@ -351,17 +353,19 @@ function PaginationControls({ page, pages, onPageChange, label }: { page: number
   );
 }
 
-function SummaryLine({ label, value, strong = false }: { label: string; value: any; strong?: boolean }) {
+function SummaryLine({ label, value, strong = false, currencyCode }: { label: string; value: any; strong?: boolean; currencyCode: string }) {
+  const { formatCurrency } = useCurrency();
   return (
     <div className={`flex items-center justify-between gap-3 ${strong ? "font-semibold" : ""}`}>
       <span>{label}</span>
-      <span>{money(value)}</span>
+      <span>{formatCurrency(Number(value || 0), currencyCode)}</span>
     </div>
   );
 }
 
 function TransactionPanel({
   title,
+  currencyCode,
   items,
   selected,
   onSelect,
@@ -371,6 +375,7 @@ function TransactionPanel({
   onPageChange,
 }: {
   title: string;
+  currencyCode: string;
   items: any[];
   selected: string;
   onSelect: (id: string) => void;
@@ -379,6 +384,7 @@ function TransactionPanel({
   pages: number;
   onPageChange: (page: number) => void;
 }) {
+  const { formatCurrency } = useCurrency();
   return (
     <Card className="border-slate-200 bg-white text-slate-900 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-50">
       <CardHeader>
@@ -410,7 +416,7 @@ function TransactionPanel({
                     <div className="max-w-[280px] truncate">{item.description}</div>
                     <div className="text-xs text-slate-500">{item.reference || item.referenceNumber || item.sourceReference}</div>
                   </TableCell>
-                  <TableCell className="text-right">{money(amount)}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(amount, currencyCode)}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{status}</Badge>
                   </TableCell>
