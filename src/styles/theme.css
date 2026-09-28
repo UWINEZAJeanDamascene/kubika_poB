@@ -430,6 +430,64 @@
     color: var(--public-ink) !important;
   }
 
+  .public-language-menu {
+    background: var(--industrial-panel) !important;
+    border: 1px solid var(--industrial-rule-strong) !important;
+    border-top: 2px solid var(--industrial-copper) !important;
+    border-radius: 0.3rem !important;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2) !important;
+    color: var(--industrial-ink) !important;
+    padding: 0.35rem !important;
+  }
+
+  .public-language-menu__item,
+  .public-language-menu__item:focus,
+  .public-language-menu__item:hover {
+    background: transparent !important;
+    border-radius: 0.22rem !important;
+    color: var(--industrial-ink) !important;
+    min-height: 2.65rem;
+    padding: 0.55rem 0.65rem !important;
+    transition: background-color 140ms ease, color 140ms ease;
+  }
+
+  .public-language-menu__item:focus,
+  .public-language-menu__item:hover {
+    background: color-mix(in srgb, var(--industrial-ink) 7%, transparent) !important;
+  }
+
+  .public-language-menu__item.is-selected,
+  .public-language-menu__item.is-selected:focus,
+  .public-language-menu__item.is-selected:hover {
+    background: color-mix(in srgb, var(--industrial-copper) 12%, transparent) !important;
+    box-shadow: inset 2px 0 var(--industrial-copper);
+  }
+
+  .public-language-menu__code {
+    align-items: center;
+    background: color-mix(in srgb, var(--industrial-ink) 7%, transparent);
+    border-radius: 0.28rem;
+    color: var(--industrial-muted);
+    display: inline-flex;
+    flex: 0 0 1.8rem;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.62rem;
+    font-weight: 700;
+    height: 1.45rem;
+    justify-content: center;
+  }
+
+  .public-language-menu__item.is-selected .public-language-menu__code {
+    background: var(--industrial-copper);
+    color: var(--industrial-bg);
+  }
+
+  .public-language-menu__check {
+    color: var(--industrial-copper);
+    height: 0.9rem;
+    width: 0.9rem;
+  }
+
   .public-action {
     background: var(--public-accent) !important;
     border-radius: 2px !important;

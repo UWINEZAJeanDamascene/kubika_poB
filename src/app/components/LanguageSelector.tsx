@@ -1,4 +1,4 @@
-import { Languages } from 'lucide-react';
+import { Check, Languages } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage, type Language } from '@/contexts/LanguageContext';
 import {
@@ -67,15 +67,40 @@ export function LanguageSelector({
           )}
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={variant === 'sidebar' ? 'start' : 'end'} className="min-w-[160px]">
+      <DropdownMenuContent
+        align={variant === 'sidebar' ? 'start' : 'end'}
+        className={cn(
+          'min-w-[160px]',
+          variant === 'landing' && 'public-language-menu min-w-[196px] p-1.5',
+        )}
+      >
         {LANGUAGES.map(({ code, labelKey, short }) => (
           <DropdownMenuItem
             key={code}
             onClick={() => setLanguage(code)}
-            className={cn('cursor-pointer gap-2', language === code && 'bg-accent font-semibold')}
+            className={cn(
+              'cursor-pointer gap-2',
+              variant === 'landing'
+                ? 'public-language-menu__item'
+                : language === code && 'bg-accent font-semibold',
+              variant === 'landing' && language === code && 'is-selected',
+            )}
           >
-            <span className="text-[10px] font-bold text-muted-foreground w-6">{short}</span>
-            {t(labelKey)}
+            <span
+              className={cn(
+                variant === 'landing'
+                  ? 'public-language-menu__code'
+                  : 'w-6 text-[10px] font-bold text-muted-foreground',
+              )}
+            >
+              {short}
+            </span>
+            <span className={variant === 'landing' ? 'flex-1' : undefined}>
+              {t(labelKey)}
+            </span>
+            {variant === 'landing' && language === code && (
+              <Check className="public-language-menu__check" aria-hidden="true" />
+            )}
           </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
