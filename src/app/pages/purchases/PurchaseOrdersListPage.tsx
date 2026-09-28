@@ -78,7 +78,7 @@ interface PurchaseOrder {
   taxAmount: number;
   totalAmount: number;
   notes?: string;
-  linesCount: number;
+  linesCount?: number;
   createdAt: string;
   ebm?: { ebmStatus?: string; ebmPurchaseMatchStatus?: string };
 }
@@ -744,7 +744,7 @@ export default function PurchaseOrdersListPage() {
                           {formatCurrency(po.totalAmount, po.currencyCode)}
                         </TableCell>
                         <TableCell className="text-slate-600 dark:text-slate-300">
-                          {po.linesCount || 0}
+                          {po.linesCount ?? 0}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
