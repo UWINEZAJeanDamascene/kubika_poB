@@ -1060,7 +1060,10 @@ export default function PurchaseOrderDetailPage() {
                       step="any"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
-                      placeholder={String(convertAmount(Math.max(0, Number(purchaseOrder.balance ?? purchaseOrder.totalAmount) - totalPaid), purchaseOrder.currencyCode))}
+                      placeholder={String(convertAmount(
+                        Math.max(0, Number(purchaseOrder.balance ?? (Number(purchaseOrder.totalAmount) - totalPaid))),
+                        purchaseOrder.currencyCode,
+                      ))}
                       className="mt-1 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                     />
                     <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Entered in {displayCurrency}; applied to the {purchaseOrder.currencyCode} order balance and converted for the selected bank account.</p>

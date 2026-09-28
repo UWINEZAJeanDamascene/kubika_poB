@@ -19,7 +19,7 @@ import {
   Package,
   Truck,
 } from "lucide-react";
-import { formatWithSymbol } from '@/lib/currencyUtils';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { Button } from "@/app/components/ui/button";
 import {
   Table,
@@ -45,6 +45,7 @@ interface GRNDetail {
     referenceNo: string;
     orderDate: string;
     expectedDeliveryDate?: string;
+    currencyCode?: string;
   };
   supplier?: {
     _id: string;
@@ -111,6 +112,7 @@ interface HistoryEntry {
    ═══════════════════════════════════════════════════════════════ */
 export default function GRNDetailPage() {
   const { t } = useTranslation();
+  const { formatCurrency: formatInDisplayCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
 
@@ -177,7 +179,7 @@ export default function GRNDetailPage() {
       num = parseFloat((amount as any).$numberDecimal || (amount as any).toString()) || 0;
     } else if (typeof amount === "string") num = parseFloat(amount) || 0;
     else num = amount as number;
-    return formatWithSymbol(num);
+    return formatInDisplayCurrency(num, grn?.purchaseOrder?.currencyCode);
   };
 
   const formatDate = (dateStr: string) => {

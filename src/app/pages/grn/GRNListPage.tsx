@@ -57,6 +57,7 @@ interface GRN {
   purchaseOrder?: {
     _id: string;
     referenceNo: string;
+    currencyCode?: string;
   };
   supplier?: {
     _id: string;
@@ -147,7 +148,7 @@ function PaymentStatusBadge({ status }: { status: string }) {
    ═══════════════════════════════════════════════════════════════ */
 export default function GRNListPage() {
   const { t } = useTranslation();
-  const { formatCurrency } = useCurrency();
+  const { formatCurrency, convertAmount, displayCurrency } = useCurrency();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -197,9 +198,12 @@ export default function GRNListPage() {
     const total = grnList.length;
     const draft = grnList.filter((g) => g.status === "draft").length;
     const confirmed = grnList.filter((g) => g.status === "confirmed").length;
-    const totalValue = grnList.reduce((sum, g) => sum + (Number(g.totalAmount) || 0), 0);
+    const totalValue = grnList.reduce(
+      (sum, g) => sum + convertAmount(Number(g.totalAmount) || 0, g.purchaseOrder?.currencyCode),
+      0,
+    );
     return { total, draft, confirmed, totalValue };
-  }, [grnList]);
+  }, [grnList, convertAmount]);
 
   /* ── Data fetching ── */
   const fetchSuppliers = useCallback(async () => {
@@ -302,7 +306,7 @@ export default function GRNListPage() {
             <StatTile title="Total GRNs" value={stats.total} icon={<Box className="h-5 w-5" />} tone="indigo" />
             <StatTile title="Draft" value={stats.draft} icon={<Clock className="h-5 w-5" />} tone="amber" />
             <StatTile title="Confirmed" value={stats.confirmed} icon={<CheckCircle className="h-5 w-5" />} tone="emerald" />
-            <StatTile title="Total Value" value={formatCurrency(stats.totalValue)} icon={<TrendingUp className="h-5 w-5" />} tone="blue" />
+            <StatTile title="Total Value" value={formatCurrency(stats.totalValue, displayCurrency)} icon={<TrendingUp className="h-5 w-5" />} tone="blue" />
           </div>
 
           {/* Filters */}
@@ -423,7 +427,7 @@ export default function GRNListPage() {
                           <StatusBadge status={grn.status} />
                         </TableCell>
                         <TableCell><EBMStatusBadge ebmStatus={grn.ebm?.stockStatus || grn.ebm?.ebmStatus} /></TableCell>
-                        <TableCell className="font-mono font-medium text-slate-900 dark:text-white">{formatCurrency(Number(grn.totalAmount) || 0)}</TableCell>
+                        <TableCell className="font-mono font-medium text-slate-900 dark:text-white">{formatCurrency(Number(grn.totalAmount) || 0, grn.purchaseOrder?.currencyCode)}</TableCell>
                         <TableCell>
                           <PaymentStatusBadge status={grn.paymentStatus} />
                         </TableCell>
