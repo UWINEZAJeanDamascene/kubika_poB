@@ -98,7 +98,11 @@ export function PublicHeader({
             aria-label="Primary navigation"
             className="public-header__nav"
           >
-            {navItems.map((item) => (
+            {navItems.map((item) => item.href.startsWith('/') ? (
+              <Link key={item.href} to={item.href} className="public-header__nav-link">
+                {item.label}
+              </Link>
+            ) : (
               <a key={item.href} href={item.href} className="public-header__nav-link">
                 {item.label}
               </a>
@@ -186,7 +190,16 @@ export function PublicHeader({
           aria-label="Mobile navigation"
           className="public-mobile-nav lg:hidden"
         >
-          {navItems.map((item) => (
+          {navItems.map((item) => item.href.startsWith('/') ? (
+            <Link
+              key={item.href}
+              to={item.href}
+              onClick={() => setMobileOpen(false)}
+              className="public-mobile-nav__link"
+            >
+              {item.label}
+            </Link>
+          ) : (
             <a
               key={item.href}
               href={item.href}

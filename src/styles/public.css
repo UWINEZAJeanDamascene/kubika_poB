@@ -1,4 +1,104 @@
 @layer components {
+  .about-page { background: var(--public-paper); color: var(--public-ink); overflow-x: hidden; }
+  .about-container { margin-inline: auto; max-width: 1880px; width: calc(100% - clamp(2.5rem, 8vw, 8rem)); }
+  .about-intro { background: radial-gradient(ellipse at 82% 45%, color-mix(in srgb, var(--public-accent) 10%, transparent), transparent 42%), var(--public-paper); border-bottom: 1px solid var(--public-rule); }
+  .about-intro__inner { align-items: center; display: grid; gap: clamp(2rem, 6vw, 7rem); grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.8fr); padding-bottom: clamp(4rem, 9vw, 8rem); padding-top: clamp(4rem, 9vw, 8rem); }
+  .about-intro__copy { max-width: 940px; }
+  .about-intro__copy h1 { color: var(--public-ink); font-size: clamp(3.2rem, 7vw, 7rem); font-weight: 700; letter-spacing: -0.07em; line-height: 0.98; margin-top: 1.25rem; max-width: 11ch; text-wrap: balance; }
+  .about-intro__copy > p { color: var(--public-ink-muted); font-size: clamp(1rem, 1.2vw, 1.25rem); line-height: 1.75; margin-top: 1.5rem; max-width: 44rem; }
+  .about-intro__link, .about-work__cta { align-items: center; color: var(--public-accent); display: inline-flex; font-size: 0.9rem; font-weight: 650; gap: 0.5rem; margin-top: 1.6rem; }
+  .about-intro__link svg, .about-work__cta svg { height: 1rem; width: 1rem; }
+  .about-intro__portrait { justify-self: end; margin: 0; max-width: 500px; position: relative; width: 100%; }
+  .about-intro__portrait-frame { aspect-ratio: 0.84; background: linear-gradient(150deg, #f8eee3 0%, #e7c6a8 55%, color-mix(in srgb, var(--public-accent) 68%, #8b442b) 100%); border: 1px solid color-mix(in srgb, var(--public-accent) 26%, transparent); border-radius: 48% 48% 8px 8px; isolation: isolate; overflow: hidden; position: relative; }
+  .about-intro__portrait-ring { border: 1px solid color-mix(in srgb, var(--public-accent) 24%, transparent); border-radius: 50%; height: 76%; left: 12%; position: absolute; top: 8%; width: 76%; }
+  .about-intro__portrait-frame img { bottom: 0; height: 100%; left: 0; mix-blend-mode: multiply; object-fit: contain; object-position: center bottom; position: absolute; width: 100%; z-index: 1; }
+  .about-intro__portrait figcaption { background: color-mix(in srgb, var(--public-ink) 94%, transparent); border: 1px solid color-mix(in srgb, var(--public-paper) 16%, transparent); border-left: 3px solid var(--public-accent); bottom: 1rem; display: grid; gap: 0.28rem; left: 1rem; margin: 0; min-height: 5.5rem; padding: 0.85rem 1rem; position: absolute; right: 1rem; z-index: 3; }
+  .about-intro__portrait-team { color: var(--public-accent); font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.12em; }
+  .about-intro__portrait figcaption strong { color: var(--public-paper); font-size: clamp(1.3rem, 2vw, 1.7rem); font-weight: 650; letter-spacing: -0.035em; line-height: 1.05; }
+  .about-intro__portrait-role { align-items: center; color: color-mix(in srgb, var(--public-paper) 76%, transparent); display: flex; font-size: 0.78rem; gap: 0.45rem; }
+  .about-intro__portrait-role svg { color: var(--public-accent); height: 0.9rem; width: 0.9rem; }
+  .about-story { background: var(--public-surface); border-bottom: 1px solid var(--public-rule); }
+  .about-story__inner { display: grid; gap: clamp(2rem, 8vw, 9rem); grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr); padding-bottom: clamp(3.5rem, 7vw, 6.5rem); padding-top: clamp(3.5rem, 7vw, 6.5rem); }
+  .about-story h2, .about-work__heading h2, .about-contact h2 { color: var(--public-ink); font-size: clamp(2rem, 4vw, 4rem); font-weight: 650; letter-spacing: -0.06em; line-height: 1.05; margin-top: 0.8rem; max-width: 16ch; text-wrap: balance; }
+  .about-story__copy { display: grid; gap: 1rem; }
+  .about-story__copy p, .about-work__heading > p, .about-contact__inner > div > p { color: var(--public-ink-muted); font-size: 0.98rem; line-height: 1.8; }
+  .about-work { background: var(--public-paper); border-bottom: 1px solid var(--public-rule); padding-bottom: clamp(3.5rem, 7vw, 6.5rem); padding-top: clamp(3.5rem, 7vw, 6.5rem); }
+  .about-work__heading { max-width: 48rem; }
+  .about-work__heading > p { margin-top: 1rem; }
+  .about-work__grid { display: grid; gap: 1rem; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 2.5rem; }
+  .about-work-card { background: var(--public-surface); border: 1px solid var(--public-rule-strong); min-height: 220px; padding: clamp(1.25rem, 2.2vw, 2rem); }
+  .about-work-card__icon { align-items: center; background: color-mix(in srgb, var(--public-accent) 10%, transparent); color: var(--public-accent); display: inline-flex; height: 2.7rem; justify-content: center; width: 2.7rem; }
+  .about-work-card__icon svg { height: 1.25rem; width: 1.25rem; }
+  .about-work-card h3 { color: var(--public-ink); font-size: 1.1rem; font-weight: 650; margin-top: 1.25rem; }
+  .about-work-card p { color: var(--public-ink-muted); font-size: 0.86rem; line-height: 1.65; margin-top: 0.55rem; }
+  .about-contact { background: var(--public-surface); }
+  .about-contact__inner { align-items: center; display: flex; gap: 2rem; justify-content: space-between; padding-bottom: clamp(3rem, 6vw, 5.5rem); padding-top: clamp(3rem, 6vw, 5.5rem); }
+  .about-contact__inner > div > p { margin-top: 0.9rem; }
+  .about-contact address { display: grid; font-size: 0.9rem; font-style: normal; gap: 0.8rem; }
+  .about-contact address a { color: var(--public-accent); font-weight: 650; }
+  .about-contact address span { color: var(--public-ink-muted); }
+  .public-site-footer__inner { padding-bottom: 1.5rem; padding-top: 2.5rem; }
+  .public-site-footer__main { align-items: start; display: grid; gap: clamp(2.5rem, 7vw, 7rem); grid-template-columns: minmax(190px, 0.8fr) minmax(0, 2fr); }
+  .public-site-footer__identity > p { color: var(--public-ink-subtle); font-size: 0.78rem; line-height: 1.6; margin-top: 1rem; max-width: 16rem; }
+  .public-site-footer__groups { display: grid; gap: 2rem; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .public-site-footer__group { align-content: start; display: grid; gap: 0.7rem; justify-items: start; }
+  .public-site-footer__group h2 { color: var(--public-ink); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.1em; margin-bottom: 0.25rem; text-transform: uppercase; }
+  .public-site-footer__group address,
+  .public-site-footer__group > a { color: var(--public-ink-subtle); font-size: 0.78rem; font-style: normal; line-height: 1.6; }
+  .public-site-footer__group > a:hover { color: var(--public-accent); }
+  .public-site-footer__social { align-items: center; display: flex; flex-wrap: wrap; gap: 0.65rem; }
+  .public-site-footer__social a { align-items: center; background: var(--public-surface); border: 1px solid var(--public-rule-strong); border-radius: 999px; color: var(--public-ink-muted); display: inline-flex; height: 2.4rem; justify-content: center; transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease; width: 2.4rem; }
+  .public-site-footer__social a:hover { background: var(--public-accent); border-color: var(--public-accent); color: var(--public-paper); transform: translateY(-2px); }
+  .public-site-footer__social a:focus-visible { outline: 2px solid var(--public-accent); outline-offset: 3px; }
+  .public-site-footer__social svg { fill: currentColor; height: 1rem; stroke: currentColor; stroke-width: 1.8; width: 1rem; }
+  .public-site-footer__social svg rect, .public-site-footer__social svg circle { fill: none; }
+  .public-site-footer__social svg .public-site-footer__icon-dot { fill: currentColor; stroke: none; }
+  .public-site-footer__bottom { align-items: center; border-top: 1px solid var(--public-rule); color: var(--public-ink-subtle); display: flex; flex-wrap: wrap; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; gap: 0.75rem 2rem; justify-content: space-between; margin-top: 2.25rem; padding-top: 1rem; }
+
+  @media (max-width: 760px) {
+    .about-intro__inner, .about-story__inner { grid-template-columns: 1fr; }
+    .about-intro__portrait { justify-self: start; margin-top: 0.5rem; max-width: 440px; }
+    .about-work__grid { grid-template-columns: 1fr; }
+    .about-contact__inner { align-items: flex-start; flex-direction: column; }
+    .public-site-footer__main { grid-template-columns: 1fr; }
+    .public-site-footer__groups { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .public-site-footer__inner { padding-bottom: 1.25rem; padding-top: 2rem; }
+  }
+
+  @media (max-width: 460px) {
+    .public-site-footer__groups { grid-template-columns: 1fr; }
+  }
+
+  @media (min-width: 1920px) {
+    .about-container { max-width: 2160px; }
+    .about-intro__inner { gap: clamp(5rem, 7vw, 10rem); }
+    .about-intro__copy h1 { font-size: clamp(7rem, 5.3vw, 9rem); max-width: 12ch; }
+    .about-intro__copy > p { font-size: clamp(1.2rem, 1.25vw, 1.5rem); max-width: 52rem; }
+    .about-intro__portrait { max-width: 650px; }
+    .about-story h2, .about-work__heading h2, .about-contact h2 { font-size: clamp(4rem, 4vw, 5.5rem); }
+    .about-story__copy p, .about-work__heading > p, .about-contact__inner > div > p { font-size: 1.12rem; }
+    .about-work__grid { gap: 1.5rem; margin-top: 3rem; }
+    .about-work-card { min-height: 260px; padding: 2.5rem; }
+    .about-work-card h3 { font-size: 1.3rem; }
+    .about-work-card p { font-size: 1rem; }
+    .about-contact address { font-size: 1.05rem; }
+  }
+
+  @media (min-width: 2560px) {
+    .about-container { max-width: 2400px; }
+    .about-intro__inner { gap: clamp(8rem, 9vw, 14rem); }
+    .about-intro__copy h1 { font-size: clamp(9rem, 5.4vw, 10rem); }
+    .about-intro__copy > p { font-size: clamp(1.4rem, 1.3vw, 1.75rem); }
+    .about-intro__portrait { max-width: 760px; }
+    .about-intro__portrait-frame { border-width: 2px; }
+    .about-intro__portrait figcaption { min-height: 6.5rem; padding: 1.1rem 1.25rem; }
+    .about-story__inner { gap: clamp(8rem, 9vw, 14rem); }
+    .about-story__copy p, .about-work__heading > p, .about-contact__inner > div > p { font-size: 1.25rem; }
+    .about-work-card { min-height: 300px; padding: 3rem; }
+    .about-work-card h3 { font-size: 1.5rem; }
+    .about-work-card p { font-size: 1.1rem; }
+  }
+
   .pricing-page { background: var(--public-paper); color: var(--public-ink); overflow-x: hidden; }
   .pricing-container { margin-inline: auto; max-width: 1880px; width: calc(100% - clamp(2.5rem, 8vw, 8rem)); }
   .pricing-intro {
@@ -66,6 +166,7 @@
   .pricing-assurance a { align-items: center; color: var(--public-accent); display: inline-flex; font-size: 0.8rem; font-weight: 650; gap: 0.5rem; }
   .pricing-assurance a svg { height: 0.9rem; width: 0.9rem; }
   .pricing-footer > div { align-items: center; display: flex; gap: 1rem; justify-content: space-between; padding-bottom: 1.5rem; padding-top: 1.5rem; }
+  .pricing-footer.public-site-footer > div { display: block; padding: 0; }
   .pricing-footer__brand { align-items: center; color: var(--public-ink); display: inline-flex; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700; gap: 0.65rem; letter-spacing: 0.12em; }
   .pricing-footer__brand > span { align-items: center; background: var(--public-accent); color: var(--public-paper); display: inline-flex; height: 2.2rem; justify-content: center; width: 2.2rem; }
   .pricing-footer__brand svg { height: 1rem; width: 1rem; }

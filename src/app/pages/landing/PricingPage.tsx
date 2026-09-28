@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import { ArrowRight, Boxes, Check, CircleHelp, Layers3, Loader2, Sparkles } from 'lucide-react';
 import { PublicHeader } from '@/app/components/public/PublicHeader';
+import { PublicSiteFooter } from '@/app/components/public/PublicSiteFooter';
 import { RuleLabel } from '@/app/components/public/PublicPrimitives';
 import { useTheme } from '@/contexts/ThemeContext';
 import { createMuiTheme } from '@/theme/muiTheme';
@@ -211,7 +212,7 @@ export default function PricingPage() {
                   </div>
                   <div className="pricing-empty__actions">
                     {loadError && <button type="button" onClick={() => void loadPlans()}>Try again</button>}
-                    <a href="mailto:jayfcode@gmail.com">Contact KUBIKA</a>
+                    <a href="mailto:uwinezajd2@gmail.com">Contact KUBIKA</a>
                   </div>
                 </div>
               )}
@@ -227,17 +228,7 @@ export default function PricingPage() {
           </section>
         </main>
 
-        <footer className="pricing-footer">
-          <div className="pricing-container">
-            <Link to="/" className="pricing-footer__brand"><span><Layers3 aria-hidden="true" /></span>KUBIKA</Link>
-            <div className="pricing-footer__links">
-              <address>Kicukiro, Kigali, Rwanda</address>
-              <Link to="/">Home</Link>
-              <a href="mailto:jayfcode@gmail.com">Contact</a>
-              <span>© {new Date().getFullYear()} KUBIKA SYSTEM</span>
-            </div>
-          </div>
-        </footer>
+        <PublicSiteFooter variant="pricing" />
       </div>
     </MuiThemeProvider>
   );

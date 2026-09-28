@@ -23,6 +23,11 @@ const publicSeo: Record<string, PageSeo> = {
     description:
       'Compare KUBIKA plans for businesses that need connected inventory management, accounting, purchasing, POS and branch reporting.',
   },
+  '/about': {
+    title: 'About BluePeak Rwanda | KUBIKA Business Software',
+    description:
+      'Meet BluePeak Rwanda Digital Solutions, the Kigali team behind KUBIKA inventory, purchasing, sales and accounting software for businesses.',
+  },
   '/operations': {
     title: 'Inventory Management Software in Rwanda | KUBIKA',
     description:
@@ -79,23 +84,24 @@ const organizationSchema = {
   '@id': `${SITE_URL}/#organization`,
   name: 'BluePeak Rwanda Digital Solutions Ltd',
   url: SITE_URL,
-  logo: `${SITE_URL}/favicon.svg`,
+  logo: `${SITE_URL}/kubika-system-logo.png`,
   address: {
     '@type': 'PostalAddress',
-    addressLocality: 'Kicukiro, Kigali',
+    streetAddress: 'KK 398 St, Kagarama, Kicukiro',
+    addressLocality: 'Kigali',
     addressCountry: 'RW',
   },
   telephone: '+250780936645',
-  email: 'jayfcode@gmail.com',
+  email: 'uwinezajd2@gmail.com',
   contactPoint: {
     '@type': 'ContactPoint',
     telephone: '+250780936645',
-    email: 'jayfcode@gmail.com',
+    email: 'uwinezajd2@gmail.com',
     contactType: 'customer support',
     areaServed: 'RW',
   },
   // Add verified social profile URLs here when the company profiles are published.
-  sameAs: [],
+  sameAs: ['https://bluepeakrwanda.ctskigali.com/'],
 };
 
 function getLocale() {

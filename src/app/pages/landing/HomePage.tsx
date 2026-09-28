@@ -20,7 +20,8 @@ import {
 import { createMuiTheme } from '@/theme/muiTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
-import { BrandMark, PublicHeader } from '@/app/components/public/PublicHeader';
+import { PublicHeader } from '@/app/components/public/PublicHeader';
+import { PublicSiteFooter } from '@/app/components/public/PublicSiteFooter';
 import { CopperActionButton, RuleLabel } from '@/app/components/public/PublicPrimitives';
 
 export default function HomePage() {
@@ -37,6 +38,7 @@ export default function HomePage() {
   const navItems = [
     { label: t('landing.home.nav.covers'), href: '#product-tour' },
     { label: t('landing.home.nav.branches'), href: '#branches' },
+    { label: 'About us', href: '/about' },
   ];
   const operations = [
     { icon: Boxes, label: t('landing.home.path.stock.label'), detail: t('landing.home.record.stock.detail') },
@@ -210,12 +212,7 @@ export default function HomePage() {
           </section>
         </main>
 
-        <footer className="home-footer">
-          <div className="mx-auto flex max-w-[2400px] flex-col gap-5 px-5 py-7 sm:flex-row sm:items-center sm:justify-between sm:px-8 lg:px-10 xl:px-14 2xl:px-16">
-            <Link to="/" aria-label="KUBIKA home"><BrandMark /></Link>
-            <div className="home-footer__links"><address>Kicukiro, Kigali, Rwanda</address><Link to="/pricing">{t('landing.home.footer.pricing')}</Link><a href="mailto:jayfcode@gmail.com">{t('landing.home.footer.contact')}</a><span>{t('landing.home.footer.copyright', { year: new Date().getFullYear() })}</span></div>
-          </div>
-        </footer>
+        <PublicSiteFooter />
       </div>
     </MuiThemeProvider>
   );
