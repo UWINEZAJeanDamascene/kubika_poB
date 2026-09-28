@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { ComponentType } from 'react';
 import { Link } from 'react-router';
 import {
@@ -138,9 +138,16 @@ function formatPrice(amount: number) {
   if (!amount) return 'Custom';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'RWF',
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function formatBillingCycle(cycle: string) {
+  if (cycle === 'monthly') return '/ month';
+  if (cycle === 'quarterly') return '/ quarter';
+  if (cycle === 'yearly' || cycle === 'annually') return '/ year';
+  return `/ ${titleFromKey(cycle)}`;
 }
 
 function parseGroupedModules(plan: PlanData) {
@@ -178,7 +185,7 @@ function parseIncludedPills(outcomes: string[]) {
 
 function visiblePricingPlans(plans: PlanData[]) {
   return plans
-    .filter((plan) => plan.key !== 'trial' && plan.default_billing_amount > 0)
+    .filter((plan) => plan.key !== 'trial')
     .sort((a, b) => a.sort_order - b.sort_order)
     .slice(0, 3);
 }
@@ -186,23 +193,36 @@ function visiblePricingPlans(plans: PlanData[]) {
 export default function PricingPage() {
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  const loadPlans = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const response = await companyService.getPublicSubscriptionPlans();
+      if (!response.success || !Array.isArray(response.data)) {
+        setLoadError(true);
+        setPlans([]);
+        return;
+      }
+      setPlans(visiblePricingPlans(response.data));
+    } catch {
+      setLoadError(true);
+      setPlans([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    companyService.getPublicSubscriptionPlans()
-      .then((res) => {
-        if (res.success) {
-          setPlans(visiblePricingPlans(res.data));
-        }
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, []);
+    void loadPlans();
+  }, [loadPlans]);
 
   const uiPlans = plans.map((plan, index) => ({
     key: plan.key,
     name: plan.name,
     priceAmount: formatPrice(plan.default_billing_amount),
-    pricePeriod: '/ month',
+    pricePeriod: formatBillingCycle(plan.default_billing_cycle || 'monthly'),
     accent: PLAN_ACCENTS[index % PLAN_ACCENTS.length],
     badge: plan.badge || PLAN_BADGES[index % PLAN_BADGES.length],
     summary: plan.description || '',
@@ -286,9 +306,9 @@ export default function PricingPage() {
                 { value: String(moduleMatrix.length), label: 'Modules available' },
                 { value: '0%', label: 'Hidden fees ever' }
               ] : [
-                { value: '3', label: 'Plans available' },
-                { value: '12+', label: 'Modules available' },
-                { value: '0%', label: 'Hidden fees ever' }
+                { value: '—', label: loadError ? 'Pricing unavailable' : 'Loading plans' },
+                { value: '—', label: 'Published modules' },
+                { value: '—', label: 'Current plan rates' }
               ]).map((metric) => (
                 <div key={metric.label} className="relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-white/[0.04]">
                   <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-cyan-400 to-emerald-400" />
@@ -310,7 +330,7 @@ export default function PricingPage() {
               </div>
             ))}
           </div>
-        ) : (
+        ) : uiPlans.length > 0 ? (
           <div className="pricing-grid mx-auto grid max-w-[2400px] gap-5 md:grid-cols-2 2xl:grid-cols-3">
             {uiPlans.map((plan) => (
               <article
@@ -384,6 +404,29 @@ export default function PricingPage() {
               </article>
             ))}
           </div>
+        ) : (
+          <section className="mx-auto max-w-[2400px] rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-white/[0.04] sm:p-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-slate-950 dark:text-white">
+                  {loadError ? 'We could not load pricing right now.' : 'Plans are being updated.'}
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {loadError
+                    ? 'Please try again, or contact our team for current plan availability.'
+                    : 'There are no public plans available at the moment. Contact our team for current options.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                {loadError && (
+                  <Button variant="outline" onClick={() => void loadPlans()}>Try again</Button>
+                )}
+                <a href="mailto:jayfcode@gmail.com" className="inline-flex h-10 items-center rounded-md bg-slate-950 px-4 text-sm font-semibold text-white dark:bg-white dark:text-slate-950">
+                  Contact KUBIKA
+                </a>
+              </div>
+            </div>
+          </section>
         )}
 
         {!loading && moduleMatrix.length > 0 && (
