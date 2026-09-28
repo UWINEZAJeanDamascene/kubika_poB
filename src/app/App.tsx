@@ -38,9 +38,6 @@ import { useCrossUserCacheSync } from "@/lib/realtimeSync";
 
 const HomePage = lazy(() => import("./pages/landing/HomePage"));
 const PricingPage = lazy(() => import("./pages/landing/PricingPage"));
-const SecurityLandingPage = lazy(() => import("./pages/landing/SecurityLandingPage"));
-const OperationsLandingPage = lazy(() => import("./pages/landing/OperationsLandingPage"));
-const PlatformLandingPage = lazy(() => import("./pages/landing/PlatformLandingPage"));
 const LoginPage = lazy(() => import("./pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/auth/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/auth/ForgotPasswordPage"));
@@ -710,9 +707,6 @@ function AppRoutes() {
           {/* Public routes - landing page and auth */}
           <Route path="/" element={<HomePage />} />
           <Route path="/pricing" element={<PricingPage />} />
-          <Route path="/trust" element={<SecurityLandingPage />} />
-          <Route path="/operations" element={<OperationsLandingPage />} />
-          <Route path="/platform" element={<PlatformLandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />

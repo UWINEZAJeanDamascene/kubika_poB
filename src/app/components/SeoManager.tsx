@@ -23,21 +23,6 @@ const publicSeo: Record<string, PageSeo> = {
     description:
       'Explore KUBIKA plans for Rwandan SMEs that need connected inventory management, accounting, purchasing, POS and branch reporting.',
   },
-  '/trust': {
-    title: 'KUBIKA Trust and Security | Rwanda Business Software',
-    description:
-      'Learn how KUBIKA protects company records with role-based access, audit history, backups and secure cloud operations for Rwanda businesses.',
-  },
-  '/operations': {
-    title: 'Inventory and Operations Management Rwanda | KUBIKA',
-    description:
-      'Control stock, warehouses, purchasing, sales and branch operations with KUBIKA, an inventory management system built for Rwandan and African businesses.',
-  },
-  '/platform': {
-    title: 'Cloud Accounting and ERP Platform for Rwanda | KUBIKA',
-    description:
-      'KUBIKA connects inventory, accounting, payroll, POS and VSDC/EBM-ready workflows in one cloud ERP platform for Rwandan SMEs.',
-  },
 };
 
 const setMeta = (name: string, content: string, property = false) => {

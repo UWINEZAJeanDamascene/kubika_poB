@@ -256,9 +256,6 @@ export default function PricingPage() {
             </Link>
             <nav className="hidden items-center gap-5 lg:flex">
               <Link to="/" className="text-sm font-medium text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white">Home</Link>
-              <Link to="/platform" className="text-sm font-medium text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white">Platform</Link>
-              <Link to="/operations" className="text-sm font-medium text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white">Operations</Link>
-              <Link to="/trust" className="text-sm font-medium text-slate-600 hover:text-slate-950 dark:text-slate-300 dark:hover:text-white">Security</Link>
             </nav>
             <div className="flex items-center gap-2">
               <Link to="/" className="lg:hidden">
