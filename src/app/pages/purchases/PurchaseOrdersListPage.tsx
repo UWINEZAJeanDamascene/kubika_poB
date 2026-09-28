@@ -383,7 +383,7 @@ export default function PurchaseOrdersListPage() {
   }
 
 
-  const formatCurrency = (amount: number | string, currency: string = 'RWF') => {
+  const formatCurrency = (amount: number | string, currency: string = baseCurrency) => {
     const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
     return formatDisplayCurrency(Number.isFinite(num) ? num : 0, currency || baseCurrency);
   };
