@@ -400,9 +400,6 @@ export default function BankAccountsListPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      // Log form data for debugging
-      console.log("[BankAccountsListPage] Current formData:", formData);
-
       // Prepare data - convert openingBalance to number, but exclude it from updates (backend rule)
       const { openingBalance, ...updateDataWithoutOpeningBalance } = formData;
 
@@ -419,30 +416,18 @@ export default function BankAccountsListPage() {
         interestStartDate: formData.interestStartDate || null,
       };
 
-      console.log(
-        "[BankAccountsListPage] Submit data before cleanup:",
-        submitData,
-      );
-
       let response;
       if (isEditMode && editAccountId) {
         // For updates, remove openingBalance entirely per backend rules
         const { openingBalance: ob, ...updateData } = submitData;
-        console.log(
-          "[BankAccountsListPage] Updating account:",
-          editAccountId,
-          updateData,
-        );
         response = await bankAccountsApi.update(
           editAccountId,
           updateData as any,
         );
       } else {
-        console.log("[BankAccountsListPage] Creating account:", submitData);
         // Create new account - include openingBalance
         response = await bankAccountsApi.create(submitData as any);
       }
-      console.log("[BankAccountsListPage] Save response:", response);
       if (response.success) {
         navigate("/bank-accounts");
       } else {
