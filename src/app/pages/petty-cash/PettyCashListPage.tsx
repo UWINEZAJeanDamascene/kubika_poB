@@ -292,7 +292,7 @@ export default function PettyCashListPage() {
       const response = await pettyCashApi.createFund({
         name: newFundForm.name,
         floatAmount: newFundForm.floatAmount,
-        openingBalance: newFundForm.openingBalance || undefined,
+        openingBalance: newFundForm.openingBalance,
         imprestMode: newFundForm.imprestMode,
         notes: newFundForm.notes || undefined,
       });
@@ -312,7 +312,7 @@ export default function PettyCashListPage() {
       }
     } catch (error: any) {
       console.error("[PettyCashListPage] Create fund error:", error);
-      toast.error(error.response?.data?.message || "Failed to create fund");
+      toast.error(error.response?.data?.message || error.message || "Failed to create fund");
     } finally {
       setSubmitting(false);
     }
@@ -1218,7 +1218,7 @@ export default function PettyCashListPage() {
             Create Fund Dialog
         ══════════════════════════════════════════════════════════ */}
         <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-          <DialogContent className="sm:max-w-md dark:bg-slate-950 border-slate-200 dark:border-slate-800">
+          <DialogContent className="w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-y-auto p-4 sm:w-full sm:max-w-md sm:p-6 dark:bg-slate-950 border-slate-200 dark:border-slate-800">
             <DialogHeader className="gap-1">
               <div className="flex items-center gap-2">
                 <div className="rounded-lg bg-amber-50 p-2 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60">
