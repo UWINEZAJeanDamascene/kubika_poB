@@ -494,7 +494,7 @@ export function GlobalSearchTrigger({ onClick }: { onClick: () => void }) {
     <button
       type="button"
       onClick={onClick}
-      className="group flex h-10 items-center gap-2 rounded-lg border border-border bg-background px-3 text-sm text-muted-foreground transition hover:bg-accent hover:text-accent-foreground"
+      className="group flex h-10 min-h-10 items-center gap-2 rounded-xl border border-border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
       title="Search (Ctrl+K)"
     >
       <Search className="h-4 w-4" />

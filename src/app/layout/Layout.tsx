@@ -65,9 +65,9 @@ export function Layout({ children }: LayoutProps) {
         const Icon = item.icon;
         const active = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
         const permitted = hasPermission('reports:read');
-        const className = `inline-flex h-9 items-center gap-2 rounded-md px-2 text-sm font-medium transition-colors ${
+        const className = `inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
           active
-            ? 'bg-accent text-accent-foreground'
+            ? 'bg-primary/10 text-primary ring-1 ring-inset ring-primary/20'
             : permitted
               ? 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
               : 'cursor-not-allowed text-muted-foreground/50'
@@ -162,9 +162,9 @@ export function Layout({ children }: LayoutProps) {
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(true)}
-            className="h-10 w-10 flex-shrink-0"
+            className="h-10 w-10 min-h-10 min-w-10 flex-shrink-0 rounded-xl"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -182,11 +182,11 @@ export function Layout({ children }: LayoutProps) {
               variant="ghost"
               size="icon"
               onClick={() => setSearchOpen(true)}
-              className="h-10 w-10 flex-shrink-0"
+              className="h-10 w-10 min-h-10 min-w-10 flex-shrink-0 rounded-xl"
               title="Search (Ctrl+K)"
               aria-label="Open global search"
             >
-              <Search className="h-5 w-5" />
+              <Search className="h-4 w-4" />
             </Button>
             <QuickCreateMenu compact />
             <NotificationBell />
@@ -194,19 +194,19 @@ export function Layout({ children }: LayoutProps) {
               variant="ghost"
               size="icon"
               onClick={() => navigate('/')}
-              className="h-10 w-10 flex-shrink-0"
+              className="h-10 w-10 min-h-10 min-w-10 flex-shrink-0 rounded-xl"
               title="Back to Home"
             >
-              <Home className="h-5 w-5" />
+              <Home className="h-4 w-4" />
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="h-10 w-10 flex-shrink-0"
+              className="h-10 w-10 min-h-10 min-w-10 flex-shrink-0 rounded-xl"
               title="Toggle theme"
             >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
           </div>
         </div>
@@ -218,7 +218,7 @@ export function Layout({ children }: LayoutProps) {
               <Breadcrumbs />
             </div>
 
-            <div className="flex items-center gap-2 rounded-lg border border-border bg-background p-1.5">
+            <div className="flex items-center gap-1.5 rounded-xl border border-border/80 bg-background/80 p-1.5 shadow-sm">
               {renderHeaderNavigation()}
               <GlobalSearchTrigger onClick={() => setSearchOpen(true)} />
               <QuickCreateMenu />
@@ -228,7 +228,7 @@ export function Layout({ children }: LayoutProps) {
                   variant="ghost"
                   size="sm"
                   onClick={toggleChat}
-                  className={`h-10 gap-2 rounded-xl px-3 transition-all ${
+                  className={`h-10 min-h-10 gap-2 rounded-xl px-3 transition-all ${
                     chatOpen
                       ? 'bg-primary text-primary-foreground shadow-sm hover:bg-primary/90'
                       : 'bg-card text-foreground ring-1 ring-inset ring-border hover:bg-accent hover:text-accent-foreground'
@@ -247,7 +247,7 @@ export function Layout({ children }: LayoutProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/')}
-                className="h-10 gap-2 px-3 text-foreground hover:bg-accent hover:text-accent-foreground"
+                className="h-10 min-h-10 gap-2 rounded-xl px-3 text-foreground hover:bg-accent hover:text-accent-foreground"
                 title="Back to Home"
               >
                 <Home className="h-4 w-4" />
@@ -257,7 +257,7 @@ export function Layout({ children }: LayoutProps) {
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
-                className="h-10 w-10 text-foreground hover:bg-accent hover:text-accent-foreground"
+                className="h-10 w-10 min-h-10 min-w-10 rounded-xl text-foreground hover:bg-accent hover:text-accent-foreground"
                 title="Toggle theme"
               >
                 {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}

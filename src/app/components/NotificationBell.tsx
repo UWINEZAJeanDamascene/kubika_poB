@@ -207,12 +207,12 @@ export function NotificationBell() {
           }
           setIsOpen(!isOpen);
         }}
-        className="relative h-10 w-10 flex-shrink-0 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600"
+        className="relative h-10 w-10 min-h-10 min-w-10 flex-shrink-0 rounded-xl border border-transparent bg-transparent text-muted-foreground transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring/60"
         title="Notifications"
       >
-        <Bell className="h-5 w-5 text-slate-700 dark:text-slate-200" />
+        <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white font-medium">
+          <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-card">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

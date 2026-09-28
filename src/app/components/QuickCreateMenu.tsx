@@ -90,13 +90,13 @@ export function QuickCreateMenu({ compact = false }: QuickCreateMenuProps) {
           type="button"
           className={
             compact
-              ? 'flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/50'
-              : 'flex h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-ring/50'
+              ? 'flex h-10 w-10 min-h-10 min-w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
+              : 'flex h-10 min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
           }
           title="Create new"
           aria-label="Create new"
         >
-          <Plus className={compact ? 'h-5 w-5' : 'h-4 w-4'} />
+          <Plus className="h-4 w-4" />
           {!compact && <span>New</span>}
         </button>
       </DropdownMenuTrigger>
