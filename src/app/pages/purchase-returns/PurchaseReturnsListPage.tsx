@@ -56,8 +56,13 @@ interface PurchaseReturn {
   };
   returnDate: string;
   status: "draft" | "confirmed" | "cancelled";
-  totalAmount: number;
+  totalAmount: number | string;
 }
+
+const numericAmount = (value: number | string | null | undefined) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+};
 
 interface Supplier {
   _id: string;
@@ -140,7 +145,7 @@ export default function PurchaseReturnsListPage() {
     const draft = returnList.filter((r) => r.status === "draft").length;
     const confirmed = returnList.filter((r) => r.status === "confirmed").length;
     const cancelled = returnList.filter((r) => r.status === "cancelled").length;
-    const totalValue = returnList.reduce((s, r) => s + (r.totalAmount || 0), 0);
+    const totalValue = returnList.reduce((sum, item) => sum + numericAmount(item.totalAmount), 0);
     return { total, draft, confirmed, cancelled, totalValue };
   }, [returnList]);
 
@@ -344,7 +349,7 @@ export default function PurchaseReturnsListPage() {
                             <TableCell className="text-sm text-slate-600 dark:text-slate-300">{pr.supplier?.name || "-"}</TableCell>
                             <TableCell className="text-sm text-slate-600 dark:text-slate-300">{formatDate(pr.returnDate)}</TableCell>
                             <TableCell><StatusBadge status={pr.status} /></TableCell>
-                            <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(pr.totalAmount)}</TableCell>
+                            <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(numericAmount(pr.totalAmount))}</TableCell>
                             <TableCell className="text-right">
                               <Button variant="ghost" size="sm" onClick={() => navigate(`/purchase-returns/${pr._id}`)} className="h-8 w-8 p-0">
                                 <Eye className="h-4 w-4 text-slate-500" />

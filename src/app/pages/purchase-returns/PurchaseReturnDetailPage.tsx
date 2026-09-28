@@ -22,6 +22,7 @@ import {
   Hash,
   MapPin,
   Receipt,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import {
@@ -51,6 +52,7 @@ import {
   DialogFooter,
 } from "@/app/components/ui/dialog";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES
@@ -118,6 +120,7 @@ export default function PurchaseReturnDetailPage() {
 
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [purchaseReturn, setPurchaseReturn] = useState<PurchaseReturnDetail | null>(null);
   const [sendEmail, setSendEmail] = useState(false);
@@ -160,6 +163,24 @@ export default function PurchaseReturnDetailPage() {
       setError(err.message || "Failed to confirm purchase return");
     } finally {
       setConfirming(false);
+    }
+  };
+
+  const handleDeleteDraft = async () => {
+    if (!id || purchaseReturn?.status !== "draft") return;
+    if (!window.confirm(t("purchaseReturns.confirmDeleteDraft", "Delete this draft return? This cannot be undone."))) return;
+
+    setDeleting(true);
+    try {
+      const response = await purchaseReturnsApi.delete(id);
+      if (!response.success) throw new Error(response.message || t("purchaseReturns.deleteFailed", "Failed to delete purchase return."));
+      toast.success(t("purchaseReturns.deleted", "Draft purchase return deleted."));
+      navigate("/purchase-returns");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : t("purchaseReturns.deleteFailed", "Failed to delete purchase return.");
+      toast.error(message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -516,6 +537,10 @@ export default function PurchaseReturnDetailPage() {
                       <Button onClick={handleConfirm} disabled={confirming} className="h-10 gap-1.5 bg-emerald-600 text-white hover:bg-emerald-700">
                         {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                         {t("purchaseReturns.confirm", "Confirm Return")}
+                      </Button>
+                      <Button variant="destructive" onClick={handleDeleteDraft} disabled={deleting || confirming} className="h-10 gap-1.5">
+                        {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        {t("purchaseReturns.deleteDraft", "Delete draft")}
                       </Button>
                     </div>
                   </CardContent>

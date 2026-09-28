@@ -3327,6 +3327,11 @@ export const purchaseReturnsApi = {
       `/stock/advanced/purchase-returns/${id}`,
       { method: "PUT", body: data },
     ),
+  delete: (id: string) =>
+    request<{ success: boolean; message?: string }>(
+      `/stock/advanced/purchase-returns/${id}`,
+      { method: "DELETE" },
+    ),
   confirm: (id: string, sendEmail?: boolean) =>
     request<{ success: boolean; data: unknown }>(
       `/stock/advanced/purchase-returns/${id}/confirm`,

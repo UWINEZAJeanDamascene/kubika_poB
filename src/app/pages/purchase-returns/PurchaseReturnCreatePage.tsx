@@ -36,6 +36,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Label } from "@/app/components/ui/label";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES
@@ -244,13 +245,26 @@ export default function PurchaseReturnCreatePage() {
       };
 
       const response = await purchaseReturnsApi.create(returnData as any, sendEmail);
-      if (response.success && response.data) {
-        const returnId = (response.data as { _id: string })._id;
-        if (confirmImmediately && returnId) await purchaseReturnsApi.confirm(returnId, sendEmail);
-        navigate("/purchase-returns");
+      if (!response.success || !response.data) {
+        throw new Error("The purchase return could not be created.");
       }
+
+      const returnId = (response.data as { _id?: string })._id;
+      if (confirmImmediately && returnId) {
+        try {
+          await purchaseReturnsApi.confirm(returnId, sendEmail);
+          toast.success(t("purchaseReturn.createdAndConfirmed", "Purchase return created and confirmed."));
+        } catch (confirmError) {
+          console.error("[PurchaseReturnCreatePage] Return was created but could not be confirmed:", confirmError);
+          toast.error(t("purchaseReturn.confirmAfterCreateFailed", "Purchase return was saved as a draft, but could not be confirmed."));
+        }
+      } else {
+        toast.success(t("purchaseReturn.createdSuccess", "Purchase return created successfully."));
+      }
+      navigate("/purchase-returns");
     } catch (error) {
       console.error("[PurchaseReturnCreatePage] Failed to create return:", error);
+      toast.error(error instanceof Error ? error.message : t("purchaseReturn.createFailed", "Failed to create purchase return."));
     } finally {
       setSaving(false);
     }
