@@ -289,10 +289,7 @@ export default function APDashboardPage() {
                   </div>
                   <div>
                     <h1 className="text-xl font-bold tracking-tight text-slate-950 dark:text-white sm:text-2xl">Accounts Payable</h1>
-                    <Badge className="mt-2 w-fit bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-200">
-                      Live data
-                    </Badge>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">Read-only ledger showing what you owe suppliers</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Supplier balances, overdue bills, and payments</p>
                   </div>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => { loadAging(); loadOutstandingPayables(1); loadTransactions(1); }} className="gap-1.5 dark:border-slate-700 dark:text-slate-200">
@@ -359,11 +356,11 @@ export default function APDashboardPage() {
                           <Clock className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Overdue (1-30 Days)</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Overdue · 1–30 days</p>
                           <p className="text-lg font-bold text-amber-700 dark:text-amber-300">{formatMoney(agingSummary['1-30'])}</p>
                         </div>
                       </div>
-                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Slightly overdue</p>
+                      <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">Past due</p>
                     </CardContent>
                   </Card>
                   <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -373,7 +370,7 @@ export default function APDashboardPage() {
                           <AlertTriangle className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">Seriously Overdue (31+)</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">Overdue · 31+ days</p>
                           <p className="text-lg font-bold text-rose-700 dark:text-rose-300">{formatMoney((agingSummary['31-60'] || 0) + (agingSummary['61-90'] || 0) + (agingSummary['90+'] || 0))}</p>
                         </div>
                       </div>

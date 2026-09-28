@@ -37,7 +37,6 @@ export interface IndustrialKpi {
   meta?: string;
   delta?: string;
   tone?: DashboardTone;
-  sparkline?: number[];
 }
 
 export function formatRwf(value: number | null | undefined): string {
@@ -65,20 +64,6 @@ export function formatPercent(value: number | null | undefined, decimals = 0): s
   return `${Number.isFinite(amount) ? amount.toFixed(decimals) : "0"}%`;
 }
 
-function sparklinePath(points: number[] = []): string {
-  if (points.length < 2) return "M 2 18 L 90 18";
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const range = max - min || 1;
-  return points
-    .map((point, index) => {
-      const x = 2 + (index / (points.length - 1)) * 88;
-      const y = 24 - ((point - min) / range) * 20;
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(1)} ${y.toFixed(1)}`;
-    })
-    .join(" ");
-}
-
 function toneFromValue(tone?: DashboardTone): DashboardTone {
   return tone ?? "neutral";
 }
@@ -99,11 +84,6 @@ export function IndustrialKpiStrip({ items }: { items: IndustrialKpi[] }) {
             </div>
             <div className="mt-2 flex items-end justify-between gap-3">
               <span className="industrial-value text-[24px]">{item.value}</span>
-              {item.sparkline && (
-                <svg aria-label={`${item.label} trend`} className="h-7 w-[92px] shrink-0" viewBox="0 0 92 28" role="img">
-                  <path d={sparklinePath(item.sparkline)} fill="none" stroke={tone === "warning" ? "var(--dashboard-amber)" : tone === "healthy" ? "var(--dashboard-green)" : "var(--dashboard-blue-2)"} strokeWidth="2" vectorEffect="non-scaling-stroke" />
-                </svg>
-              )}
             </div>
             {item.meta && <p className="mt-1 industrial-meta">{item.meta}</p>}
           </div>
@@ -139,7 +119,7 @@ export function IndustrialDashboardHeader({
   context,
   actions,
 }: IndustrialDashboardHeaderProps) {
-  const statusLabel = loading ? "Loading overview" : tone === "critical" ? "Needs attention" : "Current status";
+  const statusLabel = loading ? "Loading" : tone === "critical" ? "Needs attention" : tone === "warning" ? "Review" : "On track";
   return (
     <div className="industrial-dashboard-header">
       <div className="flex flex-col gap-5 border-b border-(--dashboard-rule-strong) pb-5 xl:flex-row xl:items-end xl:justify-between">
@@ -165,7 +145,7 @@ export function IndustrialDashboardHeader({
               aria-label="Refresh live dashboard snapshot"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh snapshot
+              Refresh
             </Button>
           )}
         </div>
@@ -179,7 +159,6 @@ export function IndustrialDashboardHeader({
           <span className="text-(--dashboard-rule-strong)" aria-hidden="true">|</span>
           <span>{loading ? "Awaiting data" : `Updated ${formatDashboardDateTime(generatedAt)}`}</span>
         </div>
-        <span className="text-(--dashboard-muted)">Latest available operating metrics</span>
       </div>
     </div>
   );
@@ -204,7 +183,7 @@ export function IndustrialSection({
     <section className={`industrial-section ${className}`}>
       <div className="flex flex-col gap-2 border-b border-(--dashboard-rule) pb-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          {eyebrow && <p className="industrial-eyebrow text-(--dashboard-green)">{eyebrow}</p>}
+          {eyebrow && <p className="industrial-eyebrow text-(--dashboard-green)">{eyebrow.replace(/^\d+\s*[·.]\s*/, "")}</p>}
           <h2 className="mt-1 text-[15px] font-bold tracking-[-0.02em] text-(--dashboard-ink)">{title}</h2>
           {subtitle && <p className="mt-1 text-[11px] leading-5 text-(--dashboard-muted)">{subtitle}</p>}
         </div>

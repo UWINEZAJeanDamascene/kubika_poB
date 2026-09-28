@@ -20,7 +20,6 @@ import {
   IndustrialDashboardHeader,
   IndustrialKpiStrip,
   IndustrialSection,
-  IndustrialSourceNote,
   IndustrialState,
   IndustrialStatusLabel,
   IndustrialTableFrame,
@@ -207,7 +206,6 @@ export default function DashboardPage() {
       delta: revenueDelta == null ? undefined : `${revenueDelta >= 0 ? "+" : ""}${revenueDelta.toFixed(1)}%`,
       meta: "RWF · vs last month",
       tone: (revenueDelta != null && revenueDelta < 0 ? "critical" : "healthy") as DashboardTone,
-      sparkline: pulseData.map((p) => Math.max(p.revenue, 0)),
     },
     {
       label: periodKind === "fiscal_ytd" ? "Net profit / FYTD" : periodKind === "prior_month" ? "Net profit / prior month" : "Net profit / MTD",
@@ -215,10 +213,9 @@ export default function DashboardPage() {
       delta: profitDelta == null ? undefined : `${profitDelta >= 0 ? "+" : ""}${profitDelta.toFixed(1)}%`,
       meta: `${formatPercent(margin, 1)} margin`,
       tone: (profit >= 0 ? "healthy" : "critical") as DashboardTone,
-      sparkline: pulseData.map((p) => p.profit),
     },
-    { label: "Cash position", value: formatCompactRwf(cash), delta: undefined, meta: "RWF · available liquidity", tone: cash >= 0 ? "healthy" as const : "critical" as const, sparkline: [openingCash, cash] },
-    { label: "Overdue AR", value: formatCompactRwf(arOverdue), delta: arOverdue > 0 ? "Action" : "Clear", meta: `${formatPercent(ar?.overdue_pct_of_outstanding ?? 0)} of outstanding`, tone: arOverdue > 0 ? "warning" as const : "healthy" as const, sparkline: [arOutstanding, arOverdue] },
+    { label: "Cash position", value: formatCompactRwf(cash), meta: "RWF · available liquidity", tone: cash >= 0 ? "healthy" as const : "critical" as const },
+    { label: "Overdue AR", value: formatCompactRwf(arOverdue), delta: arOverdue > 0 ? "Action" : "Clear", meta: `${formatPercent(ar?.overdue_pct_of_outstanding ?? 0)} of outstanding`, tone: arOverdue > 0 ? "warning" as const : "healthy" as const },
   ];
 
   return (
@@ -227,7 +224,7 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-[1700px] space-y-5">
           <IndustrialDashboardHeader
             title="Executive overview"
-            subtitle="A decision-ready view of cash, margin, collections, and operational exposure."
+            subtitle="Cash, profit, collections, and operating priorities."
             generatedAt={data?.generated_at}
             loading={loading}
             refreshing={refreshing}
@@ -241,7 +238,7 @@ export default function DashboardPage() {
 
           <IndustrialKpiStrip items={kpis} />
 
-          <IndustrialSection eyebrow="01 · Financial telemetry" title="Profit and liquidity telemetry" subtitle="Visible scales, labeled units, and direct values for first-pass decisions.">
+          <IndustrialSection eyebrow="Performance" title="Revenue, expenses, and profit" subtitle="Monthly financial results alongside current cash position.">
             <div className="grid gap-4 border border-(--dashboard-rule-strong) bg-(--dashboard-surface) xl:grid-cols-[minmax(0,1.6fr)_minmax(280px,0.8fr)]">
               <div className="min-w-0 border-b border-(--dashboard-rule) p-4 xl:border-b-0 xl:border-r">
                 {loading ? <IndustrialState status="loading" /> : (
@@ -283,7 +280,7 @@ export default function DashboardPage() {
             </div>
           </IndustrialSection>
 
-          <IndustrialSection eyebrow="02 · Operating controls" title="Priority manifest" subtitle="Live exceptions ranked by exposure and paired with the next operational action." action={<span className="industrial-mono text-[10px] text-(--dashboard-muted)">{formatCount(priorityRows.length)} visible controls</span>}>
+          <IndustrialSection eyebrow="Needs attention" title="Operating priorities" subtitle="Items that may need follow-up, with a suggested next step." action={<span className="industrial-mono text-[10px] text-(--dashboard-muted)">{formatCount(priorityRows.length)} items</span>}>
             {loading ? <IndustrialState status="loading" /> : priorityRows.length === 0 ? <IndustrialState status="empty" message="No operational exceptions for the selected period." /> : (
               <IndustrialTableFrame>
                 <Table>
@@ -301,10 +298,9 @@ export default function DashboardPage() {
                 </Table>
               </IndustrialTableFrame>
             )}
-            <IndustrialSourceNote>Data is consolidated from the latest available operating metrics. Optional sources are included only when they are available.</IndustrialSourceNote>
           </IndustrialSection>
 
-          <IndustrialSection eyebrow="03 · Audit record" title="Recent journal activity" subtitle="Latest operating entries for review, reconciliation, and export." action={<span className="industrial-mono text-[10px] text-(--dashboard-muted)">{formatCount(entries.length)} records</span>}>
+          <IndustrialSection eyebrow="Accounting" title="Recent journal entries" subtitle="Latest posted entries." action={<span className="industrial-mono text-[10px] text-(--dashboard-muted)">{formatCount(entries.length)} entries</span>}>
             {loading ? <IndustrialState status="loading" /> : entries.length === 0 ? <IndustrialState status="empty" message="No journal entries for the selected period." /> : (
               <IndustrialTableFrame>
                 <Table>
@@ -313,7 +309,6 @@ export default function DashboardPage() {
                 </Table>
               </IndustrialTableFrame>
             )}
-            <IndustrialSourceNote>Journal values are drawn from the latest operating snapshot and exclude placeholder or presentation-only records.</IndustrialSourceNote>
           </IndustrialSection>
 
           <div className="flex flex-col gap-2 border-t border-(--dashboard-rule-strong) pt-3 text-[10px] text-(--dashboard-muted) sm:flex-row sm:items-center sm:justify-between">

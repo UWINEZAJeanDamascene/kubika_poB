@@ -148,7 +148,7 @@ export function EBMComplianceDashboardContent({ embedded = false }: { embedded?:
               </h1>
             )}
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              Monitor RRA device status, code synchronisation, and submission health across all branches.
+              Branch devices, code synchronisation, and submission status.
             </p>
           </div>
           <Button
@@ -196,7 +196,7 @@ export function EBMComplianceDashboardContent({ embedded = false }: { embedded?:
               <SummaryTile
                 label="Alerts"
                 value={alerts.length}
-                sub="Abandoned submissions"
+                sub="Require review"
                 icon={<AlertTriangle className="h-5 w-5 text-red-500" />}
                 alert={alerts.length > 0}
               />
