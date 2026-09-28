@@ -71,6 +71,7 @@ export default function PettyCashListPage() {
   const [fundPage, setFundPage] = useState(1);
   const [fundPages, setFundPages] = useState(1);
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [loadingBankAccounts, setLoadingBankAccounts] = useState(false);
   const [expenseAccounts, setExpenseAccounts] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -220,17 +221,20 @@ export default function PettyCashListPage() {
     [fundPage, showInactive],
   );
 
-  const fetchBankAccounts = useCallback(async () => {
+  const fetchBankAccounts = useCallback(async (notifyOnError = false) => {
+    setLoadingBankAccounts(true);
     try {
       const response = await bankAccountsApi.getAll({ isActive: true });
-      if (response.success) {
-        setBankAccounts(response.data);
-      }
+      setBankAccounts(response.success && Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error(
         "[PettyCashListPage] Failed to fetch bank accounts:",
         error,
       );
+      setBankAccounts([]);
+      if (notifyOnError) toast.error("Could not load bank accounts. Please try again.");
+    } finally {
+      setLoadingBankAccounts(false);
     }
   }, []);
 
@@ -572,7 +576,14 @@ export default function PettyCashListPage() {
 
   const openTopUpDialog = (fund: any) => {
     setSelectedFund(fund);
+    setTopUpForm({
+      amount: 0,
+      bank_account_id: "",
+      description: "",
+      transactionDate: new Date().toISOString().split("T")[0],
+    });
     setShowTopUpDialog(true);
+    void fetchBankAccounts(true);
   };
 
   const openExpenseDialog = (fund: any) => {
@@ -1316,7 +1327,7 @@ export default function PettyCashListPage() {
             Edit Fund Dialog — Fix C
         ══════════════════════════════════════════════════════════ */}
         <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent className="sm:max-w-md dark:bg-slate-950 border-slate-200 dark:border-slate-800">
+          <DialogContent className="w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-y-auto p-4 sm:w-full sm:max-w-md sm:p-6 dark:bg-slate-950 border-slate-200 dark:border-slate-800">
             <DialogHeader className="gap-1">
               <div className="flex items-center gap-2">
                 <div className="rounded-lg bg-blue-50 p-2 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60">
@@ -1382,7 +1393,7 @@ export default function PettyCashListPage() {
             Top Up Dialog
         ══════════════════════════════════════════════════════════ */}
         <Dialog open={showTopUpDialog} onOpenChange={setShowTopUpDialog}>
-          <DialogContent className="sm:max-w-md dark:bg-slate-950 border-slate-200 dark:border-slate-800">
+          <DialogContent className="w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] overflow-y-auto p-4 sm:w-full sm:max-w-md sm:p-6 dark:bg-slate-950 border-slate-200 dark:border-slate-800">
             <DialogHeader className="gap-1">
               <div className="flex items-center gap-2">
                 <div className="rounded-lg bg-emerald-50 p-2 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
@@ -1423,20 +1434,25 @@ export default function PettyCashListPage() {
                     <SelectValue placeholder="Select bank account" />
                   </SelectTrigger>
                   <SelectContent className="dark:bg-slate-950 dark:border-slate-800">
-                    {bankAccounts.map((account) => (
-                      <SelectItem key={account._id} value={account._id}>
-                        {account.name} (
-                        {formatCurrency(
-                          account.cachedBalance ??
-                            account.currentBalance ??
-                            account.openingBalance ??
-                            0,
-                        )}
-                        )
-                      </SelectItem>
-                    ))}
+                    {bankAccounts.length > 0 ? bankAccounts.map((account) => (
+                        <SelectItem key={account._id} value={account._id}>
+                          {account.name} ({formatCurrency(
+                            account.cachedBalance ?? account.currentBalance ?? account.openingBalance ?? 0,
+                            account.currencyCode || "USD",
+                          )})
+                        </SelectItem>
+                      )) : (
+                        <SelectItem value="__no-bank-accounts__" disabled>
+                          {loadingBankAccounts ? "Loading bank accounts…" : "No active bank accounts found"}
+                        </SelectItem>
+                      )}
                   </SelectContent>
                 </Select>
+                {!loadingBankAccounts && bankAccounts.length === 0 && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                    Add or activate a bank account before topping up this fund.
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-2">
@@ -1466,7 +1482,7 @@ export default function PettyCashListPage() {
               <Button variant="outline" onClick={() => setShowTopUpDialog(false)} className="dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
                 Cancel
               </Button>
-              <Button onClick={handleTopUp} disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700">
+              <Button onClick={handleTopUp} disabled={submitting || loadingBankAccounts || bankAccounts.length === 0} className="bg-emerald-600 hover:bg-emerald-700">
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Top Up
               </Button>
