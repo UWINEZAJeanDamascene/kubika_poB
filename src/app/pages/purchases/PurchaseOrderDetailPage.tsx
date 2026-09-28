@@ -152,7 +152,7 @@ const STATUS_FLOW = [
 
 export default function PurchaseOrderDetailPage() {
   const { t } = useTranslation();
-  const { baseCurrency, displayCurrency, formatCurrency: formatDisplayCurrency } = useCurrency();
+  const { baseCurrency, displayCurrency, convertAmount, formatCurrency: formatDisplayCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams();
   const { hasPermission } = useAuth();
@@ -220,7 +220,7 @@ export default function PurchaseOrderDetailPage() {
     try {
       const response = await bankAccountsApi.getAll({ isActive: true });
       if (response.success && Array.isArray(response.data)) {
-        setBankAccounts(response.data as Array<{_id: string; name: string; accountType: string}>);
+        setBankAccounts(response.data as Array<{_id: string; name: string; accountType: string; currencyCode?: string}>);
       }
     } catch (error) {
       console.error('Failed to fetch bank accounts:', error);
@@ -259,11 +259,13 @@ export default function PurchaseOrderDetailPage() {
   const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
   const [paymentNotes, setPaymentNotes] = useState('');
   const [paymentSaving, setPaymentSaving] = useState(false);
+  const [paymentError, setPaymentError] = useState('');
   const [bankAccountId, setBankAccountId] = useState('');
-  const [bankAccounts, setBankAccounts] = useState<Array<{_id: string; name: string; accountType: string}>>([]);
+  const [bankAccounts, setBankAccounts] = useState<Array<{_id: string; name: string; accountType: string; currencyCode?: string}>>([]);
 
   useEffect(() => {
     if (paymentOpen) {
+      setPaymentError('');
       fetchBankAccounts();
     }
   }, [paymentOpen, fetchBankAccounts]);
@@ -271,9 +273,11 @@ export default function PurchaseOrderDetailPage() {
   const handleRecordPayment = async () => {
     if (!id || !paymentAmount) return;
     setPaymentSaving(true);
+    setPaymentError('');
     try {
-      const data: { amount: number; paymentMethod: string; notes?: string; bankAccountId?: string } = {
+      const data: { amount: number; currencyCode: string; paymentMethod: string; notes?: string; bankAccountId?: string } = {
         amount: parseFloat(paymentAmount),
+        currencyCode: displayCurrency,
         paymentMethod,
         notes: paymentNotes || undefined,
       };
@@ -289,8 +293,9 @@ export default function PurchaseOrderDetailPage() {
       setPaymentNotes('');
       setBankAccountId('');
       fetchPurchaseOrder();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to record payment:', error);
+      setPaymentError(error?.message || 'Failed to record payment. Check the amount and currency, then try again.');
     } finally {
       setPaymentSaving(false);
     }
@@ -1046,15 +1051,19 @@ export default function PurchaseOrderDetailPage() {
               <div className="mx-4 w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-900">
                 <h3 className="mb-4 text-lg font-semibold text-slate-900 dark:text-white">{t('purchase.detail.recordPayment', 'Record Payment')}</h3>
                 <div className="space-y-4">
+                  {paymentError && <p role="alert" className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{paymentError}</p>}
                   <div>
-                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('purchase.detail.paymentAmount', 'Amount')}</Label>
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('purchase.detail.paymentAmount', 'Amount')} ({displayCurrency})</Label>
                     <Input
                       type="number"
+                      min="0"
+                      step="any"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
-                      placeholder={String((purchaseOrder as any).balance ?? purchaseOrder.totalAmount)}
+                      placeholder={String(convertAmount(Math.max(0, Number(purchaseOrder.balance ?? purchaseOrder.totalAmount) - totalPaid), purchaseOrder.currencyCode))}
                       className="mt-1 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                     />
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Entered in {displayCurrency}; applied to the {purchaseOrder.currencyCode} order balance and converted for the selected bank account.</p>
                   </div>
                   <div>
                     <Label className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('purchase.detail.paymentMethod', 'Payment Method')}</Label>
@@ -1086,7 +1095,7 @@ export default function PurchaseOrderDetailPage() {
                         <SelectContent className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
                           {bankAccounts.map((acc) => (
                             <SelectItem key={acc._id} value={acc._id} className="dark:text-slate-200">
-                              {acc.name}
+                              {acc.name} ({acc.currencyCode || baseCurrency})
                             </SelectItem>
                           ))}
                         </SelectContent>

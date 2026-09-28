@@ -3129,6 +3129,7 @@ export const purchaseOrdersApi = {
     id: string,
     data: {
       amount: number;
+      currencyCode?: string;
       paymentMethod: string;
       reference?: string;
       notes?: string;
