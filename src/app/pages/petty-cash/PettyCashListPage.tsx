@@ -60,9 +60,11 @@ import { Switch } from "@/app/components/ui/switch";
 import { Checkbox } from "@/app/components/ui/checkbox";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export default function PettyCashListPage() {
   const { t } = useTranslation();
+  const { baseCurrency, displayCurrency, formatCurrency: formatInDisplayCurrency } = useCurrency();
   const navigate = useNavigate();
 
   // ── Data state ──────────────────────────────────────────────────────────────
@@ -848,7 +850,7 @@ export default function PettyCashListPage() {
 
   // ── Formatters ────────────────────────────────────────────────────────────────
 
-  const formatCurrency = (amount: any, currency = "USD") => {
+  const formatCurrency = (amount: any, currency = baseCurrency) => {
     let numAmount = 0;
     if (amount !== null && amount !== undefined && amount !== "") {
       if (typeof amount === "object") {
@@ -864,11 +866,7 @@ export default function PettyCashListPage() {
       }
     }
     if (isNaN(numAmount)) return "-";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-    }).format(numAmount);
+    return formatInDisplayCurrency(numAmount, currency || baseCurrency);
   };
 
   // ── Expense account list (dynamic with fallback) ──────────────────────────────
@@ -999,6 +997,9 @@ export default function PettyCashListPage() {
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {t("pettyCash.list.description", "Manage your petty cash funds and transactions")}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                      Amounts are recorded in {baseCurrency} and displayed in {displayCurrency}.
                     </p>
                   </div>
                 </div>
@@ -1263,7 +1264,7 @@ export default function PettyCashListPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="create-float" className="text-sm dark:text-slate-200">Float Amount *</Label>
+                <Label htmlFor="create-float" className="text-sm dark:text-slate-200">Float Amount * ({baseCurrency})</Label>
                 <Input
                   id="create-float"
                   type="number"
@@ -1276,7 +1277,7 @@ export default function PettyCashListPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="create-opening" className="text-sm dark:text-slate-200">Opening Balance</Label>
+                <Label htmlFor="create-opening" className="text-sm dark:text-slate-200">Opening Balance ({baseCurrency})</Label>
                 <Input
                   id="create-opening"
                   type="number"
@@ -1353,7 +1354,7 @@ export default function PettyCashListPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="edit-float" className="text-sm dark:text-slate-200">Float Amount *</Label>
+                <Label htmlFor="edit-float" className="text-sm dark:text-slate-200">Float Amount * ({baseCurrency})</Label>
                 <Input
                   id="edit-float"
                   type="number"
@@ -1415,7 +1416,7 @@ export default function PettyCashListPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="topup-amount" className="text-sm dark:text-slate-200">Amount *</Label>
+                <Label htmlFor="topup-amount" className="text-sm dark:text-slate-200">Amount * ({baseCurrency})</Label>
                 <Input
                   id="topup-amount"
                   type="number"
@@ -1438,7 +1439,7 @@ export default function PettyCashListPage() {
                         <SelectItem key={account._id} value={account._id}>
                           {account.name} ({formatCurrency(
                             account.cachedBalance ?? account.currentBalance ?? account.openingBalance ?? 0,
-                            account.currencyCode || "USD",
+                            account.currencyCode || baseCurrency,
                           )})
                         </SelectItem>
                       )) : (
@@ -1565,7 +1566,7 @@ export default function PettyCashListPage() {
 
               {/* Amount */}
               <div className="grid gap-2">
-                <Label htmlFor="exp-amount" className="text-sm dark:text-slate-200">Amount *</Label>
+                <Label htmlFor="exp-amount" className="text-sm dark:text-slate-200">Amount * ({baseCurrency})</Label>
                 <Input
                   id="exp-amount"
                   type="number"
@@ -1743,7 +1744,7 @@ export default function PettyCashListPage() {
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="replenish-amount" className="text-sm dark:text-slate-200">Amount *</Label>
+                <Label htmlFor="replenish-amount" className="text-sm dark:text-slate-200">Amount * ({baseCurrency})</Label>
                 <Input
                   id="replenish-amount"
                   type="number"
@@ -1781,6 +1782,7 @@ export default function PettyCashListPage() {
                             account.currentBalance ??
                             account.openingBalance ??
                             0,
+                          account.currencyCode || baseCurrency,
                         )}
                         )
                       </SelectItem>
@@ -1840,7 +1842,7 @@ export default function PettyCashListPage() {
 
               {/* Denominations */}
               <div className="grid gap-2">
-                <Label className="text-sm dark:text-slate-200">Cash Denominations</Label>
+                <Label className="text-sm dark:text-slate-200">Cash Denominations (RWF)</Label>
                 <div className="rounded-lg border border-slate-200 overflow-hidden dark:border-slate-700">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 dark:bg-slate-900/60">
@@ -1853,7 +1855,7 @@ export default function PettyCashListPage() {
                     <tbody className="divide-y dark:divide-slate-800">
                       {cashCountForm.denominations.map((denom, index) => (
                         <tr key={denom.denomination}>
-                          <td className="px-3 py-2 text-sm dark:text-slate-300">{formatCurrency(denom.denomination)}</td>
+                          <td className="px-3 py-2 text-sm dark:text-slate-300">{formatCurrency(denom.denomination, "RWF")}</td>
                           <td className="px-3 py-2">
                             <Input
                               type="number"
@@ -1863,7 +1865,7 @@ export default function PettyCashListPage() {
                               className="h-8 w-20 dark:bg-slate-900 dark:text-white dark:border-slate-700"
                             />
                           </td>
-                          <td className="px-3 py-2 text-right text-sm font-medium dark:text-slate-300">{formatCurrency(denom.total)}</td>
+                          <td className="px-3 py-2 text-right text-sm font-medium dark:text-slate-300">{formatCurrency(denom.total, "RWF")}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2287,12 +2289,12 @@ export default function PettyCashListPage() {
 
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
-                <Label className="text-sm dark:text-slate-200">Requested Amount</Label>
+                <Label className="text-sm dark:text-slate-200">Requested Amount ({baseCurrency})</Label>
                 <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(selectedReplenishment?.amount || 0)}</p>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="actualAmount" className="text-sm dark:text-slate-200">Actual Amount Received *</Label>
+                <Label htmlFor="actualAmount" className="text-sm dark:text-slate-200">Actual Amount Received * ({baseCurrency})</Label>
                 <Input
                   id="actualAmount"
                   type="number"

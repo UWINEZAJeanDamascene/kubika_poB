@@ -49,9 +49,11 @@ import {
 import { Label } from "@/app/components/ui/label";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 export default function PettyCashTransactionsPage() {
   const { t } = useTranslation();
+  const { baseCurrency, displayCurrency, formatCurrency: formatInDisplayCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
@@ -111,15 +113,7 @@ export default function PettyCashTransactionsPage() {
     setPage(1);
   };
 
-  // Fix A — use fund's currencyCode instead of hardcoded 'USD'
-  const formatCurrency = (amount: number) => {
-    const currency = fund?.currencyCode || "USD";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatInDisplayCurrency(amount, baseCurrency);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -164,6 +158,7 @@ export default function PettyCashTransactionsPage() {
         "Date",
         "Reference",
         "Type",
+        "Currency",
         "Description",
         "Account",
         "Amount",
@@ -175,12 +170,13 @@ export default function PettyCashTransactionsPage() {
         formatDate(tx.transactionDate),
         tx.referenceNo ?? "",
         tx.typeLabel ?? tx.type ?? "",
+        baseCurrency,
         `"${(tx.description ?? "").replace(/"/g, '""')}"`,
         tx.expenseAccountName
           ? `"${tx.expenseAccountName} (${tx.expenseAccountId})"`
           : (tx.expenseAccountId ?? ""),
-        tx.amount.toFixed(2),
-        tx.runningBalance.toFixed(2),
+        Number(tx.amount || 0).toFixed(2),
+        Number(tx.runningBalance || 0).toFixed(2),
         tx.receiptRef ?? "",
         tx.journalEntryId ?? "",
       ]);
@@ -228,6 +224,9 @@ export default function PettyCashTransactionsPage() {
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
                       {t("pettyCash.transactions.description", "View transaction history")}
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      Amounts are recorded in {baseCurrency} and displayed in {displayCurrency}.
                     </p>
                   </div>
                 </div>
