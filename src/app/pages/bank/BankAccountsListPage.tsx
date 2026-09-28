@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router";
-import { bankAccountsApi, interestApi, type CashPosition } from "@/lib/api";
+import { bankAccountsApi, interestApi } from "@/lib/api";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Layout } from "../../layout/Layout";
@@ -78,7 +78,12 @@ import { BankToCashTransferDialog } from "@/app/components/BankToCashTransferDia
 
 export default function BankAccountsListPage() {
   const { t } = useTranslation();
-  const { baseCurrency } = useCurrency();
+  const {
+    baseCurrency,
+    displayCurrency,
+    convertAmount,
+    formatCurrency: formatDisplayCurrency,
+  } = useCurrency();
   const navigate = useNavigate();
   const location = useLocation();
   const isCreateMode = location.pathname === "/bank-accounts/new";
@@ -91,7 +96,6 @@ export default function BankAccountsListPage() {
   const [filter, setFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [showTransferDialog, setShowTransferDialog] = useState(false);
-  const [totals, setTotals] = useState<CashPosition | null>(null);
   const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
   const [formData, setFormData] = useState({
     name: "",
@@ -113,6 +117,7 @@ export default function BankAccountsListPage() {
     interestStartDate: "",
   });
   const [saving, setSaving] = useState(false);
+  const [currencyRateToBase, setCurrencyRateToBase] = useState<number | null>(1);
   const [activeTab, setActiveTab] = useState<"accounts" | "fixed-deposits" | "interest-income">("accounts");
   const [fdSearch, setFdSearch] = useState("");
   const [showFdDialog, setShowFdDialog] = useState(false);
@@ -218,7 +223,6 @@ export default function BankAccountsListPage() {
 
       if (response.success) {
         setAccounts(response.data as any[]);
-        setTotals(response.totals ?? null);
       }
     } catch (error) {
       console.error("[BankAccountsListPage] Failed to fetch accounts:", error);
@@ -302,14 +306,7 @@ export default function BankAccountsListPage() {
     }
     if (isNaN(num)) return "-";
     const validCurrency = /^[A-Z]{3}$/.test(currency) ? currency : baseCurrency;
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: validCurrency,
-      }).format(num);
-    } catch (e) {
-      return `${validCurrency} ${num.toFixed(2)}`;
-    }
+    return formatDisplayCurrency(num, validCurrency);
   };
 
   const filteredAccounts = accounts.filter((account) => {
@@ -383,16 +380,25 @@ export default function BankAccountsListPage() {
   };
 
   // Summary computations
-  const bankAccountsTotal =
-    (totals?.byType.bk_bank ?? 0) +
-    (totals?.byType.equity_bank ?? 0) +
-    (totals?.byType.im_bank ?? 0) +
-    (totals?.byType.cogebanque ?? 0) +
-    (totals?.byType.ecobank ?? 0);
-  const mobileMoneyTotal =
-    (totals?.byType.mtn_momo ?? 0) + (totals?.byType.airtel_money ?? 0);
-  const cashTotal = totals?.byType.cash_in_hand ?? 0;
-  const totalCash = totals?.total ?? 0;
+  const activeAccounts = accounts.filter((account) => account.isActive);
+  const balanceInDisplayCurrency = (account: any) =>
+    convertAmount(
+      Number(account.cachedBalance ?? account.openingBalance ?? 0),
+      account.currencyCode || baseCurrency,
+    );
+  const sumDisplayBalances = (predicate: (account: any) => boolean) =>
+    activeAccounts.reduce(
+      (sum, account) => sum + (predicate(account) ? balanceInDisplayCurrency(account) : 0),
+      0,
+    );
+  const bankAccountsTotal = sumDisplayBalances((account) =>
+    ["bk_bank", "equity_bank", "im_bank", "cogebanque", "ecobank"].includes(account.accountType),
+  );
+  const mobileMoneyTotal = sumDisplayBalances((account) =>
+    ["mtn_momo", "airtel_money"].includes(account.accountType),
+  );
+  const cashTotal = sumDisplayBalances((account) => account.accountType === "cash_in_hand");
+  const totalCash = sumDisplayBalances(() => true);
   const activeCount = accounts.filter((a) => a.isActive).length;
   const inactiveCount = accounts.filter((a) => !a.isActive).length;
 
@@ -609,10 +615,11 @@ export default function BankAccountsListPage() {
                           </Label>
                           <DocumentCurrencySelect
                             value={formData.currencyCode}
-                            showRate={false}
-                            onChange={(currency) =>
-                              setFormData((prev) => ({ ...prev, currencyCode: currency }))
-                            }
+                            showRate
+                            onChange={(currency, rateToBase) => {
+                              setFormData((prev) => ({ ...prev, currencyCode: currency }));
+                              setCurrencyRateToBase(rateToBase);
+                            }}
                           />
                         </div>
                         <div className="space-y-2">
@@ -638,6 +645,11 @@ export default function BankAccountsListPage() {
                             }
                             className="dark:bg-slate-900 dark:text-white dark:border-slate-700 dark:placeholder:text-slate-500"
                           />
+                          {formData.currencyCode !== baseCurrency && currencyRateToBase != null && (
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              Base equivalent: {baseCurrency} {((Number(formData.openingBalance) || 0) * currencyRateToBase).toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -982,7 +994,7 @@ export default function BankAccountsListPage() {
                         Total Cash Position
                       </p>
                       <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                        {formatCurrency(totalCash)}
+                        {formatCurrency(totalCash, displayCurrency)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
@@ -1002,7 +1014,7 @@ export default function BankAccountsListPage() {
                         Bank Accounts
                       </p>
                       <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                        {formatCurrency(bankAccountsTotal)}
+                        {formatCurrency(bankAccountsTotal, displayCurrency)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-blue-50 p-2.5 text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/60">
@@ -1022,7 +1034,7 @@ export default function BankAccountsListPage() {
                         Mobile Money
                       </p>
                       <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                        {formatCurrency(mobileMoneyTotal)}
+                        {formatCurrency(mobileMoneyTotal, displayCurrency)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-amber-50 p-2.5 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/60">
@@ -1042,7 +1054,7 @@ export default function BankAccountsListPage() {
                         Cash on Hand
                       </p>
                       <p className="mt-3 truncate text-2xl font-bold text-slate-950 dark:text-white">
-                        {formatCurrency(cashTotal)}
+                        {formatCurrency(cashTotal, displayCurrency)}
                       </p>
                     </div>
                     <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/60">
@@ -1093,7 +1105,7 @@ export default function BankAccountsListPage() {
                         <div>
                           <p className="text-xs text-slate-500 dark:text-slate-400">{item.label}</p>
                           <p className="font-semibold text-slate-950 dark:text-white">
-                            {formatCurrency(item.value)}
+                            {formatCurrency(item.value, displayCurrency)}
                           </p>
                         </div>
                       </div>
@@ -1263,8 +1275,13 @@ export default function BankAccountsListPage() {
                             {formatCurrency(balance, account.currencyCode || baseCurrency)}
                           </p>
                           <Badge variant="outline" className="mt-1.5 text-xs dark:border-slate-700 dark:text-slate-400">
-                            {account.currencyCode || baseCurrency}
+                            Account: {account.currencyCode || baseCurrency}
                           </Badge>
+                          {displayCurrency !== (account.currencyCode || baseCurrency) && (
+                            <Badge variant="outline" className="ml-1.5 mt-1.5 text-xs dark:border-slate-700 dark:text-slate-400">
+                              Shown in {displayCurrency}
+                            </Badge>
+                          )}
                         </div>
 
                         <div className="mt-5 flex items-center gap-2">

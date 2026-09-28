@@ -64,6 +64,7 @@ import { Label } from "@/app/components/ui/label";
 import Papa from "papaparse";
 import { Badge } from "@/app/components/ui/badge";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import BankReconciliationPage from "./BankReconciliationPage";
 
 interface StatementLine {
@@ -158,6 +159,7 @@ const getDisplayType = (tx: any) => {
 
 export default function BankAccountDetailPage() {
   const { t } = useTranslation();
+  const { baseCurrency, displayCurrency, formatCurrency: formatDisplayCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -348,14 +350,7 @@ export default function BankAccountDetailPage() {
       num = amount;
     }
     if (isNaN(num)) return "-";
-    try {
-      return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: currency || "USD",
-      }).format(num || 0);
-    } catch {
-      return `${currency} ${num.toFixed(2)}`;
-    }
+    return formatDisplayCurrency(num || 0, /^[A-Z]{3}$/.test(currency) ? currency : baseCurrency);
   };
 
   const formatDate = (dateStr: string) => {
@@ -712,7 +707,7 @@ export default function BankAccountDetailPage() {
 
   const accountType = account?.accountType || "bk_bank";
   const typeColor = getAccountTypeColor(accountType);
-  const currencyCode = account?.currencyCode || "USD";
+  const currencyCode = account?.currencyCode || baseCurrency;
 
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
@@ -783,8 +778,13 @@ export default function BankAccountDetailPage() {
                 </p>
                 <div className="mt-2 flex items-center gap-2">
                   <Badge variant="outline" className="text-xs dark:border-slate-700 dark:text-slate-400">
-                    {currencyCode}
+                    Account: {currencyCode}
                   </Badge>
+                  {displayCurrency !== currencyCode && (
+                    <Badge variant="outline" className="text-xs dark:border-slate-700 dark:text-slate-400">
+                      Display: {displayCurrency}
+                    </Badge>
+                  )}
                   <Badge variant="outline" className="text-xs dark:border-slate-700 dark:text-slate-400">
                     Opening: {formatCurrency(account?.openingBalance ?? 0, currencyCode)}
                   </Badge>

@@ -10,11 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Check, ChevronLeft, ChevronRight, FileDown, Link as LinkIcon, Loader2, Lock, Upload } from "lucide-react";
 import { toast } from "sonner";
+import { useCurrency } from "@/contexts/CurrencyContext";
 
 type Props = { embedded?: boolean; accountId?: string; accountData?: any };
-
-const money = (value: number | string | undefined) =>
-  `RWF ${Math.round(Number(value || 0)).toLocaleString()}`;
 
 const statusClass: Record<string, string> = {
   in_progress: "bg-amber-50 text-amber-700 ring-amber-200",
@@ -31,9 +29,12 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function BankReconciliationPage({ embedded = false, accountId, accountData }: Props) {
+  const { formatCurrency } = useCurrency();
   const params = useParams<{ id: string }>();
   const bankAccountId = accountId || params.id || "";
   const [account, setAccount] = useState<any>(accountData || null);
+  const money = (value: number | string | undefined) =>
+    formatCurrency(Number(value || 0), account?.currencyCode || "RWF");
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessionPage, setSessionPage] = useState(1);
   const [sessionPages, setSessionPages] = useState(1);
