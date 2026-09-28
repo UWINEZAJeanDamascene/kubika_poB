@@ -4,14 +4,18 @@ import { useTranslation } from 'react-i18next';
 import { Button, Stack } from '@mui/material';
 import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
 import {
-  ArrowDownRight,
   ArrowUpRight,
   Boxes,
   ChevronDown,
   CircleDollarSign,
   ClipboardCheck,
+  ArrowRight,
+  Check,
+  Search,
+  Wallet,
   MapPin,
   MoveUpRight,
+  Scale,
 } from 'lucide-react';
 import { createMuiTheme } from '@/theme/muiTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,7 +35,7 @@ export default function HomePage() {
     : t('landing.home.createWorkspace');
 
   const navItems = [
-    { label: t('landing.home.nav.covers'), href: '#operations' },
+    { label: t('landing.home.nav.covers'), href: '#product-tour' },
     { label: t('landing.home.nav.branches'), href: '#branches' },
   ];
   const operations = [
@@ -65,23 +69,22 @@ export default function HomePage() {
                 <div className="home-intro__location">
                   <MapPin aria-hidden="true" />
                   <span>Kigali, Rwanda</span>
-                  <span className="home-intro__location-rule" />
                   <span>{t('landing.home.moduleLine')}</span>
                 </div>
               </div>
 
-              <div className="home-preview" role="img" aria-label="Illustration of the KUBIKA operations dashboard">
+              <div className="home-preview" role="img" aria-label="Illustrative KUBIKA company overview">
                 <div className="home-preview__topbar">
                   <div className="home-preview__brand"><span className="home-preview__brand-dot" /> KUBIKA <span>WORKSPACE</span></div>
-                  <div className="home-preview__branch"><MapPin aria-hidden="true" /> Kigali / Main branch <ChevronDown aria-hidden="true" /></div>
+                  <div className="home-preview__branch"><MapPin aria-hidden="true" /> Kigali Main branch <ChevronDown aria-hidden="true" /></div>
                 </div>
                 <div className="home-preview__body">
                   <div className="home-preview__heading">
                     <div>
-                      <span className="home-preview__eyebrow">OPERATIONS OVERVIEW</span>
-                      <h2>Good morning, team.</h2>
+                      <span className="home-preview__eyebrow">COMPANY OVERVIEW</span>
+                      <h2>Today at a glance</h2>
                     </div>
-                    <span className="home-preview__date">MON, 27 SEP</span>
+                    <span className="home-preview__date">KIGALI, RWANDA</span>
                   </div>
                   <div className="home-preview__metrics">
                     <div className="home-preview__metric">
@@ -89,11 +92,11 @@ export default function HomePage() {
                       <small><ArrowUpRight aria-hidden="true" /> Across 3 locations</small>
                     </div>
                     <div className="home-preview__metric">
-                      <span>TO REVIEW</span><strong>08 <i>records</i></strong>
+                      <span>TO REVIEW</span><strong>8 <i>records</i></strong>
                       <small><span className="home-preview__status" /> 3 purchase orders</small>
                     </div>
                     <div className="home-preview__chart" aria-hidden="true">
-                      <div className="home-preview__chart-label"><span>WEEKLY MOVEMENT</span><b>+12.8%</b></div>
+                      <div className="home-preview__chart-label"><span>STOCK MOVEMENT</span><b>THIS WEEK</b></div>
                       <div className="home-preview__chart-bars">
                         {[34, 47, 39, 62, 49, 76, 57, 88, 68, 100, 74, 91].map((height, index) => (
                           <span key={index} style={{ height: `${height}%` }} />
@@ -104,15 +107,13 @@ export default function HomePage() {
                   </div>
                   <div className="home-preview__activity">
                     <div className="home-preview__activity-head"><span>RECENT ACTIVITY</span><span>VIEW REGISTER <MoveUpRight aria-hidden="true" /></span></div>
-                    <div className="home-preview__row"><span className="home-preview__row-icon"><Boxes /></span><span><b>Stock received</b><small>Warehouse / Kigali</small></span><strong>+24 units</strong><time>09:42</time></div>
-                    <div className="home-preview__row"><span className="home-preview__row-icon home-preview__row-icon--warm"><ClipboardCheck /></span><span><b>Purchase approved</b><small>PO-1048 / Bralirwa</small></span><strong>RWF 840,000</strong><time>09:18</time></div>
+                    <div className="home-preview__row"><span className="home-preview__row-icon"><Boxes /></span><span><b>Goods received</b><small>Kigali warehouse</small></span><strong>24 units</strong><time>Today</time></div>
+                    <div className="home-preview__row"><span className="home-preview__row-icon home-preview__row-icon--warm"><ClipboardCheck /></span><span><b>Purchase order approved</b><small>Supplier purchase</small></span><strong>Ready to receive</strong><time>Today</time></div>
                   </div>
                 </div>
-                <div className="home-preview__rail"><span>ONE COMPANY RECORD</span><span><i /> SYNCED</span></div>
-                <div className="home-preview__corner" aria-hidden="true"><ArrowDownRight /></div>
+                <div className="home-preview__rail"><span>ILLUSTRATIVE WORKSPACE</span><span>COMPANY OVERVIEW</span></div>
               </div>
             </div>
-            <div className="home-index" aria-hidden="true"><span>01</span><span>BUILT FOR THE DAILY WORK</span><span>RW</span></div>
           </section>
 
           <section id="operations" className="home-operations scroll-mt-20" aria-labelledby="operations-title">
@@ -123,15 +124,74 @@ export default function HomePage() {
                 <p>{t('landing.home.platformSubtitle')}</p>
               </div>
               <div className="home-operation-list">
-                {operations.map(({ icon: Icon, label, detail }, index) => (
+                {operations.map(({ icon: Icon, label, detail }) => (
                   <article className="home-operation" key={label}>
-                    <span className="home-operation__number">0{index + 1}</span>
                     <Icon aria-hidden="true" className="home-operation__icon" />
                     <div><h3>{label}</h3><p>{detail}</p></div>
-                    <ArrowUpRight aria-hidden="true" className="home-operation__arrow" />
                   </article>
                 ))}
               </div>
+            </div>
+          </section>
+
+          <section id="product-tour" className="home-showcase scroll-mt-20" aria-labelledby="showcase-title">
+            <div className="mx-auto max-w-[2400px] px-5 py-16 sm:px-8 sm:py-20 lg:px-10 xl:px-14 2xl:px-16">
+              <div className="home-showcase__intro">
+                <RuleLabel>{t('landing.home.showcase.eyebrow')}</RuleLabel>
+                <h2 id="showcase-title">{t('landing.home.showcase.title')}</h2>
+                <p>{t('landing.home.showcase.subtitle')}</p>
+              </div>
+
+              <div className="home-showcase__grid">
+                <article className="home-showcase-card">
+                  <div className="home-showcase-card__copy">
+                    <span className="home-showcase-card__index">INVENTORY</span>
+                    <div className="home-showcase-card__icon"><Boxes aria-hidden="true" /></div>
+                    <h3>{t('landing.home.showcase.inventory.title')}</h3>
+                    <p>{t('landing.home.showcase.inventory.copy')}</p>
+                    <ul>
+                      <li><Check aria-hidden="true" />{t('landing.home.showcase.inventory.pointOne')}</li>
+                      <li><Check aria-hidden="true" />{t('landing.home.showcase.inventory.pointTwo')}</li>
+                      <li><Check aria-hidden="true" />{t('landing.home.showcase.inventory.pointThree')}</li>
+                    </ul>
+                  </div>
+                  <div className="product-screen product-screen--inventory" role="img" aria-label={t('landing.home.showcase.inventory.previewLabel')}>
+                    <div className="product-screen__bar"><span><Boxes aria-hidden="true" /> {t('landing.home.showcase.inventory.screenTitle')}</span><span className="product-screen__period">{t('landing.home.showcase.inventory.location')}</span></div>
+                    <div className="product-screen__metrics">
+                      <div><small>{t('landing.home.showcase.inventory.stockValue')}</small><strong>RWF 28.4m</strong><span>{t('landing.home.showcase.inventory.acrossLocations')}</span></div>
+                      <div><small>{t('landing.home.showcase.inventory.products')}</small><strong>1,284</strong><span>{t('landing.home.showcase.inventory.activeItems')}</span></div>
+                    </div>
+                    <div className="product-screen__table-head"><span>{t('landing.home.showcase.inventory.item')}</span><span>{t('landing.home.showcase.inventory.onHand')}</span><span>{t('landing.home.showcase.inventory.status')}</span></div>
+                    <div className="product-screen__table-row"><span><i className="product-screen__swatch product-screen__swatch--green" />{t('landing.home.showcase.inventory.freshProduce')}</span><strong>248 {t('landing.home.showcase.inventory.units')}</strong><em className="product-screen__tag product-screen__tag--good">{t('landing.home.showcase.inventory.inStock')}</em></div>
+                    <div className="product-screen__table-row"><span><i className="product-screen__swatch product-screen__swatch--blue" />{t('landing.home.showcase.inventory.packagedGoods')}</span><strong>86 {t('landing.home.showcase.inventory.units')}</strong><em className="product-screen__tag product-screen__tag--watch">{t('landing.home.showcase.inventory.reorder')}</em></div>
+                    <div className="product-screen__footer"><span><Search aria-hidden="true" /> {t('landing.home.showcase.inventory.search')}</span><span>{t('landing.home.showcase.inventory.viewStock')} <ArrowRight aria-hidden="true" /></span></div>
+                  </div>
+                </article>
+
+                <article className="home-showcase-card home-showcase-card--accounting">
+                  <div className="home-showcase-card__copy">
+                    <span className="home-showcase-card__index">ACCOUNTING</span>
+                    <div className="home-showcase-card__icon home-showcase-card__icon--accounting"><CircleDollarSign aria-hidden="true" /></div>
+                    <h3>{t('landing.home.showcase.accounting.title')}</h3>
+                    <p>{t('landing.home.showcase.accounting.copy')}</p>
+                    <ul>
+                      <li><Check aria-hidden="true" />{t('landing.home.showcase.accounting.pointOne')}</li>
+                      <li><Check aria-hidden="true" />{t('landing.home.showcase.accounting.pointTwo')}</li>
+                      <li><Check aria-hidden="true" />{t('landing.home.showcase.accounting.pointThree')}</li>
+                    </ul>
+                  </div>
+                  <div className="product-screen product-screen--accounting" role="img" aria-label={t('landing.home.showcase.accounting.previewLabel')}>
+                    <div className="product-screen__bar"><span><Scale aria-hidden="true" /> {t('landing.home.showcase.accounting.screenTitle')}</span><span className="product-screen__period">{t('landing.home.showcase.accounting.period')}</span></div>
+                    <div className="product-screen__ledger-title"><div><small>{t('landing.home.showcase.accounting.entry')}</small><strong>JE-2026-00481</strong></div><span className="product-screen__balanced"><Check aria-hidden="true" /> {t('landing.home.showcase.accounting.balanced')}</span></div>
+                    <div className="product-screen__ledger-head"><span>{t('landing.home.showcase.accounting.account')}</span><span>{t('landing.home.showcase.accounting.debit')}</span><span>{t('landing.home.showcase.accounting.credit')}</span></div>
+                    <div className="product-screen__ledger-row"><span><i className="product-screen__ledger-dot" />{t('landing.home.showcase.accounting.inventoryAccount')}</span><strong>840,000</strong><span>0</span></div>
+                    <div className="product-screen__ledger-row"><span><i className="product-screen__ledger-dot product-screen__ledger-dot--muted" />{t('landing.home.showcase.accounting.payablesAccount')}</span><span>0</span><strong>840,000</strong></div>
+                    <div className="product-screen__ledger-total"><span>{t('landing.home.showcase.accounting.totals')}</span><strong>840,000</strong><strong>840,000</strong></div>
+                    <div className="product-screen__footer"><span><Wallet aria-hidden="true" /> {t('landing.home.showcase.accounting.postedToLedger')}</span><span>{t('landing.home.showcase.accounting.viewEntry')} <ArrowRight aria-hidden="true" /></span></div>
+                  </div>
+                </article>
+              </div>
+              <p className="home-showcase__note">{t('landing.home.showcase.note')}</p>
             </div>
           </section>
 

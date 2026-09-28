@@ -7,7 +7,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { PublicHeader } from '@/app/components/public/PublicHeader';
 import {
   AccessDocket,
-  RegistrationMark,
   RuleLabel,
 } from '@/app/components/public/PublicPrimitives';
 
@@ -50,9 +49,8 @@ export function AuthFrame({
         <PublicHeader mode="access" />
         <main className="public-access-layout mx-auto grid w-full max-w-[2400px] gap-8 px-5 py-8 sm:px-8 sm:py-10 lg:grid-cols-[5fr_7fr] lg:gap-12 lg:px-10 lg:py-14 xl:gap-16 xl:px-14 2xl:px-16">
           <section className="public-access-context" aria-labelledby="access-context-title">
-            <RegistrationMark className="mb-8" />
             <RuleLabel>{t('auth.folio.label')}</RuleLabel>
-            <h1 id="access-context-title" className="public-display mt-5 max-w-md text-[clamp(2.75rem,4.4vw,4.75rem)] leading-[1] text-(--public-ink)">
+            <h1 id="access-context-title" className="public-access-context__title mt-5 max-w-md text-[clamp(2.75rem,4.4vw,4.75rem)] leading-[1] text-(--public-ink)">
               {resolvedSideTitle}
             </h1>
             <p className="public-body mt-6 max-w-md text-base leading-7 text-(--public-ink-muted)">

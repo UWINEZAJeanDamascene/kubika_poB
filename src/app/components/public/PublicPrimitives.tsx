@@ -147,7 +147,7 @@ export const UnderlinedField = forwardRef<HTMLInputElement, UnderlinedFieldProps
           id={id}
           inputRef={ref}
           fullWidth
-          variant="standard"
+          variant="outlined"
           className={cn('public-field', className)}
         />
       </Stack>

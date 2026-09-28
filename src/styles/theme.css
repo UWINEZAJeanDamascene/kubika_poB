@@ -599,8 +599,25 @@
     color: var(--public-ink);
     font-family: 'Work Sans', Arial, sans-serif;
     font-size: 1rem;
-    padding-bottom: 0.7rem;
-    padding-top: 0.55rem;
+    padding: 0.85rem 0.9rem;
+  }
+
+  .public-field .MuiOutlinedInput-root {
+    background: var(--public-paper);
+    border-radius: 8px;
+    min-height: 50px;
+  }
+
+  .public-field .MuiOutlinedInput-notchedOutline {
+    border-color: var(--public-rule-strong);
+  }
+
+  .public-field .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+    border-color: var(--public-accent);
+  }
+
+  .public-field .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+    border-width: 2px;
   }
 
   .public-field .MuiInputBase-input::placeholder {
@@ -649,9 +666,9 @@
   }
 
   .public-field-action {
-    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-    font-size: 0.6875rem;
-    letter-spacing: 0.02em;
+    font-family: 'Work Sans', Arial, sans-serif;
+    font-size: 0.8125rem;
+    letter-spacing: 0;
     white-space: nowrap;
   }
 
