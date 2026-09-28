@@ -39,7 +39,7 @@ import {
 import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { useTranslation } from 'react-i18next';
-import { formatDocumentCurrency, parseCurrencyValue } from '@/lib/currencyUtils';
+import { parseCurrencyValue } from '@/lib/currencyUtils';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface PurchaseItem {
@@ -94,7 +94,7 @@ interface PaginationInfo {
 
 export default function PurchasesListPage() {
   const { t } = useTranslation();
-  const { baseCurrency, rates } = useCurrency();
+  const { baseCurrency, displayCurrency, convertAmount, formatCurrency: formatDisplayCurrency } = useCurrency();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -154,26 +154,13 @@ export default function PurchasesListPage() {
     const draft = purchaseList.filter((p) => p.status === 'draft').length;
     const received = purchaseList.filter((p) => p.status === 'received' || p.status === 'paid').length;
     const totalValue = purchaseList.reduce((sum, p) => {
-      const storedRate = p.exchangeRate == null ? null : Number(p.exchangeRate);
-      const rate = storedRate && storedRate > 0 ? storedRate : (rates?.[p.currency] || 1);
-      return sum + getPurchaseTotal(p) * rate;
+      return sum + convertAmount(getPurchaseTotal(p), p.currency || baseCurrency);
     }, 0);
     return { total, draft, received, totalValue };
-  }, [purchaseList, baseCurrency, rates]);
+  }, [purchaseList, baseCurrency, convertAmount]);
 
-  const formatCurrency = (amount: string | number) => {
-    const num = parseCurrencyValue(amount);
-    return formatDocumentCurrency(num, baseCurrency);
-  };
-
-  const formatBaseEquivalent = (amount: number, purchase: Purchase) => {
-    const currency = purchase.currency || baseCurrency;
-    if (currency === baseCurrency) return null;
-    const storedRate = purchase.exchangeRate == null ? null : Number(purchase.exchangeRate);
-    const rate = storedRate && storedRate > 0 ? storedRate : rates?.[currency];
-    return rate && rate > 0
-      ? `Base: ${formatDocumentCurrency(amount * rate, baseCurrency)}`
-      : null;
+  const formatPurchaseCurrency = (amount: string | number, currency?: string) => {
+    return formatDisplayCurrency(parseCurrencyValue(amount), currency || baseCurrency);
   };
 
   function StatusBadge({ status }: { status: string }) {
@@ -327,7 +314,7 @@ export default function PurchasesListPage() {
                 </div>
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('purchases.totalValue', 'Total Value')}</p>
-                  <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(stats.totalValue)}</p>
+                  <p className="text-lg font-bold text-slate-900 dark:text-white">{formatDisplayCurrency(stats.totalValue, displayCurrency)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -432,32 +419,10 @@ export default function PurchasesListPage() {
                           <TableCell className="text-slate-600 dark:text-slate-300">{formatDate(p.purchaseDate)}</TableCell>
                           <TableCell><StatusBadge status={p.status} /></TableCell>
                           <TableCell className="text-right font-medium text-slate-900 dark:text-white">
-                            <div>{formatDocumentCurrency(getPurchaseTotal(p), p.currency || baseCurrency)}</div>
-                            {formatBaseEquivalent(getPurchaseTotal(p), p) && (
-                              <div className="text-xs font-normal text-slate-500 dark:text-slate-400">{formatBaseEquivalent(getPurchaseTotal(p), p)}</div>
-                            )}
-                            {p.currency && p.currency !== baseCurrency && (
-                              <div className="text-xs font-normal text-slate-500 dark:text-slate-400">
-                                {(() => {
-                                  const storedRate = p.exchangeRate == null ? null : Number(p.exchangeRate);
-                                  const rate = storedRate && storedRate > 0 ? storedRate : rates?.[p.currency];
-                                  return rate
-                                    ? `1 ${p.currency} = ${formatDocumentCurrency(rate, baseCurrency)}`
-                                    : 'Exchange rate unavailable';
-                                })()}
-                              </div>
-                            )}
+                            {formatPurchaseCurrency(getPurchaseTotal(p), p.currency)}
                           </TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">
-                            {(() => {
-                              const balance = Math.max(0, getPurchaseTotal(p) - getPaymentTotal(p));
-                              return <>
-                                <div>{formatDocumentCurrency(balance, p.currency || baseCurrency)}</div>
-                                {formatBaseEquivalent(balance, p) && (
-                                  <div className="text-xs text-slate-500 dark:text-slate-400">{formatBaseEquivalent(balance, p)}</div>
-                                )}
-                              </>;
-                            })()}
+                            {formatPurchaseCurrency(Math.max(0, getPurchaseTotal(p) - getPaymentTotal(p)), p.currency)}
                           </TableCell>
                           <TableCell className="text-right text-slate-600 dark:text-slate-300">{p.lineCount ?? p.items?.length ?? 0}</TableCell>
                           <TableCell className="text-right">

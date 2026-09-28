@@ -51,7 +51,7 @@ import {
 import { Badge } from '@/app/components/ui/badge';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { formatDocumentCurrency } from '@/lib/currencyUtils';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import { EBMPurchaseStatusBadge } from '@/app/components/EBMStatusBadge';
@@ -107,6 +107,7 @@ function parsePurchaseOrdersTab(value: string | null): PurchaseOrdersTab {
 
 export default function PurchaseOrdersListPage() {
   const { t } = useTranslation();
+  const { baseCurrency, displayCurrency, convertAmount, formatCurrency: formatDisplayCurrency } = useCurrency();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = parsePurchaseOrdersTab(searchParams.get('tab'));
@@ -384,7 +385,7 @@ export default function PurchaseOrdersListPage() {
 
   const formatCurrency = (amount: number | string, currency: string = 'RWF') => {
     const num = typeof amount === 'string' ? parseFloat(amount) : Number(amount);
-    return formatDocumentCurrency(Number.isFinite(num) ? num : 0, currency || 'RWF');
+    return formatDisplayCurrency(Number.isFinite(num) ? num : 0, currency || baseCurrency);
   };
 
   const formatDate = (dateStr: string) => {
@@ -396,7 +397,10 @@ export default function PurchaseOrdersListPage() {
     setPage(newPage);
   };
 
-  const totalValue = poList.reduce((sum, po) => sum + (po.totalAmount || 0), 0);
+  const totalValue = poList.reduce(
+    (sum, po) => sum + convertAmount(Number(po.totalAmount) || 0, po.currencyCode || baseCurrency),
+    0,
+  );
   const draftCount = poList.filter((po) => po.status === 'draft').length;
   const approvedCount = poList.filter((po) => po.status === 'approved').length;
 
@@ -462,14 +466,14 @@ export default function PurchaseOrdersListPage() {
                   {t('purchase.orders.totalValue', 'Total Value')}
                 </p>
                 <p className="text-2xl font-bold text-slate-950 dark:text-white">
-                  {formatCurrency(totalValue)}
+                  {formatCurrency(totalValue, displayCurrency)}
                 </p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="text-xs dark:border-slate-700 dark:text-slate-400">
                     {pagination?.total || poList.length} {t('purchase.orders.records', 'records')}
                   </Badge>
                   <Badge variant="outline" className="text-xs dark:border-slate-700 dark:text-slate-400">
-                    {poList[0]?.currencyCode || 'USD'}
+                    Display currency: {displayCurrency}
                   </Badge>
                 </div>
               </div>
@@ -488,7 +492,7 @@ export default function PurchaseOrdersListPage() {
             />
             <MetricTile
               title={t('purchase.orders.totalValue', 'Total Value')}
-              value={formatCurrency(totalValue)}
+              value={formatCurrency(totalValue, displayCurrency)}
               icon={<TrendingUp className="h-5 w-5" />}
               tone="emerald"
               subtitle={t('purchase.orders.currentPage', 'Current page')}

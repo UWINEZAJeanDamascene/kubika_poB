@@ -52,6 +52,7 @@ import { Textarea } from '@/app/components/ui/textarea';
 import { Label } from '@/app/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface PurchaseOrder {
   _id: string;
@@ -151,6 +152,7 @@ const STATUS_FLOW = [
 
 export default function PurchaseOrderDetailPage() {
   const { t } = useTranslation();
+  const { baseCurrency, displayCurrency, formatCurrency: formatDisplayCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams();
   const { hasPermission } = useAuth();
@@ -388,7 +390,7 @@ export default function PurchaseOrderDetailPage() {
     return stepIndex;
   };
 
-  const formatCurrency = (amount: number | string | object | null | undefined, currency: string = 'USD') => {
+  const formatCurrency = (amount: number | string | object | null | undefined, currency?: string) => {
     try {
       let num: number;
       if (amount == null) {
@@ -402,7 +404,7 @@ export default function PurchaseOrderDetailPage() {
       } else {
         num = amount;
       }
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(num);
+      return formatDisplayCurrency(num, currency || purchaseOrder?.currencyCode || baseCurrency);
     } catch {
       return '0.00';
     }
@@ -480,7 +482,7 @@ export default function PurchaseOrderDetailPage() {
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   {getStatusBadge(purchaseOrder.status)}
                   <Badge variant="outline" className="dark:border-slate-700 dark:text-slate-400">
-                    {purchaseOrder.currencyCode}
+                    Display: {displayCurrency} · Order: {purchaseOrder.currencyCode}
                   </Badge>
                   <Badge variant="outline" className="gap-1 dark:border-slate-700 dark:text-slate-400">
                     <CalendarDays className="h-3 w-3" />
