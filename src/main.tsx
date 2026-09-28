@@ -12,16 +12,24 @@ if (!rootElement) {
   console.error('[main.tsx] ERROR: Root element not found!');
   document.body.innerHTML = '<div style="padding: 20px; color: red;">Error: Root element not found. Please check index.html</div>';
 } else {
-  console.log('[main.tsx] Root element found, rendering app...');
-  initializeClientPerformanceMonitoring();
-  
-  try {
-    createRoot(rootElement).render(<App />);
-    window.requestAnimationFrame(markApplicationShellReady);
-    console.log('[main.tsx] Render called successfully');
-  } catch (err) {
-    console.error('[main.tsx] RENDER ERROR:', err);
-    rootElement.innerHTML = `<div style="padding: 20px; color: red;">Error: ${err}</div>`;
+  const staticMarketingPaths = new Set(['/operations', '/platform', '/trust']);
+  const shouldKeepPrerenderedPage = staticMarketingPaths.has(window.location.pathname.replace(/\/+$/, '') || '/');
+  if (shouldKeepPrerenderedPage) {
+    // These routes are emitted as complete static marketing pages at build time.
+    // Keep their crawlable page content in place instead of replacing it with the app's home fallback.
+    markApplicationShellReady();
+  } else {
+    console.log('[main.tsx] Root element found, rendering app...');
+    initializeClientPerformanceMonitoring();
+
+    try {
+      createRoot(rootElement).render(<App />);
+      window.requestAnimationFrame(markApplicationShellReady);
+      console.log('[main.tsx] Render called successfully');
+    } catch (err) {
+      console.error('[main.tsx] RENDER ERROR:', err);
+      rootElement.innerHTML = `<div style="padding: 20px; color: red;">Error: ${err}</div>`;
+    }
   }
 }
 

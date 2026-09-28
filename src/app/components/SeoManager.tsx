@@ -13,15 +13,30 @@ interface PageSeo {
 
 const publicSeo: Record<string, PageSeo> = {
   '/': {
-    title: 'KUBIKA | Stock Management System Rwanda for Growing Businesses',
+    title: 'Inventory and Accounting Software in Rwanda | KUBIKA',
     description:
-      'KUBIKA is a cloud stock management and accounting ERP for Rwandan SMEs. Manage inventory, purchasing, POS, payroll, VAT and RRA reporting across every branch.',
+      'Manage inventory, accounting, purchasing, POS and RRA workflows in one cloud system built for businesses in Rwanda.',
     type: 'software',
   },
   '/pricing': {
-    title: 'KUBIKA Pricing | ERP for Rwandan SMEs',
+    title: 'KUBIKA Pricing | Inventory and Accounting Plans',
     description:
-      'Explore KUBIKA plans for Rwandan SMEs that need connected inventory management, accounting, purchasing, POS and branch reporting.',
+      'Compare KUBIKA plans for businesses that need connected inventory management, accounting, purchasing, POS and branch reporting.',
+  },
+  '/operations': {
+    title: 'Inventory Management Software in Rwanda | KUBIKA',
+    description:
+      'Manage stock, warehouses, purchasing, goods received, sales and branches with KUBIKA inventory software for businesses in Rwanda and East Africa.',
+  },
+  '/platform': {
+    title: 'Accounting and Inventory Software in Rwanda | KUBIKA',
+    description:
+      'Connect inventory, accounting, payroll, POS and RRA workflows in one cloud business management system for Rwandan companies.',
+  },
+  '/trust': {
+    title: 'KUBIKA Security and Data Controls | Rwanda',
+    description:
+      'See how KUBIKA supports business data security with role-based permissions, activity history and backups for teams in Rwanda.',
   },
 };
 
@@ -83,24 +98,6 @@ const organizationSchema = {
   sameAs: [],
 };
 
-const softwareSchema = {
-  '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  '@id': `${SITE_URL}/#software`,
-  name: 'KUBIKA',
-  url: SITE_URL,
-  description:
-    'Cloud stock management and accounting ERP for Rwandan SMEs and growing African businesses.',
-  applicationCategory: 'BusinessApplication',
-  applicationSubCategory: 'Inventory management and accounting software',
-  operatingSystem: 'Web',
-  areaServed: [
-    { '@type': 'Country', name: 'Rwanda' },
-    { '@type': 'Continent', name: 'Africa' },
-  ],
-  publisher: { '@id': `${SITE_URL}/#organization` },
-};
-
 function getLocale() {
   const language = i18n.language?.split('-')[0] || 'en';
   return language === 'rw' ? 'rw' : language === 'fr' ? 'fr' : 'en';
@@ -110,8 +107,9 @@ export function SeoManager() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const seo = publicSeo[pathname];
-    const canonicalUrl = `${SITE_URL}${pathname === '/' ? '/' : pathname}`;
+    const normalizedPath = pathname === '/' ? '/' : pathname.replace(/\/+$/, '');
+    const seo = publicSeo[normalizedPath];
+    const canonicalUrl = `${SITE_URL}${normalizedPath}`;
     const isIndexable = Boolean(seo);
     const title = seo?.title || 'KUBIKA SYSTEM | Secure Business Operations';
     const description = seo?.description || 'KUBIKA is a secure cloud workspace for business operations.';
@@ -133,11 +131,7 @@ export function SeoManager() {
     setLink('canonical', canonicalUrl);
     setJsonLd('kubika-organization-schema', organizationSchema);
 
-    if (isIndexable) {
-      setJsonLd('kubika-software-schema', softwareSchema);
-    } else {
-      document.head.querySelector('#kubika-software-schema')?.remove();
-    }
+    document.head.querySelector('#kubika-software-schema')?.remove();
   }, [pathname]);
 
   return null;
