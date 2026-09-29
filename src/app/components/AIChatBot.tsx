@@ -1376,6 +1376,49 @@ function MessageContent({ text }: { text: string }) {
   );
 }
 
+const HIDDEN_EVIDENCE_KEYS = /^(id|_id|companyId|tenantId)$/i;
+
+function evidenceKeyLabel(key: string) {
+  return key
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function EvidenceValue({ value }: { value: unknown }) {
+  if (Array.isArray(value)) {
+    if (!value.length) return <span className="text-slate-400">None</span>;
+    return (
+      <div className="mt-1 space-y-1.5">
+        {value.map((item, index) => (
+          <div key={index} className="rounded-md bg-slate-900/70 px-2 py-1.5">
+            <EvidenceValue value={item} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (value && typeof value === 'object') {
+    const entries = Object.entries(value).filter(([key]) => !HIDDEN_EVIDENCE_KEYS.test(key));
+    if (!entries.length) return <span className="text-slate-400">Details unavailable</span>;
+    return (
+      <dl className="space-y-1">
+        {entries.map(([key, entryValue]) => (
+          <div key={key} className="grid grid-cols-[minmax(0,auto)_1fr] gap-x-2">
+            <dt className="text-slate-400">{evidenceKeyLabel(key)}</dt>
+            <dd className="min-w-0 break-words text-slate-200"><EvidenceValue value={entryValue} /></dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  if (value == null) return <span className="text-slate-400">Not available</span>;
+  if (typeof value === 'boolean') return <span>{value ? 'Yes' : 'No'}</span>;
+  return <span>{String(value)}</span>;
+}
+
 function ChatEvidence({ facts }: { facts?: Message['evidence'] }) {
   if (!facts?.length) return null;
   return (
@@ -1385,8 +1428,8 @@ function ChatEvidence({ facts }: { facts?: Message['evidence'] }) {
         {facts.map((fact) => (
           <div key={fact.id} className="rounded-lg border border-slate-700 bg-slate-950/70 p-2.5">
             <div className="flex flex-wrap justify-between gap-2"><span className="font-semibold text-slate-100">{fact.label}</span><span className="text-[10px] text-slate-400">{fact.domain || fact.sourceMethod || 'Source fact'}{fact.unit ? ` · ${fact.unit}` : ''}</span></div>
-            <pre className="mt-1.5 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-slate-300">{typeof fact.value === 'string' ? fact.value : JSON.stringify(fact.value, null, 2)}</pre>
-            {(fact.sourceService || fact.sourceMethod || fact.sourceIds?.length) && <p className="mt-1 text-[9px] text-slate-500">{[fact.sourceService, fact.sourceMethod, fact.sourceIds?.length ? fact.sourceIds.join(', ') : ''].filter(Boolean).join(' · ')}</p>}
+            <div className="mt-1.5 text-[11px] leading-relaxed text-slate-300"><EvidenceValue value={fact.value} /></div>
+            {(fact.sourceService || fact.sourceMethod) && <p className="mt-1 text-[9px] text-slate-500">{[fact.sourceService, fact.sourceMethod].filter(Boolean).join(' · ')}</p>}
           </div>
         ))}
       </div>
