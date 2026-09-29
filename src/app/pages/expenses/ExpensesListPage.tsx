@@ -453,15 +453,6 @@ export default function ExpensesListPage() {
     return `${account?.code || ''} - ${account?.name || 'Budget line'}${project ? ` - ${project}` : ''} (${formatCurrency(available)} left)`;
   };
 
-  const formatRWF = (amount: number) => {
-    return new Intl.NumberFormat('en-RW', {
-      style: 'currency',
-      currency: 'RWF',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount || 0);
-  };
-
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString();
   };
@@ -726,7 +717,6 @@ export default function ExpensesListPage() {
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Dept</TableHead>
                           <TableHead className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Curr</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Amount ({displayCurrency})</TableHead>
-                          <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Base RWF</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tax</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Actions</TableHead>
@@ -773,9 +763,6 @@ export default function ExpensesListPage() {
                             </TableCell>
                             <TableCell className="text-right text-sm font-semibold text-slate-900 dark:text-white">
                               {formatDisplayCurrency(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}
-                            </TableCell>
-                            <TableCell className="text-right text-sm text-slate-600 dark:text-slate-300">
-                              {formatRWF(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}
                             </TableCell>
                             <TableCell className="text-center">
                               {expense.rraTaxCategory ? (
