@@ -124,7 +124,7 @@ export default function ExpensesListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   // Formats a base-currency (RWF) amount in the display currency picked in the sidebar.
-  const { formatCurrency: formatDisplayCurrency } = useCurrency();
+  const { formatCurrency: formatDisplayCurrency, displayCurrency } = useCurrency();
   const [loading, setLoading] = useState(true);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -495,7 +495,10 @@ export default function ExpensesListPage() {
   };
 
   // Calculate summary metrics
-  const totalExpenses = expenses.reduce((sum, e) => sum + (e.totalAmountInRWF || e.totalAmount || 0), 0);
+  const totalExpenses = expenses.reduce(
+    (sum, expense) => sum + (expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1)),
+    0,
+  );
   const pendingCount = expenses.filter(e => e.status === 'pending').length;
   const postedCount = expenses.filter(e => e.status === 'posted').length;
   const recurringCount = expenses.filter(e => e.isRecurring).length;
@@ -722,7 +725,7 @@ export default function ExpensesListPage() {
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Account</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Dept</TableHead>
                           <TableHead className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Curr</TableHead>
-                          <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Amount</TableHead>
+                          <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Amount ({displayCurrency})</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">RWF</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tax</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</TableHead>
@@ -769,10 +772,10 @@ export default function ExpensesListPage() {
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right text-sm font-semibold text-slate-900 dark:text-white">
-                              {formatCurrency(expense.totalAmount, expense.currencyCode || 'RWF')}
+                              {formatDisplayCurrency(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}
                             </TableCell>
                             <TableCell className="text-right text-sm text-slate-600 dark:text-slate-300">
-                              {expense.totalAmountInRWF ? formatRWF(expense.totalAmountInRWF) : formatRWF(expense.totalAmount)}
+                              {formatRWF(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}
                             </TableCell>
                             <TableCell className="text-center">
                               {expense.rraTaxCategory ? (

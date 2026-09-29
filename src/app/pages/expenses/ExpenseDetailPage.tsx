@@ -43,9 +43,11 @@ import {
 } from '@/app/components/ui/select';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 export default function ExpenseDetailPage() {
   const { t } = useTranslation();
+  const { formatCurrency: formatDisplayCurrency, displayCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   
@@ -178,6 +180,8 @@ export default function ExpenseDetailPage() {
         amount: editForm.amount,
         tax_amount: editTaxAmount,
         total_amount: editTotalAmount,
+        currencyCode: editForm.currencyCode,
+        exchangeRate: editForm.currencyCode === 'RWF' ? 1 : editForm.exchangeRate,
         expense_account_id: editForm.expenseAccountId,
         payment_method: editForm.paymentMethod,
         bank_account_id: editForm.bankAccountId || undefined,
@@ -295,22 +299,6 @@ export default function ExpenseDetailPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  const formatCurrency = (amount: number, currency: string = 'RWF') => {
-    if (currency === 'RWF') {
-      return new Intl.NumberFormat('en-RW', {
-        style: 'currency',
-        currency: 'RWF',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(amount || 0);
-    }
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(amount || 0);
   };
 
   const formatRWF = (amount: number) => {
@@ -504,9 +492,9 @@ export default function ExpenseDetailPage() {
                     <Coins className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Net Amount</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Net Amount ({displayCurrency})</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">
-                      {formatCurrency(expense.amount, expense.currencyCode || 'RWF')}
+                      {formatDisplayCurrency(expense.amount, expense.currencyCode || 'RWF')}
                     </p>
                   </div>
                 </div>
@@ -523,17 +511,17 @@ export default function ExpenseDetailPage() {
                   </div>
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                      {expense.rraTaxCategory?.startsWith('wht_') ? 'Withholding Tax' : 'Tax Amount'}
+                      {expense.rraTaxCategory?.startsWith('wht_') ? `Withholding Tax (${displayCurrency})` : `Tax Amount (${displayCurrency})`}
                     </p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">
                       {expense.rraTaxCategory?.startsWith('wht_')
-                        ? formatCurrency(expense.withholdingTax || 0, expense.currencyCode || 'RWF')
-                        : formatCurrency(expense.taxAmount, expense.currencyCode || 'RWF')
+                        ? formatDisplayCurrency(expense.withholdingTax || 0, expense.currencyCode || 'RWF')
+                        : formatDisplayCurrency(expense.taxAmount, expense.currencyCode || 'RWF')
                       }
                     </p>
                     {expense.rraTaxCategory?.startsWith('wht_') && (expense.withholdingTax || 0) > 0 && (
                       <p className="text-xs text-orange-600 dark:text-orange-400">
-                        Net paid: {formatCurrency(expense.amount - (expense.withholdingTax || 0), expense.currencyCode || 'RWF')}
+                        Net paid: {formatDisplayCurrency(expense.amount - (expense.withholdingTax || 0), expense.currencyCode || 'RWF')}
                       </p>
                     )}
                   </div>
@@ -549,7 +537,7 @@ export default function ExpenseDetailPage() {
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Total (RWF)</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">
-                      {formatRWF(expense.totalAmountInRWF || expense.totalAmount)}
+                      {formatRWF(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}
                     </p>
                   </div>
                 </div>
