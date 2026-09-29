@@ -1186,12 +1186,12 @@ export default function LiabilityDetailPage() {
 
         {/* Repayment Dialog */}
         <Dialog open={repaymentOpen} onOpenChange={setRepaymentOpen}>
-          <DialogContent className="dark:bg-slate-800">
-            <DialogHeader>
+          <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col overflow-hidden p-4 sm:max-h-[90dvh] sm:w-full sm:max-w-lg sm:p-6 dark:bg-slate-800">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="dark:text-white">{t('liabilities.dialogs.repayment.title')}</DialogTitle>
               <DialogDescription className="dark:text-slate-400">{t('liabilities.dialogs.repayment.description')}</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
               <div className="space-y-2">
                 <Label className="dark:text-slate-200">{t('liabilities.totalAmount')} *</Label>
                 <Input 
@@ -1266,7 +1266,7 @@ export default function LiabilityDetailPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="shrink-0">
               <Button variant="outline" onClick={() => setRepaymentOpen(false)} className="dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">{t('common.cancel')}</Button>
               <Button onClick={handleRepayment} disabled={submitting} className="dark:bg-primary dark:text-primary-foreground">
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -1278,12 +1278,12 @@ export default function LiabilityDetailPage() {
 
         {/* Interest Dialog */}
         <Dialog open={interestOpen} onOpenChange={setInterestOpen}>
-          <DialogContent className="dark:bg-slate-800">
-            <DialogHeader>
+          <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] flex-col overflow-hidden p-4 sm:max-h-[90dvh] sm:w-full sm:max-w-lg sm:p-6 dark:bg-slate-800">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="dark:text-white">{t('liabilities.dialogs.interest.title')}</DialogTitle>
               <DialogDescription className="dark:text-slate-400">{t('liabilities.dialogs.interest.description')}</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pr-1">
               <div className="space-y-2">
                 <Label className="dark:text-slate-200">{t('liabilities.interestAmount')} *</Label>
                 <Input 
@@ -1325,7 +1325,7 @@ export default function LiabilityDetailPage() {
                 />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="shrink-0">
               <Button variant="outline" onClick={() => setInterestOpen(false)} className="dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700">{t('common.cancel')}</Button>
               <Button onClick={handleInterest} disabled={submitting} className="dark:bg-primary dark:text-primary-foreground">
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

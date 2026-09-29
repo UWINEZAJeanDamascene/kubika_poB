@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { loansApi, Liability, journalEntriesApi, ChartOfAccounts, PaymentScheduleResponse, bankAccountsApi } from '@/lib/api';
@@ -61,6 +61,9 @@ export default function LiabilityFormPage() {
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [calculatingSchedule, setCalculatingSchedule] = useState(false);
   const [paymentSchedule, setPaymentSchedule] = useState<PaymentScheduleResponse['schedule'] | null>(null);
+  const initialFormData = useRef<typeof formData | null>(null);
+  const [hasTransactions, setHasTransactions] = useState(false);
+  const [hasRepaymentOrInterestActivity, setHasRepaymentOrInterestActivity] = useState(false);
   
   const [formData, setFormData] = useState({
     loanNumber: '',
@@ -185,7 +188,14 @@ export default function LiabilityFormPage() {
       const response: any = await loansApi.getById(id!);
       if (response.success && response.data) {
         const liability = response.data;
-        setFormData({
+        const transactions = Array.isArray(liability.transactions) ? liability.transactions : [];
+        setHasTransactions(transactions.length > 0);
+        setHasRepaymentOrInterestActivity(
+          transactions.some((transaction) => transaction.type !== 'drawdown') ||
+          (liability.payments?.length || 0) > 0 ||
+          Number(liability.amountPaid || 0) > 0,
+        );
+        const loadedFormData = {
           loanNumber: liability.loanNumber || '',
           name: liability.name || '',
           loanType: liability.loanType || liability.type || 'loan',
@@ -223,7 +233,9 @@ export default function LiabilityFormPage() {
           significantIncreaseInCreditRisk: (liability as any).significantIncreaseInCreditRisk || false,
           daysPastDue: (liability as any).daysPastDue || 0,
           forbearanceStatus: (liability as any).forbearanceStatus || 'none'
-        });
+        };
+        setFormData(loadedFormData);
+        initialFormData.current = loadedFormData;
       }
     } catch (error) {
       console.error('[LiabilityFormPage] Failed to fetch liability:', error);
@@ -236,6 +248,44 @@ export default function LiabilityFormPage() {
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
+
+  const buildUpdatePayload = (data: typeof formData) => ({
+    loanNumber: data.loanNumber || null,
+    name: data.name,
+    loanType: data.loanType,
+    type: data.loanType,
+    lenderName: data.lenderName,
+    lenderContact: data.lenderContact || null,
+    originalAmount: data.originalAmount,
+    interestRate: data.interestRate,
+    interestMethod: data.interestMethod,
+    startDate: data.startDate,
+    endDate: data.endDate || null,
+    liabilityAccountId: data.liabilityAccountId,
+    interestExpenseAccountId: data.interestExpenseAccountId || null,
+    purpose: data.purpose || null,
+    durationMonths: data.durationMonths,
+    paymentTerms: data.paymentTerms,
+    collateral: data.collateral || null,
+    isSecured: data.isSecured,
+    securityDescription: data.securityDescription || null,
+    classification: data.classification,
+    currencyCode: data.currencyCode,
+    exchangeRate: data.exchangeRate,
+    hasCovenants: data.hasCovenants,
+    covenantDetails: data.covenantDetails || null,
+    covenantBreach: data.covenantBreach,
+    ifrs9Classification: data.ifrs9Classification,
+    impairmentStage: data.impairmentStage,
+    eclProvision: data.eclProvision,
+    probabilityOfDefault: data.probabilityOfDefault,
+    lossGivenDefault: data.lossGivenDefault,
+    exposureAtDefault: data.exposureAtDefault,
+    effectiveInterestRate: data.effectiveInterestRate,
+    significantIncreaseInCreditRisk: data.significantIncreaseInCreditRisk,
+    daysPastDue: data.daysPastDue,
+    forbearanceStatus: data.forbearanceStatus,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -258,6 +308,7 @@ export default function LiabilityFormPage() {
     setSubmitting(true);
     try {
       const payload = {
+        loanNumber: formData.loanNumber || undefined,
         name: formData.name,
         loanType: formData.loanType,
         lenderName: formData.lenderName,
@@ -300,32 +351,46 @@ export default function LiabilityFormPage() {
 
       let response: any;
       if (isEditMode) {
-        // When editing, send IFRS 7 and IFRS 9 disclosure fields
-        const disclosurePayload = {
-          // IFRS 7.33 Classification
-          isSecured: formData.isSecured,
-          securityDescription: formData.securityDescription || undefined,
-          classification: formData.classification,
-          // IFRS 7.34 Currency
-          currencyCode: formData.currencyCode,
-          exchangeRate: formData.exchangeRate,
-          // IAS 1.74 Covenant tracking
-          hasCovenants: formData.hasCovenants,
-          covenantDetails: formData.covenantDetails || undefined,
-          covenantBreach: formData.covenantBreach,
-          // IFRS 9 fields
-          ifrs9Classification: formData.ifrs9Classification,
-          impairmentStage: formData.impairmentStage,
-          eclProvision: formData.eclProvision,
-          probabilityOfDefault: formData.probabilityOfDefault,
-          lossGivenDefault: formData.lossGivenDefault,
-          exposureAtDefault: formData.exposureAtDefault,
-          effectiveInterestRate: formData.effectiveInterestRate,
-          significantIncreaseInCreditRisk: formData.significantIncreaseInCreditRisk,
-          daysPastDue: formData.daysPastDue,
-          forbearanceStatus: formData.forbearanceStatus,
-        };
-        response = await loansApi.update(id!, disclosurePayload);
+        const updatePayload = buildUpdatePayload(formData);
+        const initialPayload = buildUpdatePayload(initialFormData.current || formData);
+        const changedEntries = Object.entries(updatePayload).filter(([field, value]) =>
+          !Object.is(value, initialPayload[field as keyof typeof initialPayload]),
+        );
+        const disclosureFields = [
+          'isSecured', 'securityDescription', 'classification', 'currencyCode', 'exchangeRate',
+          'hasCovenants', 'covenantDetails', 'covenantBreach', 'ifrs9Classification',
+          'impairmentStage', 'eclProvision', 'probabilityOfDefault', 'lossGivenDefault',
+          'exposureAtDefault', 'effectiveInterestRate', 'significantIncreaseInCreditRisk',
+          'daysPastDue', 'forbearanceStatus',
+        ];
+        const scheduleFields = [
+          'interestRate', 'interestMethod', 'durationMonths', 'endDate', 'paymentTerms',
+          'interestExpenseAccountId',
+        ];
+        const allowedFields = hasTransactions
+          ? hasRepaymentOrInterestActivity
+            ? disclosureFields
+            : [...disclosureFields, ...scheduleFields]
+          : Object.keys(updatePayload);
+
+        if (changedEntries.some(([field]) => !allowedFields.includes(field))) {
+          toast.error(
+            hasRepaymentOrInterestActivity
+              ? 'After repayments or interest charges, only IFRS disclosures can be updated.'
+              : 'After initial funding, only schedule terms and IFRS disclosures can be updated.',
+          );
+          return;
+        }
+
+        const changedPayload = Object.fromEntries(changedEntries);
+        if (changedPayload.originalAmount !== undefined) {
+          changedPayload.outstandingBalance = formData.originalAmount;
+        }
+        if (Object.keys(changedPayload).length === 0) {
+          toast.info('No changes to save');
+          return;
+        }
+        response = await loansApi.update(id!, changedPayload);
       } else {
         response = await loansApi.create(payload);
       }
@@ -334,11 +399,11 @@ export default function LiabilityFormPage() {
         toast.success(isEditMode ? 'Liability updated successfully' : 'Liability created successfully');
         navigate('/liabilities');
       } else {
-        toast.error(response.error || (isEditMode ? 'Failed to update liability' : 'Failed to create liability'));
+        toast.error(response.message || response.error || (isEditMode ? 'Failed to update liability' : 'Failed to create liability'));
       }
     } catch (error: any) {
       console.error('[LiabilityFormPage] Failed to save liability:', error);
-      toast.error(error.response?.data?.error || (isEditMode ? 'Failed to update liability' : 'Failed to create liability'));
+      toast.error(error.response?.data?.message || error.response?.data?.error || (isEditMode ? 'Failed to update liability' : 'Failed to create liability'));
     } finally {
       setSubmitting(false);
     }
@@ -379,6 +444,13 @@ export default function LiabilityFormPage() {
                 <p className="text-sm text-slate-500 dark:text-slate-400">
                   {isEditMode ? 'Update liability information' : 'Add a new liability to your accounts'}
                 </p>
+                {isEditMode && hasTransactions && (
+                  <p className="mt-1 text-xs text-amber-700 dark:text-amber-300">
+                    {hasRepaymentOrInterestActivity
+                      ? 'Only IFRS disclosures can be changed after repayments or interest charges.'
+                      : 'Schedule terms and IFRS disclosures can be changed after funding.'}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -406,6 +478,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="loanNumber" className="dark:text-slate-200">{t('liabilities.reference')}</Label>
                   <Input 
                     id="loanNumber"
+                    disabled={isEditMode && hasTransactions}
                     value={formData.loanNumber}
                     onChange={(e) => handleChange('loanNumber', e.target.value)}
                     placeholder="Auto-generated if empty"
@@ -417,6 +490,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="name" className="dark:text-slate-200">{t('liabilities.name')} *</Label>
                   <Input 
                     id="name"
+                    disabled={isEditMode && hasTransactions}
                     value={formData.name}
                     onChange={(e) => handleChange('name', e.target.value)}
                     placeholder="Bank Loan"
@@ -429,6 +503,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="loanType" className="dark:text-slate-200">{t('liabilities.type')} *</Label>
                   <Select 
                     value={formData.loanType} 
+                    disabled={isEditMode && hasTransactions}
                     onValueChange={(value) => handleChange('loanType', value)}
                   >
                     <SelectTrigger className="dark:bg-slate-700 dark:text-white dark:border-slate-600">
@@ -449,6 +524,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="lenderName" className="dark:text-slate-200">{t('liabilities.lender')} *</Label>
                   <Input 
                     id="lenderName"
+                    disabled={isEditMode && hasTransactions}
                     value={formData.lenderName}
                     onChange={(e) => handleChange('lenderName', e.target.value)}
                     placeholder="Bank Name"
@@ -461,6 +537,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="lenderContact" className="dark:text-slate-200">{t('liabilities.lenderContact')}</Label>
                   <Input 
                     id="lenderContact"
+                    disabled={isEditMode && hasTransactions}
                     value={formData.lenderContact}
                     onChange={(e) => handleChange('lenderContact', e.target.value)}
                     placeholder="Contact person or phone"
@@ -488,6 +565,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="liabilityAccountId" className="dark:text-slate-200">Liability Account *</Label>
                   <Select 
                     value={formData.liabilityAccountId} 
+                    disabled={isEditMode && hasTransactions}
                     onValueChange={(value) => handleChange('liabilityAccountId', value)}
                   >
                     <SelectTrigger className="dark:bg-slate-700 dark:text-white dark:border-slate-600">
@@ -507,6 +585,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="bankAccountId" className="dark:text-slate-200">Deposit to Bank Account</Label>
                   <Select 
                     value={formData.bankAccountId} 
+                    disabled={isEditMode}
                     onValueChange={(value) => handleChange('bankAccountId', value)}
                   >
                     <SelectTrigger className="dark:bg-slate-700 dark:text-white dark:border-slate-600">
@@ -529,6 +608,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="originalAmount" className="dark:text-slate-200">{t('liabilities.principal')} *</Label>
                   <Input 
                     id="originalAmount"
+                    disabled={isEditMode && hasTransactions}
                     type="number"
                     min="0"
                     step="0.01"
@@ -544,6 +624,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="interestRate" className="dark:text-slate-200">{t('liabilities.interestRate')} (%)</Label>
                   <Input 
                     id="interestRate"
+                    disabled={isEditMode && hasTransactions && hasRepaymentOrInterestActivity}
                     type="number"
                     min="0"
                     step="0.01"
@@ -558,6 +639,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="interestExpenseAccountId" className="dark:text-slate-200">Interest Expense Account</Label>
                   <Select 
                     value={formData.interestExpenseAccountId} 
+                    disabled={isEditMode && hasTransactions && hasRepaymentOrInterestActivity}
                     onValueChange={(value) => handleChange('interestExpenseAccountId', value)}
                   >
                     <SelectTrigger className="dark:bg-slate-700 dark:text-white dark:border-slate-600">
@@ -577,6 +659,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="durationMonths" className="dark:text-slate-200">Duration (months)</Label>
                   <Input 
                     id="durationMonths"
+                    disabled={isEditMode && hasTransactions && hasRepaymentOrInterestActivity}
                     type="number"
                     min="1"
                     value={formData.durationMonths}
@@ -606,6 +689,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="startDate" className="dark:text-slate-200">Start Date *</Label>
                   <Input 
                     id="startDate"
+                    disabled={isEditMode && hasTransactions}
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => handleChange('startDate', e.target.value)}
@@ -618,6 +702,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="endDate" className="dark:text-slate-200">End Date</Label>
                   <Input 
                     id="endDate"
+                    disabled={isEditMode && hasTransactions && hasRepaymentOrInterestActivity}
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => handleChange('endDate', e.target.value)}
@@ -629,6 +714,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="paymentTerms" className="dark:text-slate-200">{t('liabilities.paymentTerms')}</Label>
                   <Select 
                     value={formData.paymentTerms} 
+                    disabled={isEditMode && hasTransactions && hasRepaymentOrInterestActivity}
                     onValueChange={(value) => handleChange('paymentTerms', value)}
                   >
                     <SelectTrigger className="dark:bg-slate-700 dark:text-white dark:border-slate-600">
@@ -647,6 +733,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="collateral" className="dark:text-slate-200">{t('liabilities.collateral')}</Label>
                   <Input 
                     id="collateral"
+                    disabled={isEditMode && hasTransactions}
                     value={formData.collateral}
                     onChange={(e) => handleChange('collateral', e.target.value)}
                     placeholder="Collateral description"
@@ -658,6 +745,7 @@ export default function LiabilityFormPage() {
                   <Label htmlFor="purpose" className="dark:text-slate-200">Purpose</Label>
                   <Input 
                     id="purpose"
+                    disabled={isEditMode && hasTransactions}
                     value={formData.purpose}
                     onChange={(e) => handleChange('purpose', e.target.value)}
                     placeholder="Purpose of the loan"
