@@ -745,8 +745,8 @@ export default function ExpenseDetailPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          <DialogHeader>
+        <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden border-slate-200 bg-white p-4 sm:max-h-[90dvh] sm:w-full sm:p-6 dark:border-slate-700 dark:bg-slate-900">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white">
               <Edit className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
               Edit Expense
@@ -755,7 +755,7 @@ export default function ExpenseDetailPage() {
               Update the expense details. Fields marked with * are required.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 overflow-y-auto overscroll-contain py-4 pr-1 sm:grid-cols-2">
             <div className="space-y-2 col-span-2">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-200">Description *</Label>
               <Input
@@ -1000,7 +1000,7 @@ export default function ExpenseDetailPage() {
               />
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setEditDialogOpen(false)} className="border-slate-200 text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
               Cancel
             </Button>
