@@ -726,7 +726,7 @@ export default function ExpensesListPage() {
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Dept</TableHead>
                           <TableHead className="text-center text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Curr</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Amount ({displayCurrency})</TableHead>
-                          <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">RWF</TableHead>
+                          <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Base RWF</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tax</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Status</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Actions</TableHead>

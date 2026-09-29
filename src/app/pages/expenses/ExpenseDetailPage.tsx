@@ -535,10 +535,15 @@ export default function ExpenseDetailPage() {
                     <Wallet className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Total (RWF)</p>
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Total ({displayCurrency})</p>
                     <p className="text-xl font-bold text-slate-900 dark:text-white">
-                      {formatRWF(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}
+                      {formatDisplayCurrency(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}
                     </p>
+                    {displayCurrency !== 'RWF' && (
+                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                        Base RWF: {formatRWF(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
