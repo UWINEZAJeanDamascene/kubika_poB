@@ -296,6 +296,9 @@ const ProjectFormPage = lazy(() => import("./pages/projects/ProjectFormPage"));
 const ProjectDetailPage = lazy(
   () => import("./pages/projects/ProjectDetailPage"),
 );
+const ProjectKanbanPage = lazy(() => import("./pages/projects/ProjectKanbanPage"));
+const ProjectCalendarPage = lazy(() => import("./pages/projects/ProjectCalendarPage"));
+const ProjectMyTasksPage = lazy(() => import("./pages/projects/ProjectMyTasksPage"));
 const ARAgingPage = lazy(() => import("./pages/ar/ARAgingPage"));
 const ARReconciliationPage = lazy(
   () => import("./pages/ar/ARReconciliationPage"),
@@ -1244,6 +1247,9 @@ function AppRoutes() {
               </ErrorBoundary>
             }
           />
+          <Route path="/projects/kanban" element={<ErrorBoundary><ProjectKanbanPage /></ErrorBoundary>} />
+          <Route path="/projects/calendar" element={<ErrorBoundary><ProjectCalendarPage /></ErrorBoundary>} />
+          <Route path="/projects/my-tasks" element={<ErrorBoundary><ProjectMyTasksPage /></ErrorBoundary>} />
           <Route
             path="/projects/new"
             element={

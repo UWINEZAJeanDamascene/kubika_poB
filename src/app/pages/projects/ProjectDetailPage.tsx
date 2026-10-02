@@ -19,6 +19,13 @@ import { toast } from "sonner";
 import { Layout } from "@/app/layout/Layout";
 import WBSTree from "./components/WBSTree";
 import type { WBSTreeNode } from "./components/WBSTree";
+import ProjectTasksPanel from "./components/ProjectTasksPanel";
+import ProjectMilestonesPanel from "./components/ProjectMilestonesPanel";
+import ProjectCollaborationPanel from "./components/ProjectCollaborationPanel";
+import ProjectMaterialsPanel from "./components/ProjectMaterialsPanel";
+import ProjectClosurePanel from "./components/ProjectClosurePanel";
+import ProjectReportsPanel from "./ProjectReportsPanel";
+import ProjectControlsPanel from "./components/ProjectControlsPanel";
 import {
   ArrowLeft,
   Edit,
@@ -31,6 +38,8 @@ import {
   Loader2,
   FolderTree,
   RefreshCw,
+  ListTodo,
+  Users,
 } from "lucide-react";
 import { useFormatCurrency } from '@/lib/currencyUtils';
 
@@ -38,6 +47,7 @@ const STATUS_COLORS: Record<string, string> = {
   planning: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
   active: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800",
   on_hold: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800",
+  blocked: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
   completed: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
   cancelled: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
 };
@@ -136,9 +146,7 @@ export default function ProjectDetailPage() {
     budgetSummary
       ? allocatedAmount - spentAmount - encumberedAmount
       : toAmount(project.budget_remaining);
-  const progressPercent = allocatedAmount > 0
-    ? Math.min(100, (spentAmount / allocatedAmount) * 100)
-    : toAmount(project.progress_percent);
+  const progressPercent = toAmount(project.progress_percent);
   const displayedWbsTree: WBSTreeNode[] =
     wbsTree.length > 0
       ? wbsTree
@@ -184,6 +192,8 @@ export default function ProjectDetailPage() {
                   </span>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
+                  {["project", "job"].includes(project.type) && <Button variant="outline" onClick={() => navigate(`/projects/new?parent_id=${project._id}&type=phase`)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">Add Phase</Button>}
+                  {["project", "job", "phase"].includes(project.type) && <Button variant="outline" onClick={() => navigate(`/projects/new?parent_id=${project._id}&type=work_package`)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">Add Work Package</Button>}
                   <Button
                     variant="outline"
                     onClick={() => navigate(`/projects/${project._id}/edit`)}
@@ -337,6 +347,10 @@ export default function ProjectDetailPage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
+                    <span className="text-slate-500 dark:text-slate-400">Category</span>
+                    <p className="mt-0.5 font-medium capitalize text-slate-950 dark:text-white">{project.project_category?.replaceAll("_", " ")}</p>
+                  </div>
+                  <div>
                     <span className="text-slate-500 dark:text-slate-400">{t("projects.type", "Type")}</span>
                     <p className="mt-0.5 font-medium capitalize text-slate-950 dark:text-white">{project.type}</p>
                   </div>
@@ -366,6 +380,29 @@ export default function ProjectDetailPage() {
                       {project.end_date ? new Date(project.end_date).toLocaleDateString() : "—"}
                     </p>
                   </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400">Actual Start</span>
+                    <p className="mt-0.5 font-medium text-slate-950 dark:text-white">{project.actual_start_date ? new Date(project.actual_start_date).toLocaleDateString() : "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400">Actual End</span>
+                    <p className="mt-0.5 font-medium text-slate-950 dark:text-white">{project.actual_end_date ? new Date(project.actual_end_date).toLocaleDateString() : "—"}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400">Project Currency</span>
+                    <p className="mt-0.5 font-medium text-slate-950 dark:text-white">{project.currency_code}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 dark:text-slate-400">Tax Rate</span>
+                    <p className="mt-0.5 font-medium text-slate-950 dark:text-white">{project.tax_rate_pct}%{project.tax_inclusive ? " (inclusive)" : ""}</p>
+                  </div>
+                </div>
+                {project.purpose && <div><span className="text-slate-500 dark:text-slate-400">Purpose</span><p className="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{project.purpose}</p></div>}
+                <div className="grid grid-cols-2 gap-4 border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
+                  <div><span className="text-slate-500 dark:text-slate-400">Client reference</span><p className="mt-0.5 break-all font-medium text-slate-950 dark:text-white">{project.client_id ? (typeof project.client_id === "string" ? project.client_id : project.client_id.name) : "—"}</p></div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Project manager</span><p className="mt-0.5 break-all font-medium text-slate-950 dark:text-white">{project.manager_id ? (typeof project.manager_id === "string" ? project.manager_id : `${project.manager_id.firstName} ${project.manager_id.lastName}`) : "—"}</p></div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Sponsor reference</span><p className="mt-0.5 break-all font-medium text-slate-950 dark:text-white">{project.sponsor_id || "—"}</p></div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Assigned team</span><p className="mt-0.5 font-medium text-slate-950 dark:text-white">{project.team_member_ids?.length || 0} member(s)</p></div>
                 </div>
                 {project.description && (
                   <div>
@@ -373,6 +410,18 @@ export default function ProjectDetailPage() {
                     <p className="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{project.description}</p>
                   </div>
                 )}
+                {(project.scope || project.exclusions || project.assumptions || project.constraints) && (
+                  <div className="space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                    {(["scope", "exclusions", "assumptions", "constraints"] as const).map((field) => project[field] && (
+                      <div key={field}><span className="text-slate-500 dark:text-slate-400 capitalize">{field}</span><p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-slate-700 dark:text-slate-300">{project[field]}</p></div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-4 space-y-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                  <div className="flex items-center justify-between gap-3"><div><h3 className="font-semibold text-slate-950 dark:text-white">Project Labor Cost</h3><p className="text-xs text-slate-500 dark:text-slate-400">Approved timesheet entries linked to project tasks</p></div><span className="text-sm font-medium">{Number(budgetSummary?.labor_summary?.total_hours || 0).toFixed(2)} hrs</span></div>
+                  {budgetSummary?.labor_summary?.by_currency?.length ? budgetSummary.labor_summary.by_currency.map((item) => <div key={item.currency_code} className="flex items-center justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Labor actual · {item.currency_code}</span><span className="font-semibold text-slate-950 dark:text-white">{formatCurrency(item.amount, item.currency_code)}</span></div>) : <p className="text-sm text-slate-500 dark:text-slate-400">No approved project hours recorded yet.</p>}
+                  {budgetSummary?.labor_summary?.by_task?.length ? <div className="space-y-1">{budgetSummary.labor_summary.by_task.map((item) => <div key={item.task_id} className="flex justify-between gap-3 text-xs text-slate-500 dark:text-slate-400"><span className="truncate">{item.wbs_code} · {item.task_name} ({item.hours.toFixed(2)} hrs)</span><span>{Object.entries(item.cost_by_currency).map(([currency, amount]) => `${currency} ${amount.toLocaleString()}`).join(" · ")}</span></div>)}</div> : null}
+                </div>
               </CardContent>
             </Card>
 
@@ -395,6 +444,22 @@ export default function ProjectDetailPage() {
                       <span className="text-sm text-slate-500 dark:text-slate-400">{t("budgets.encumbered", "Open Encumbered")}</span>
                       <span className="font-medium text-orange-600 dark:text-orange-400">{formatCurrency(encumberedAmount)}</span>
                     </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Forecast cost at completion</span>
+                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(budgetSummary.financial_summary.forecast_budget_cost, budgetSummary.financial_summary.currency_code)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Issued materials cost</span>
+                      <span className="font-medium text-slate-950 dark:text-white">{formatCurrency(budgetSummary.material_summary.issued_cost, budgetSummary.material_summary.currency_code)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Unissued approved material commitment</span>
+                      <span className="font-medium text-orange-600 dark:text-orange-400">{formatCurrency(budgetSummary.material_summary.open_commitment, budgetSummary.material_summary.currency_code)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">Forecast budget variance</span>
+                      <span className={`font-medium ${budgetSummary.financial_summary.budget_variance_at_completion < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>{formatCurrency(budgetSummary.financial_summary.budget_variance_at_completion, budgetSummary.financial_summary.currency_code)}</span>
+                    </div>
                     <div className="flex items-center justify-between border-t border-slate-200 pt-3 dark:border-slate-800">
                       <span className="text-sm font-medium text-slate-950 dark:text-white">{t("projects.remaining", "Remaining")}</span>
                       <span className={`font-bold ${remainingAmount < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
@@ -403,6 +468,14 @@ export default function ProjectDetailPage() {
                     </div>
                     <div className="rounded-lg bg-slate-50 p-2 text-center text-xs text-slate-500 dark:bg-slate-900/50 dark:text-slate-400">
                       {budgetSummary.line_count} {t("projects.budgetLines", "budget line(s) linked")}
+                    </div>
+                    <div className="space-y-2 border-t border-slate-200 pt-3 dark:border-slate-800">
+                      <h3 className="font-semibold text-slate-950 dark:text-white">Project Profitability Forecast</h3>
+                      <div className="flex items-center justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Contract value</span><span>{formatCurrency(budgetSummary.financial_summary.contract_value, budgetSummary.financial_summary.currency_code)}</span></div>
+                      <div className="flex items-center justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Forecast margin*</span><span className={budgetSummary.financial_summary.forecast_margin < 0 ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>{formatCurrency(budgetSummary.financial_summary.forecast_margin, budgetSummary.financial_summary.currency_code)}{budgetSummary.financial_summary.forecast_margin_percent !== null ? ` (${budgetSummary.financial_summary.forecast_margin_percent.toFixed(1)}%)` : ""}</span></div>
+                      {budgetSummary.financial_summary.labor_forecast_by_currency.map((item) => <div key={item.currency_code} className="flex items-center justify-between text-sm"><span className="text-slate-500 dark:text-slate-400">Remaining task labor forecast ({item.hours.toFixed(1)} hrs)</span><span>{formatCurrency(item.amount, item.currency_code)}</span></div>)}
+                      {budgetSummary.financial_summary.unpriced_remaining_labor_hours > 0 && <p className="text-xs text-amber-700 dark:text-amber-400">{budgetSummary.financial_summary.unpriced_remaining_labor_hours.toFixed(1)} remaining task hours have no approved labor rate to forecast.</p>}
+                      <p className="text-xs text-slate-500 dark:text-slate-400">*Uses contract value less actual budget costs and open commitments. Invoice revenue is not linked to projects yet. Labor forecast is shown separately because budget actuals may already include labor. {budgetSummary.financial_summary.labor_forecast_note}</p>
                     </div>
                   </div>
                 ) : (
@@ -425,6 +498,15 @@ export default function ProjectDetailPage() {
                 <DollarSign className="mr-2 h-4 w-4" />
                 {t("projects.budgetLines", "Budget Lines")}
               </TabsTrigger>
+              <TabsTrigger value="tasks" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
+                <ListTodo className="mr-2 h-4 w-4" />Tasks
+              </TabsTrigger>
+              <TabsTrigger value="materials" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">Materials</TabsTrigger>
+              <TabsTrigger value="closure" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">Closure</TabsTrigger>
+              <TabsTrigger value="reports" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">Reports</TabsTrigger>
+              <TabsTrigger value="controls" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">Risk & Changes</TabsTrigger>
+              <TabsTrigger value="milestones" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">Milestones</TabsTrigger>
+              <TabsTrigger value="collaboration" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white"><Users className="mr-2 h-4 w-4" />Team & Activity</TabsTrigger>
             </TabsList>
             <TabsContent value="wbs" className="mt-4">
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -447,6 +529,8 @@ export default function ProjectDetailPage() {
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader>
                   <CardTitle className="text-lg text-slate-950 dark:text-white">{t("projects.budgetLines", "Budget Lines")}</CardTitle>
+                  <CardDescription>Project totals include budget lines assigned to this project and its WBS children. Project budgets follow the approval workflows configured in Budget Settings.</CardDescription>
+                  <div className="flex flex-wrap gap-2"><Button variant="default" size="sm" onClick={() => navigate(`/budgets/new?type=project&project_id=${project._id}`)}>Create Project Budget</Button><Button variant="outline" size="sm" onClick={() => navigate("/budgets")}>Open Budgets</Button><Button variant="outline" size="sm" onClick={() => navigate("/budgets/settings")}>Budget Settings</Button></div>
                 </CardHeader>
                 <CardContent>
                   {budgetSummary && budgetSummary.budget_lines.length > 0 ? (
@@ -455,6 +539,7 @@ export default function ProjectDetailPage() {
                         <TableHeader>
                           <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
                             <TableHead className="text-slate-600 dark:text-slate-400">{t("budgets.account", "Account")}</TableHead>
+                            <TableHead className="text-slate-600 dark:text-slate-400">Project / WBS</TableHead>
                             <TableHead className="text-slate-600 dark:text-slate-400">{t("budgets.month", "Month")}</TableHead>
                             <TableHead className="text-slate-600 dark:text-slate-400">{t("budgets.year", "Year")}</TableHead>
                             <TableHead className="text-right text-slate-600 dark:text-slate-400">{t("budgets.budgetedAmount", "Budgeted")}</TableHead>
@@ -470,6 +555,7 @@ export default function ProjectDetailPage() {
                                   ? `${line.account_id.code} - ${line.account_id.name}`
                                   : line.account_id}
                               </TableCell>
+                              <TableCell className="text-slate-950 dark:text-white">{line.project_id && typeof line.project_id === "object" ? `${line.project_id.wbs_code} · ${line.project_id.name}` : line.wbs_code || project.wbs_code}</TableCell>
                               <TableCell className="text-slate-950 dark:text-white">{line.period_month}</TableCell>
                               <TableCell className="text-slate-950 dark:text-white">{line.period_year}</TableCell>
                               <TableCell className="text-right font-medium text-slate-950 dark:text-white">
@@ -491,6 +577,31 @@ export default function ProjectDetailPage() {
                   )}
                 </CardContent>
               </Card>
+            </TabsContent>
+            <TabsContent value="tasks" className="mt-4">
+              <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <CardContent className="p-5"><ProjectTasksPanel project={project} /></CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="materials" className="mt-4">
+              <Card><CardContent className="pt-6"><ProjectMaterialsPanel project={project} /></CardContent></Card>
+            </TabsContent>
+            <TabsContent value="closure" className="mt-4">
+              <Card><CardContent className="pt-6"><ProjectClosurePanel project={project} onChanged={fetchProject} /></CardContent></Card>
+            </TabsContent>
+            <TabsContent value="reports" className="mt-4">
+              <ProjectReportsPanel project={project} />
+            </TabsContent>
+            <TabsContent value="controls" className="mt-4">
+              <Card><CardContent className="pt-6"><ProjectControlsPanel project={project} /></CardContent></Card>
+            </TabsContent>
+            <TabsContent value="milestones" className="mt-4">
+              <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <CardContent className="p-5"><ProjectMilestonesPanel project={project} /></CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="collaboration" className="mt-4">
+              <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950"><CardContent className="p-5"><ProjectCollaborationPanel project={project} /></CardContent></Card>
             </TabsContent>
           </Tabs>
         </div>

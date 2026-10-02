@@ -107,6 +107,7 @@ export default function TimesheetDetailPage() {
                     <Badge variant="outline" className="capitalize text-xs">{line.activityType?.replace("_", " ")}</Badge>
                   </div>
                   <span className="font-semibold">{line.hoursWorked} hrs</span>
+                  {line.projectTaskId && <span className="text-xs text-slate-500">Project task · labor {line.laborCost != null ? `${line.currencyCode || "RWF"} ${Number(line.laborCost).toLocaleString()}` : "cost set on approval"}</span>}
                 </div>
               ))}
             </div>

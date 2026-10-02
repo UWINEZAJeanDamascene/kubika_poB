@@ -6,7 +6,7 @@ import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
-import { timesheetsApi } from "@/lib/api";
+import { projectsApi, timesheetsApi } from "@/lib/api";
 import { employeeApi } from "@/lib/api.employees";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Trash2, Save, Loader2 } from "lucide-react";
@@ -33,6 +33,7 @@ export default function TimesheetFormPage() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
   const [lines, setLines] = useState<any[]>([{ date: "", hoursWorked: "", activityType: "", notes: "" }]);
+  const { data: projectTasks } = useQuery({ queryKey: ["project-tasks", "timesheet"], queryFn: async () => (await projectsApi.getAll({ type: "task" })).data || [] });
 
   const { data: employees } = useQuery({
     queryKey: ["employees", "active"],
@@ -76,6 +77,7 @@ export default function TimesheetFormPage() {
           hoursWorked: parseFloat(l.hoursWorked) || 0,
           activityType: l.activityType,
           notes: l.notes || undefined,
+          projectTaskId: l.projectTaskId || undefined,
         })).filter((l) => l.date && l.hoursWorked > 0 && l.activityType),
       };
       if (isEdit) {
@@ -130,10 +132,10 @@ export default function TimesheetFormPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between"><CardTitle className="text-base">Work Entries</CardTitle><span className="text-sm text-slate-500">Total: {totalHours.toFixed(1)} hrs</span></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle className="text-base">Work Entries</CardTitle><p className="mt-1 text-xs text-slate-500">Approved task hours are costed from the employee salary effective on the work date, using 173.33 standard hours per month.</p></div><span className="text-sm text-slate-500">Total: {totalHours.toFixed(1)} hrs</span></CardHeader>
           <CardContent className="space-y-3">
             {lines.map((line, i) => (
-              <div key={i} className="grid gap-3 sm:grid-cols-5 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900">
+              <div key={i} className="grid gap-3 sm:grid-cols-6 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900">
                 <div className="space-y-1 sm:col-span-1">
                   <Label className="text-xs">Date</Label>
                   <Input type="date" value={line.date} onChange={(e) => updateLine(i, "date", e.target.value)} />
@@ -142,7 +144,7 @@ export default function TimesheetFormPage() {
                   <Label className="text-xs">Hours</Label>
                   <Input type="number" min={0} max={24} step={0.5} value={line.hoursWorked} onChange={(e) => updateLine(i, "hoursWorked", e.target.value)} />
                 </div>
-                <div className="space-y-1 sm:col-span-2">
+                <div className="space-y-1 sm:col-span-1">
                   <Label className="text-xs">Activity</Label>
                   <Select value={line.activityType} onValueChange={(v) => updateLine(i, "activityType", v)}>
                     <SelectTrigger><SelectValue placeholder="Select activity" /></SelectTrigger>
@@ -151,6 +153,7 @@ export default function TimesheetFormPage() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-1 sm:col-span-2"><Label className="text-xs">Project task (optional)</Label><Select value={line.projectTaskId || "__none__"} onValueChange={(value) => updateLine(i, "projectTaskId", value === "__none__" ? "" : value)}><SelectTrigger><SelectValue placeholder="No project task" /></SelectTrigger><SelectContent><SelectItem value="__none__">No project task</SelectItem>{(projectTasks || []).map((task) => <SelectItem key={task._id} value={task._id}>{task.wbs_code} · {task.name}</SelectItem>)}</SelectContent></Select></div>
                 <div className="flex gap-2 sm:col-span-1">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => removeLine(i)}><Trash2 className="h-4 w-4" /></Button>
                 </div>

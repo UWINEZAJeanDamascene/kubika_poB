@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
-import { payrollApi, reportsApi, timesheetsApi, PayrollRecord } from "@/lib/api";
+import { payrollApi, projectsApi, reportsApi, timesheetsApi, PayrollRecord } from "@/lib/api";
 import { employeeApi } from "@/lib/api.employees";
 import { Layout } from "../../layout/Layout";
 import {
@@ -199,6 +199,11 @@ export default function PayrollListPage() {
     },
     enabled: activeTab === "timesheets" && tsShowForm,
   });
+  const { data: tsProjectTasks } = useQuery({
+    queryKey: ["project-tasks", "timesheet"],
+    queryFn: async () => (await projectsApi.getAll({ type: "task" })).data || [],
+    enabled: activeTab === "timesheets" && tsShowForm,
+  });
 
   const { data: tsFormExisting } = useQuery({
     queryKey: ["timesheet", tsEditingId],
@@ -239,6 +244,7 @@ export default function PayrollListPage() {
           hoursWorked: parseFloat(l.hoursWorked) || 0,
           activityType: l.activityType,
           notes: l.notes || undefined,
+          projectTaskId: l.projectTaskId || undefined,
         })).filter((l) => l.date && l.hoursWorked > 0 && l.activityType),
       };
       if (tsEditingId) {
@@ -2302,12 +2308,12 @@ export default function PayrollListPage() {
 
                   <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <CardHeader className="pb-2 flex flex-row items-center justify-between">
-                      <CardTitle className="text-base font-semibold text-slate-950 dark:text-white">Work Entries</CardTitle>
+                      <div><CardTitle className="text-base font-semibold text-slate-950 dark:text-white">Work Entries</CardTitle><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Approved task hours use the employee salary effective on the work date, divided by 173.33 standard hours per month.</p></div>
                       <span className="text-sm text-slate-500 dark:text-slate-400">Total: {tsTotalHours.toFixed(1)} hrs</span>
                     </CardHeader>
                     <CardContent className="space-y-3 pt-2">
                       {tsFormLines.map((line, i) => (
-                        <div key={i} className="grid gap-3 sm:grid-cols-5 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900 dark:border-slate-700">
+                        <div key={i} className="grid gap-3 sm:grid-cols-6 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900 dark:border-slate-700">
                           <div className="space-y-1 sm:col-span-1">
                             <Label className="text-xs text-slate-600 dark:text-slate-400">Date</Label>
                             <Input type="date" value={line.date} onChange={(e) => tsUpdateLine(i, "date", e.target.value)} className="dark:bg-slate-800 dark:text-white dark:border-slate-700" />
@@ -2316,7 +2322,7 @@ export default function PayrollListPage() {
                             <Label className="text-xs text-slate-600 dark:text-slate-400">Hours</Label>
                             <Input type="number" min={0} max={24} step={0.5} value={line.hoursWorked} onChange={(e) => tsUpdateLine(i, "hoursWorked", e.target.value)} className="dark:bg-slate-800 dark:text-white dark:border-slate-700" />
                           </div>
-                          <div className="space-y-1 sm:col-span-2">
+                          <div className="space-y-1 sm:col-span-1">
                             <Label className="text-xs text-slate-600 dark:text-slate-400">Activity</Label>
                             <Select value={line.activityType} onValueChange={(v) => tsUpdateLine(i, "activityType", v)}>
                               <SelectTrigger className="dark:bg-slate-800 dark:text-white dark:border-slate-700"><SelectValue placeholder="Select activity" /></SelectTrigger>
@@ -2325,6 +2331,7 @@ export default function PayrollListPage() {
                               </SelectContent>
                             </Select>
                           </div>
+                          <div className="space-y-1 sm:col-span-2"><Label className="text-xs text-slate-600 dark:text-slate-400">Project task (optional)</Label><Select value={line.projectTaskId || "__none__"} onValueChange={(value) => tsUpdateLine(i, "projectTaskId", value === "__none__" ? "" : value)}><SelectTrigger className="dark:bg-slate-800 dark:text-white dark:border-slate-700"><SelectValue placeholder="No project task" /></SelectTrigger><SelectContent className="dark:bg-slate-800 dark:border-slate-700"><SelectItem value="__none__">No project task</SelectItem>{(tsProjectTasks || []).map((task) => <SelectItem key={task._id} value={task._id}>{task.wbs_code} · {task.name}</SelectItem>)}</SelectContent></Select></div>
                           <div className="flex gap-2 sm:col-span-1">
                             <Button variant="outline" size="sm" className="flex-1 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" onClick={() => tsRemoveLine(i)}><Trash2 className="h-4 w-4" /></Button>
                           </div>

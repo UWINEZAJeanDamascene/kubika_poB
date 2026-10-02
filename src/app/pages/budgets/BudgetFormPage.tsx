@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
   budgetsApi,
@@ -7,10 +7,12 @@ import {
   departmentsApi,
   exchangeRatesApi,
   usersApi,
+  projectsApi,
   ChartOfAccountItem,
   BudgetLine,
   type CurrencyInfo,
   type Department,
+  type Project,
 } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
 import {
@@ -52,12 +54,14 @@ import { toast } from "sonner";
 import { useFormatCurrency } from '@/lib/currencyUtils';
 
 interface LineItem {
+  line_id?: string;
   account_id: string;
   period_month: number;
   period_year: number;
   budgeted_amount: number;
   category: string;
   notes: string;
+  project_id?: string;
 }
 
 interface UserOption {
@@ -85,6 +89,8 @@ export default function BudgetFormPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const contextualProjectId = searchParams.get("project_id") || "";
   const isEdit = !!id;
 
   const [loading, setLoading] = useState(isEdit);
@@ -94,6 +100,7 @@ export default function BudgetFormPage() {
   const [users, setUsers] = useState<UserOption[]>([]);
   const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
   const [parentBudgets, setParentBudgets] = useState<Array<{ _id: string; name: string; code?: string | null }>>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
 
   const currentYear = new Date().getFullYear();
 
@@ -103,7 +110,7 @@ export default function BudgetFormPage() {
     description: "",
     purpose: "",
     tags: "",
-    type: "expense" as "revenue" | "expense" | "profit" | "opex" | "capex" | "project",
+    type: (searchParams.get("type") === "project" ? "project" : "expense") as "revenue" | "expense" | "profit" | "opex" | "capex" | "project",
     fiscal_year: currentYear,
     periodStart: "",
     periodEnd: "",
@@ -152,11 +159,12 @@ export default function BudgetFormPage() {
       return fallback;
     };
 
-    const [departmentResult, usersResult, currenciesResult, budgetsResult] = await Promise.allSettled([
+    const [departmentResult, usersResult, currenciesResult, budgetsResult, projectsResult] = await Promise.allSettled([
       departmentsApi.getAll({ isActive: true }),
       usersApi.getAll({ limit: 100, isActive: true }),
       exchangeRatesApi.getCurrencies(),
       budgetsApi.getAll({ limit: 100 }),
+      projectsApi.getAll({ is_active: "true" }),
     ]);
 
     if (departmentResult.status === "fulfilled") {
@@ -174,7 +182,21 @@ export default function BudgetFormPage() {
           .filter((budget) => budget._id !== id),
       );
     }
-  }, [id]);
+    if (projectsResult.status === "fulfilled") {
+      const projectOptions = projectsResult.value.data || [];
+      setProjects(projectOptions);
+      const project = projectOptions.find((item: Project) => item._id === contextualProjectId);
+      if (!isEdit && project) {
+        setForm((current) => ({
+          ...current,
+          type: "project",
+          name: current.name || `${project.name} Budget`,
+          purpose: current.purpose || `Approved budget allocations for ${project.wbs_code} · ${project.name}`,
+          department: current.department || (typeof project.department_id === "string" ? project.department_id : project.department_id?._id || ""),
+        }));
+      }
+    }
+  }, [id, contextualProjectId, isEdit]);
 
   const fetchBudget = useCallback(async () => {
     if (!id) return;
@@ -214,6 +236,7 @@ export default function BudgetFormPage() {
           if (linesResponse.success && linesResponse.data) {
             setLines(
               linesResponse.data.map((l: BudgetLine) => ({
+                line_id: l._id,
                 account_id:
                   typeof l.account_id === "object"
                     ? l.account_id._id
@@ -223,6 +246,7 @@ export default function BudgetFormPage() {
                 budgeted_amount: l.budgeted_amount,
                 category: l.category || "",
                 notes: l.notes || "",
+                project_id: typeof l.project_id === "object" ? l.project_id?._id || "" : l.project_id || "",
               })),
             );
           }
@@ -256,6 +280,7 @@ export default function BudgetFormPage() {
         budgeted_amount: 0,
         category: "",
         notes: "",
+        project_id: contextualProjectId,
       },
     ]);
   };
@@ -352,12 +377,14 @@ export default function BudgetFormPage() {
             await budgetsApi.upsertLines(
               budgetId,
               validLines.map((l) => ({
+                line_id: l.line_id,
                 account_id: l.account_id,
                 category: l.category || undefined,
                 period_month: l.period_month,
                 period_year: l.period_year,
                 budgeted_amount: l.budgeted_amount,
                 notes: l.notes || undefined,
+                project_id: l.project_id || undefined,
               })),
             );
           } catch (lineError) {
@@ -777,6 +804,7 @@ export default function BudgetFormPage() {
                       <TableHeader>
                         <TableRow className="border-b border-slate-100 bg-slate-50/50 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.account", "Account")}</TableHead>
+                          <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Project / WBS</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.month", "Month")}</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.year", "Year")}</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.budgetedAmount", "Budgeted Amount")}</TableHead>
@@ -807,6 +835,7 @@ export default function BudgetFormPage() {
                               </SelectContent>
                             </Select>
                           </TableCell>
+                          <TableCell className="min-w-[220px]"><Select value={line.project_id || "__none__"} onValueChange={(value) => updateLine(index, "project_id", value === "__none__" ? "" : value)}><SelectTrigger className="border-slate-200 bg-slate-50 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"><SelectValue placeholder="No project" /></SelectTrigger><SelectContent><SelectItem value="__none__">No project</SelectItem>{projects.map((project) => <SelectItem key={project._id} value={project._id}><span className="font-mono text-xs">{project.wbs_code}</span> · {project.name}</SelectItem>)}</SelectContent></Select></TableCell>
                           <TableCell>
                             <Select
                               value={line.period_month.toString()}

@@ -600,7 +600,7 @@ const financeNav: NavSection = {
       nameKey: "nav.projects",
       href: "/projects",
       icon: FolderTree,
-      permission: "budgets:read",
+      permission: "projects:read",
       featureKey: "projects",
       moduleNames: ["Projects"],
     },

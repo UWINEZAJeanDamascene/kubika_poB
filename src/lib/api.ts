@@ -5833,12 +5833,14 @@ export const budgetsApi = {
   upsertLines: (
     id: string,
     lines: Array<{
+      line_id?: string;
       account_id: string;
       category?: string;
       period_month: number;
       period_year: number;
       budgeted_amount: number;
       notes?: string;
+      project_id?: string | null;
     }>,
   ) =>
     request<{ success: boolean; data: any[] }>(`/budgets/${id}/lines`, {
@@ -9991,6 +9993,8 @@ export interface FixedAsset {
   referenceNo: string;
   name: string;
   description?: string;
+  purpose: string;
+  project_category: "client_job" | "internal" | "construction" | "service" | "other";
   categoryId?: string;
   assetAccountCode: string;
   assetAccountId?: { _id: string; code: string; name: string };
@@ -11417,6 +11421,11 @@ export interface TimesheetLine {
   hoursWorked: number;
   activityType: string;
   notes?: string;
+  projectTaskId?: string;
+  projectId?: string;
+  hourlyRate?: number;
+  laborCost?: number;
+  currencyCode?: string;
 }
 
 export interface Timesheet {
@@ -12603,11 +12612,13 @@ export interface Project {
   project_code: string;
   name: string;
   description?: string;
+  purpose?: string;
+  project_category: "client_job" | "internal" | "construction" | "service" | "other";
   parent_id?: { _id: string; name: string; wbs_code: string; project_code: string } | string;
   wbs_level: number;
   wbs_code: string;
   type: "project" | "job" | "phase" | "work_package" | "task";
-  status: "planning" | "active" | "on_hold" | "completed" | "cancelled";
+  status: "draft" | "planned" | "planning" | "active" | "on_hold" | "blocked" | "completed" | "cancelled";
   priority: "low" | "medium" | "high" | "critical";
   budget_allocated: number;
   budget_spent: number;
@@ -12619,36 +12630,107 @@ export interface Project {
   department_id?: { _id: string; name: string; code: string } | string;
   client_id?: { _id: string; name: string } | string;
   manager_id?: { _id: string; firstName: string; lastName: string; email: string } | string;
-  billing_type: "fixed_price" | "time_material" | "cost_plus" | "none";
+  sponsor_id?: string | null;
+  team_member_ids: string[];
+  billing_type: "fixed_price" | "time_material" | "milestone" | "cost_plus" | "none" | "non_billable";
   contract_value: number;
+  currency_code: string;
+  tax_rate_id?: string | null;
+  tax_rate_pct: number;
+  tax_inclusive: boolean;
+  scope: string;
+  exclusions: string;
+  assumptions: string;
+  constraints: string;
+  estimated_hours: number;
+  actual_hours: number;
+  acceptance_criteria: string;
+  depends_on_ids: string[];
+  completed_at?: string | null;
+  is_template: boolean;
   progress_percent: number;
+  timesheet_hours?: number;
+  timesheet_labor_cost_by_currency?: Record<string, number>;
   is_active: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface ProjectCreateRequest {
-  project_code: string;
+  project_code?: string;
   name: string;
   description?: string;
+  purpose?: string;
+  project_category?: Project["project_category"];
   parent_id?: string;
   type?: "project" | "job" | "phase" | "work_package" | "task";
-  status?: "planning" | "active" | "on_hold" | "completed" | "cancelled";
+  status?: Project["status"];
   priority?: "low" | "medium" | "high" | "critical";
   budget_allocated?: number;
   start_date?: string;
   end_date?: string;
+  actual_start_date?: string;
+  actual_end_date?: string;
   department_id?: string;
   client_id?: string;
   manager_id?: string;
-  billing_type?: "fixed_price" | "time_material" | "cost_plus" | "none";
+  billing_type?: Project["billing_type"];
   contract_value?: number;
+  sponsor_id?: string;
+  team_member_ids?: string[];
+  currency_code?: string;
+  tax_rate_id?: string;
+  tax_rate_pct?: number;
+  tax_inclusive?: boolean;
+  scope?: string;
+  exclusions?: string;
+  assumptions?: string;
+  constraints?: string;
+  estimated_hours?: number;
+  actual_hours?: number;
+  acceptance_criteria?: string;
+  depends_on_ids?: string[];
+  is_template?: boolean;
 }
 
 export interface ProjectUpdateRequest extends Partial<ProjectCreateRequest> {
   progress_percent?: number;
   actual_start_date?: string;
   actual_end_date?: string;
+}
+
+export interface ProjectSetupOptions {
+  base_currency: string;
+  users: Array<{ _id: string; name: string; email: string; role: string }>;
+  clients: Array<{ _id: string; name: string; code: string }>;
+  currencies: Array<{ code: string; name: string; symbol?: string | null }>;
+  tax_rates: Array<{ _id: string; name: string; code: string; rate_pct: number; type: string }>;
+  project_categories: Project["project_category"][];
+  required_field_options: string[];
+}
+
+export interface ProjectMilestone {
+  _id: string; company_id: string; project_id: string; name: string; description: string;
+  assignee_id?: string | null; status: "planned" | "active" | "blocked" | "completed" | "cancelled";
+  priority: "low" | "medium" | "high" | "critical"; due_date?: string | null;
+  progress_percent: number; depends_on_ids: string[]; completed_at?: string | null;
+}
+
+export interface ProjectCalendarItem {
+  id: string; title: string; date: string; type: "task" | "milestone"; status: string;
+  assignee_id?: string | null; project_id?: string | null; project_name: string; progress_percent: number;
+}
+
+export type ProjectMilestoneInput = Partial<Omit<ProjectMilestone, "_id" | "company_id" | "project_id" | "completed_at">> & { name?: string };
+
+export interface ProjectTeamMember { _id: string; user_id: string; role: "owner" | "manager" | "contributor" | "viewer"; is_active: boolean; name: string; email: string }
+export interface ProjectComment { id: string; authorId: string; authorName: string; body: string; createdAt: string }
+export interface ProjectActivity { id: string; actorName: string; eventType: string; message: string; metadata: Record<string, unknown>; createdAt: string }
+export interface ProjectDocument { _id: string; file_name: string; mime_type: string; file_size: number; uploaded_by_id: string; created_at: string }
+
+export interface ProjectTypeSetting {
+  category: Project["project_category"];
+  required_fields: string[];
 }
 
 export interface WBSTreeNode extends Project {
@@ -12665,9 +12747,41 @@ export interface ProjectBudgetSummary {
   };
   line_count: number;
   budget_lines: BudgetLine[];
+  labor_summary: {
+    total_hours: number;
+    total_entries: number;
+    by_currency: Array<{ currency_code: string; amount: number }>;
+    by_task: Array<{ task_id: string; task_name: string; wbs_code: string; hours: number; cost_by_currency: Record<string, number> }>;
+  };
+  material_summary: {
+    planned_cost: number; issued_cost: number; open_commitment: number;
+    planned_quantity: number; issued_quantity: number; returned_quantity: number;
+    line_count: number; currency_code: string; requisition_count: number;
+  };
+  financial_summary: {
+    currency_code: string;
+    committed_cost: number;
+    forecast_budget_cost: number;
+    budget_variance_at_completion: number;
+    contract_value: number;
+    forecast_margin: number;
+    forecast_margin_percent: number | null;
+    revenue_basis: string;
+    revenue_note: string;
+    labor_forecast_by_currency: Array<{ currency_code: string; hours: number; amount: number }>;
+    unpriced_remaining_labor_hours: number;
+    labor_forecast_note: string;
+  };
 }
 
 export const projectsApi = {
+  getSetupOptions: () => request<{ success: boolean; data: ProjectSetupOptions }>("/projects/setup-options"),
+  getTypeSettings: () => request<{ success: boolean; data: ProjectTypeSetting[] }>("/projects/type-settings"),
+  saveTypeSettings: (category: Project["project_category"], required_fields: string[]) =>
+    request<{ success: boolean; data: ProjectTypeSetting; message: string }>(`/projects/type-settings/${category}`, {
+      method: "PUT",
+      body: { required_fields },
+    }),
   // Get all projects
   getAll: (filters?: {
     status?: string;
@@ -12677,6 +12791,7 @@ export const projectsApi = {
     manager_id?: string;
     search?: string;
     is_active?: string;
+    is_template?: boolean;
   }) => {
     const query = buildQuery(filters as Record<string, any>);
     return request<{ success: boolean; data: Project[]; count: number }>(
@@ -12707,6 +12822,43 @@ export const projectsApi = {
     request<{ success: boolean; message: string }>(`/projects/${id}`, {
       method: "DELETE",
     }),
+  archive: (id: string) => request<{ success: boolean; message: string }>(`/projects/${id}/archive`, { method: "POST" }),
+  close: (id: string) => request<{ success: boolean; data: Project; message: string }>(`/projects/${id}/close`, { method: "POST" }),
+  reopen: (id: string) => request<{ success: boolean; data: Project; message: string }>(`/projects/${id}/reopen`, { method: "POST" }),
+  getTasks: (id: string) => request<{ success: boolean; data: Project[] }>(`/projects/${id}/tasks`),
+  getMaterialRequisitions: (id: string) => request<{ success: boolean; data: any[] }>(`/projects/${id}/material-requisitions`),
+  createMaterialRequisition: (id: string, body: unknown) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions`, { method: "POST", body }),
+  approveMaterialRequisition: (id: string, requisitionId: string) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions/${requisitionId}/approve`, { method: "POST" }),
+  cancelMaterialRequisition: (id: string, requisitionId: string) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions/${requisitionId}/cancel`, { method: "POST" }),
+  issueProjectMaterial: (id: string, requisitionId: string, lineId: string, quantity: number) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions/${requisitionId}/lines/${lineId}/issue`, { method: "POST", body: { quantity } }),
+  returnProjectMaterial: (id: string, requisitionId: string, lineId: string, quantity: number) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions/${requisitionId}/lines/${lineId}/return`, { method: "POST", body: { quantity } }),
+  getClosureChecklist: (id: string) => request<{ success: boolean; data: any }>(`/projects/${id}/closure-checklist`),
+  updateClosureChecklistItem: (id: string, code: string, completed: boolean, notes?: string) => request<{ success: boolean; data: any }>(`/projects/${id}/closure-checklist/${code}`, { method: "PUT", body: { completed, notes } }),
+  getReport: (id: string) => request<{ success: boolean; data: any }>(`/projects/${id}/report`),
+  getControls: (id: string) => request<{ success: boolean; data: any[] }>(`/projects/${id}/controls`),
+  createControl: (id: string, body: unknown) => request<{ success: boolean; data: any }>(`/projects/${id}/controls`, { method: "POST", body }),
+  updateControl: (id: string, controlId: string, body: unknown) => request<{ success: boolean; data: any }>(`/projects/${id}/controls/${controlId}`, { method: "PUT", body }),
+  getCalendarItems: (from: string, to: string) => request<{ success: boolean; data: ProjectCalendarItem[] }>(`/projects/calendar?${new URLSearchParams({ from, to }).toString()}`),
+  createTask: (id: string, data: ProjectCreateRequest) => request<{ success: boolean; data: Project; message: string }>(`/projects/${id}/tasks`, { method: "POST", body: data }),
+  getMilestones: (id: string) => request<{ success: boolean; data: ProjectMilestone[] }>(`/projects/${id}/milestones`),
+  createMilestone: (id: string, data: ProjectMilestoneInput) => request<{ success: boolean; data: ProjectMilestone; message: string }>(`/projects/${id}/milestones`, { method: "POST", body: data }),
+  updateMilestone: (id: string, milestoneId: string, data: ProjectMilestoneInput) => request<{ success: boolean; data: ProjectMilestone; message: string }>(`/projects/${id}/milestones/${milestoneId}`, { method: "PUT", body: data }),
+  getTeam: (id: string) => request<{ success: boolean; data: ProjectTeamMember[] }>(`/projects/${id}/team`),
+  addTeamMember: (id: string, user_id: string, role: ProjectTeamMember["role"]) => request<{ success: boolean; data: ProjectTeamMember }>(`/projects/${id}/team`, { method: "POST", body: { user_id, role } }),
+  removeTeamMember: (id: string, memberId: string) => request<{ success: boolean }>(`/projects/${id}/team/${memberId}`, { method: "DELETE" }),
+  getComments: (id: string) => request<{ success: boolean; data: ProjectComment[] }>(`/projects/${id}/comments`),
+  addComment: (id: string, body: string) => request<{ success: boolean; data: ProjectComment }>(`/projects/${id}/comments`, { method: "POST", body: { body } }),
+  getActivity: (id: string) => request<{ success: boolean; data: ProjectActivity[] }>(`/projects/${id}/activity`),
+  getDocuments: (id: string) => request<{ success: boolean; data: ProjectDocument[] }>(`/projects/${id}/documents`),
+  uploadDocument: (id: string, file: File) => { const body = new FormData(); body.append("file", file); return request<{ success: boolean; data: ProjectDocument }>(`/projects/${id}/documents`, { method: "POST", body }); },
+  downloadDocument: async (id: string, documentId: string) => {
+    const state = useAuthStore.getState();
+    const token = state.accessToken || localStorage.getItem("token");
+    const companyId = state.activeCompanyId || localStorage.getItem("companyId");
+    const response = await fetch(`${API_BASE_URL}/projects/${id}/documents/${documentId}/download`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(companyId ? { "X-Company-Id": companyId } : {}) } });
+    if (!response.ok) throw new Error("Could not download project document");
+    return response.blob();
+  },
 
   // Get WBS tree
   getWBSTree: (id?: string) =>
@@ -12719,7 +12871,7 @@ export const projectsApi = {
     request<{ success: boolean; data: ProjectBudgetSummary }>(`/projects/${id}/budget-summary`),
 
   // Clone project
-  clone: (id: string, data: { new_code: string; new_name: string }) =>
+  clone: (id: string, data: { new_code?: string; new_name?: string } = {}) =>
     request<{ success: boolean; data: Project; message: string }>(`/projects/${id}/clone`, {
       method: "POST",
       body: data,

@@ -26,7 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/app/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
+import { Card, CardContent } from "@/app/components/ui/card";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { toast } from "sonner";
 import { Layout } from "@/app/layout/Layout";
@@ -35,7 +35,6 @@ import {
   Search,
   MoreHorizontal,
   Edit,
-  Trash2,
   Copy,
   FolderTree,
   TrendingUp,
@@ -44,14 +43,22 @@ import {
   Wallet,
   TrendingDown,
   RefreshCw,
-  Loader2,
+  Archive,
+  RotateCcw,
+  CheckCircle2,
+  CalendarDays,
+  Kanban,
+  ListTodo,
 } from "lucide-react";
 import { useFormatCurrency } from '@/lib/currencyUtils';
 
 const STATUS_COLORS: Record<string, string> = {
+  draft: "bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700",
+  planned: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
   planning: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-800",
   active: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800",
   on_hold: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800",
+  blocked: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
   completed: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800",
   cancelled: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800",
 };
@@ -79,10 +86,11 @@ export default function ProjectsListPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     fetchProjects();
-  }, [statusFilter, typeFilter]);
+  }, [statusFilter, typeFilter, showArchived]);
 
   const fetchProjects = async () => {
     try {
@@ -90,6 +98,7 @@ export default function ProjectsListPage() {
       const filters: Record<string, string> = {};
       if (statusFilter) filters.status = statusFilter;
       if (typeFilter) filters.type = typeFilter;
+      filters.is_active = showArchived ? "false" : "true";
 
       const response: any = await projectsApi.getAll(filters);
       if (response.success) {
@@ -102,17 +111,43 @@ export default function ProjectsListPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm(t("projects.confirmDelete", "Delete this project?"))) return;
+  const handleArchive = async (id: string) => {
+    if (!window.confirm("Archive this project? It can be restored later.")) return;
     try {
-      const response: any = await projectsApi.delete(id);
+      const response: any = await projectsApi.archive(id);
       if (response.success) {
-        toast.success(t("projects.deleted", "Project deleted"));
+        toast.success("Project archived");
         fetchProjects();
       }
     } catch (error: any) {
-      toast.error(error?.message || t("projects.deleteError", "Failed to delete project"));
+      toast.error(error?.message || "Failed to archive project");
     }
+  };
+
+  const handleClose = async (id: string) => {
+    if (!window.confirm("Close this project and record today as its actual end date?")) return;
+    try {
+      await projectsApi.close(id);
+      toast.success("Project closed");
+      fetchProjects();
+    } catch (error: any) { toast.error(error?.message || "Failed to close project"); }
+  };
+
+  const handleReopen = async (id: string) => {
+    try {
+      await projectsApi.reopen(id);
+      toast.success("Project reopened");
+      fetchProjects();
+    } catch (error: any) { toast.error(error?.message || "Failed to reopen project"); }
+  };
+
+  const handleClone = async (id: string) => {
+    try {
+      const response = await projectsApi.clone(id, {});
+      toast.success(response.message || "Project cloned");
+      fetchProjects();
+      navigate(`/projects/${response.data._id}/edit`);
+    } catch (error: any) { toast.error(error?.message || "Failed to clone project"); }
   };
 
   const filteredProjects = projects.filter((p) => {
@@ -130,11 +165,6 @@ export default function ProjectsListPage() {
   const totalRemaining = totalBudget - totalSpent;
 
   const getProjectProgress = (project: Project) => {
-    const budget = toAmount(project.budget_allocated);
-    const spent = toAmount(project.budget_spent);
-    if (budget > 0) {
-      return Math.min(100, (spent / budget) * 100);
-    }
     return toAmount(project.progress_percent);
   };
 
@@ -181,6 +211,12 @@ export default function ProjectsListPage() {
                   >
                     <Plus className="h-4 w-4" />
                     {t("projects.add", "Add Project")}
+                  </Button>
+                  <Button variant="outline" onClick={() => navigate("/projects/kanban")} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"><Kanban className="h-4 w-4" />Task Board</Button>
+                  <Button variant="outline" onClick={() => navigate("/projects/calendar")} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"><CalendarDays className="h-4 w-4" />Calendar</Button>
+                  <Button variant="outline" onClick={() => navigate("/projects/my-tasks")} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"><ListTodo className="h-4 w-4" />My Tasks</Button>
+                  <Button variant="outline" onClick={() => setShowArchived((value) => !value)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">
+                    <Archive className="h-4 w-4" />{showArchived ? "Show Active" : "Show Archived"}
                   </Button>
                   <Button
                     variant="outline"
@@ -334,9 +370,12 @@ export default function ProjectsListPage() {
               </SelectTrigger>
               <SelectContent className="dark:border-slate-700 dark:bg-slate-900">
                 <SelectItem value={ALL_FILTER_VALUE}>{t("common.all", "All")}</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="planned">Planned</SelectItem>
                 <SelectItem value="planning">{t("projects.statusValues.planning", "Planning")}</SelectItem>
                 <SelectItem value="active">{t("projects.statusValues.active", "Active")}</SelectItem>
                 <SelectItem value="on_hold">{t("projects.statusValues.on_hold", "On Hold")}</SelectItem>
+                <SelectItem value="blocked">Blocked</SelectItem>
                 <SelectItem value="completed">{t("projects.statusValues.completed", "Completed")}</SelectItem>
                 <SelectItem value="cancelled">{t("projects.statusValues.cancelled", "Cancelled")}</SelectItem>
               </SelectContent>
@@ -453,13 +492,23 @@ export default function ProjectsListPage() {
                                 <FolderTree className="mr-2 h-4 w-4" />
                                 {t("projects.wbsTree", "WBS Tree")}
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400 dark:focus:bg-red-950/30"
-                                onClick={(e) => { e.stopPropagation(); handleDelete(project._id); }}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {t("projects.delete", "Delete")}
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleClone(project._id); }} className="dark:text-slate-200 dark:focus:bg-slate-800">
+                                <Copy className="mr-2 h-4 w-4" />Clone Project
                               </DropdownMenuItem>
+                              {project.is_active && !["completed", "cancelled"].includes(project.status) && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleClose(project._id); }} className="dark:text-slate-200 dark:focus:bg-slate-800">
+                                  <CheckCircle2 className="mr-2 h-4 w-4" />Close Project
+                                </DropdownMenuItem>
+                              )}
+                              {!project.is_active || ["completed", "cancelled"].includes(project.status) ? (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleReopen(project._id); }} className="dark:text-slate-200 dark:focus:bg-slate-800">
+                                  <RotateCcw className="mr-2 h-4 w-4" />{project.is_active ? "Reopen Project" : "Restore Project"}
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem className="text-red-600 focus:text-red-600 dark:text-red-400" onClick={(e) => { e.stopPropagation(); handleArchive(project._id); }}>
+                                  <Archive className="mr-2 h-4 w-4" />Archive
+                                </DropdownMenuItem>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </TableCell>

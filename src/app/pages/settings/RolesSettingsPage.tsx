@@ -58,7 +58,7 @@ const ALL_RESOURCES = [
   'purchase_orders', 'grn', 'purchase_returns',
   'journal_entries', 'chart_of_accounts', 'periods', 'bank_accounts',
   'ar_receipts', 'ap_payments', 'payroll', 'expenses',
-  'assets', 'budgets', 'reports', 'users', 'roles',
+  'assets', 'budgets', 'projects', 'reports', 'users', 'roles',
   'stock_transfers', 'stock_audits', 'loans', 'petty_cash',
   'fixed_assets', 'tax', 'notifications', 'settings'
 ];
