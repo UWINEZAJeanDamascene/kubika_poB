@@ -680,7 +680,7 @@ export default function ProductFormPage() {
                   {tr('products.basicInfoDesc', 'Core product details')}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2 px-6 py-6">
+              <CardContent className="grid gap-4 px-4 py-4 sm:px-6 sm:py-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name" className="dark:text-slate-200">{t('products.productName') || 'Product Name'} *</Label>
                   <Input
@@ -835,7 +835,7 @@ export default function ProductFormPage() {
                   {t('products.ebmFormDesc')}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2 px-6 py-6">
+              <CardContent className="grid gap-4 px-4 py-4 sm:px-6 sm:py-6 md:grid-cols-2">
                 {ebmCodeMessage && (
                   <div className="md:col-span-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
                     {ebmCodeMessage}
@@ -965,7 +965,7 @@ export default function ProductFormPage() {
                   {t('products.pricingDesc') || 'Cost and selling price configuration'}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2 px-6 py-6">
+              <CardContent className="grid gap-4 px-4 py-4 sm:px-6 sm:py-6 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="costPrice" className="dark:text-slate-200">{t('products.costPrice') || 'Cost Price'}</Label>
                     <Input
@@ -1014,7 +1014,7 @@ export default function ProductFormPage() {
                   {t('products.accountingDesc') || 'Map product to inventory, COGS, and revenue accounts for accurate financial tracking'}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3 px-6 py-6">
+              <CardContent className="grid gap-4 px-4 py-4 sm:px-6 sm:py-6 md:grid-cols-3">
                 <TooltipProvider>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
@@ -1108,7 +1108,7 @@ export default function ProductFormPage() {
                   {t('products.inventoryDesc') || 'Stock and inventory settings'}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-3 px-6 py-6">
+              <CardContent className="grid gap-4 px-4 py-4 sm:px-6 sm:py-6 md:grid-cols-3">
                 <div className="space-y-2">
                   <TooltipProvider>
                     <div className="flex items-center gap-2">

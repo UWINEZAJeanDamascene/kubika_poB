@@ -430,8 +430,8 @@ export default function StockMovementsPage() {
           )}
 
           {/* Filters */}
-          <Paper sx={{ p: 4, mb: 4, backgroundColor: dark ? '#1e293b' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}` }}>
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+          <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: 3, backgroundColor: dark ? '#1e293b' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}` }}>
+            <div className="grid grid-cols-1 gap-3 items-center sm:grid-cols-2 xl:grid-cols-6 sm:gap-4">
               <TextField
                 fullWidth
                 size="small"

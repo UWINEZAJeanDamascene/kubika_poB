@@ -144,7 +144,7 @@ export default function AuditCreatePage() {
 
   return (
     <Layout>
-      <Box sx={{ p: 3 }} className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <Box sx={{ px: { xs: 1, sm: 2, lg: 3 }, py: { xs: 1.5, sm: 3 } }} className="min-h-screen bg-slate-50 dark:bg-slate-950">
         <Box sx={{ maxWidth: 860, mx: 'auto' }} className="2xl:!max-w-[1100px]">
         {/* Header */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
@@ -164,7 +164,7 @@ export default function AuditCreatePage() {
         )}
 
         {/* Form */}
-        <Paper sx={{ p: 4, backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none' }}>
+        <Paper sx={{ p: { xs: 2, sm: 4 }, backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none' }}>
           <Typography variant="subtitle1" sx={{ color: dark ? '#f8fafc' : '#0f172a', fontWeight: 700, mb: 0.5 }}>
             Audit Setup
           </Typography>
@@ -226,7 +226,7 @@ export default function AuditCreatePage() {
             />
 
             {/* Submit Button */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column-reverse', sm: 'row' }, justifyContent: 'flex-end', gap: 1.5, mt: 2, '& > button': { minHeight: 44, width: { xs: '100%', sm: 'auto' } } }}>
               <Button
                 variant="outlined"
                 onClick={() => navigate('/stock-audits')}

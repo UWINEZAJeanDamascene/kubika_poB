@@ -681,8 +681,8 @@ export default function WarehousesPage() {
 
         {/* Create/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="flex max-h-[88vh] max-w-2xl flex-col overflow-hidden bg-white p-0 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-            <DialogHeader className="border-b border-slate-200 px-6 py-5 dark:border-slate-700">
+          <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden border-slate-200 bg-white p-0 dark:border-slate-700 dark:bg-slate-900 sm:max-h-[88vh] sm:w-full">
+            <DialogHeader className="border-b border-slate-200 px-4 py-4 dark:border-slate-700 sm:px-6 sm:py-5">
               <DialogTitle className="text-slate-900 dark:text-white">
                 {editingWarehouse
                   ? t('pages.warehouses.editWarehouse')
@@ -694,7 +694,7 @@ export default function WarehousesPage() {
                   : t('pages.warehouses.addWarehouseDesc')}
               </DialogDescription>
             </DialogHeader>
-            <div className="grid flex-1 gap-4 overflow-y-auto px-6 py-5 [scrollbar-width:thin] [scrollbar-color:#64748b_transparent]">
+            <div className="grid flex-1 gap-4 overflow-y-auto px-4 py-4 [scrollbar-width:thin] [scrollbar-color:#64748b_transparent] sm:px-6 sm:py-5">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name" className="text-slate-900 dark:text-white">{t('pages.warehouses.warehouseName')} *</Label>
@@ -841,11 +841,11 @@ export default function WarehousesPage() {
                 )}
               </div>
             </div>
-            <DialogFooter className="border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-700 dark:bg-slate-900">
-              <Button variant="outline" onClick={() => setDialogOpen(false)} className="border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
+            <DialogFooter className="flex-col-reverse gap-2 border-t border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:px-6 sm:py-4">
+              <Button variant="outline" onClick={() => setDialogOpen(false)} className="min-h-11 w-full border-slate-200 text-slate-900 dark:border-slate-600 dark:text-white sm:w-auto">
                 {t('common.cancel')}
               </Button>
-              <Button onClick={handleSave} disabled={saving} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200">
+              <Button onClick={handleSave} disabled={saving} className="min-h-11 w-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 sm:w-auto">
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {editingWarehouse ? t('common.save') : t('common.create')}
               </Button>
@@ -855,8 +855,8 @@ export default function WarehousesPage() {
 
         {/* Branch Insurance Dialog */}
         <Dialog open={insuranceDialogOpen} onOpenChange={setInsuranceDialogOpen}>
-          <DialogContent className="max-h-[88vh] max-w-3xl overflow-hidden bg-white p-0 dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-            <DialogHeader className="border-b border-slate-200 px-6 py-5 dark:border-slate-700">
+          <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-3xl overflow-hidden border-slate-200 bg-white p-0 dark:border-slate-700 dark:bg-slate-900 sm:max-h-[88vh] sm:w-full">
+            <DialogHeader className="border-b border-slate-200 px-4 py-4 dark:border-slate-700 sm:px-6 sm:py-5">
               <DialogTitle className="text-slate-900 dark:text-white">
                 Branch insurance (VSDC /branches/saveBranchInsurance)
               </DialogTitle>
@@ -864,7 +864,7 @@ export default function WarehousesPage() {
                 Configure the insurance codes, names, and rates that will be submitted to RRA for this branch. Required when products are marked insurance applicable (isrcAplcbYn = "Y").
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
               {insuranceRows.map((row, index) => (
                 <div key={`${row.isrccCd}-${index}`} className="grid gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800/60 sm:grid-cols-12">
                   <div className="sm:col-span-3 space-y-1">
@@ -925,11 +925,11 @@ export default function WarehousesPage() {
                 </Button>
               </div>
             </div>
-            <DialogFooter className="border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-700 dark:bg-slate-900">
-              <Button variant="outline" onClick={() => setInsuranceDialogOpen(false)} className="border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white">
+            <DialogFooter className="flex-col-reverse gap-2 border-t border-slate-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900 sm:flex-row sm:px-6 sm:py-4">
+              <Button variant="outline" onClick={() => setInsuranceDialogOpen(false)} className="min-h-11 w-full border-slate-200 text-slate-900 dark:border-slate-600 dark:text-white sm:w-auto">
                 {t('common.cancel')}
               </Button>
-              <Button onClick={handleSaveInsurance} disabled={savingInsurance} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200">
+              <Button onClick={handleSaveInsurance} disabled={savingInsurance} className="min-h-11 w-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 sm:w-auto">
                 {savingInsurance && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save branch insurance
               </Button>

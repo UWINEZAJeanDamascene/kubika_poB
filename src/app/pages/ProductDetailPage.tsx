@@ -436,7 +436,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
+          <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <Card key={index} className="border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
                 <CardContent className="pt-4">
@@ -448,7 +448,7 @@ export default function ProductDetailPage() {
           </div>
 
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 md:grid-cols-3 xl:grid-cols-5 lg:max-w-4xl">
+            <TabsList className="flex h-auto w-full max-w-full items-center justify-start gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800 lg:max-w-4xl [&>[data-slot=tabs-trigger]]:flex-none">
               <TabsTrigger value="details">
                 <Package className="h-4 w-4 mr-2" />
                 {tr('products.details', 'Details')}
@@ -595,7 +595,7 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <div className="mb-6 grid grid-cols-2 gap-3 xl:grid-cols-4">
           <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <CardContent className="pt-4">
               <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
@@ -647,7 +647,7 @@ export default function ProductDetailPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 md:grid-cols-3 xl:grid-cols-5 lg:max-w-4xl">
+          <TabsList className="flex h-auto w-full max-w-full items-center justify-start gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1 dark:bg-slate-800 lg:max-w-4xl [&>[data-slot=tabs-trigger]]:flex-none">
             <TabsTrigger value="details">
               <Package className="h-4 w-4 mr-2" />
               {tr('products.details', 'Details')}

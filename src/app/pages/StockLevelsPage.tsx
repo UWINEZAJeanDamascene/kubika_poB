@@ -289,7 +289,7 @@ export default function StockLevelsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockLevels.inventoryExposure')}</p>
           <p className="mt-2 text-2xl font-bold text-slate-950 dark:text-white">{formatCurrency(valueAtRisk)}</p>
@@ -323,7 +323,7 @@ export default function StockLevelsPage() {
 
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm p-4 mb-4 border border-slate-200 dark:border-slate-700">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+        <div className="grid grid-cols-1 gap-4 items-center sm:grid-cols-2 xl:grid-cols-4">
           <TextField
             fullWidth
             size="small"

@@ -195,7 +195,7 @@ export default function TransferCreatePage() {
 
   const totalValue = items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0);
   const panelSx = {
-    p: 3,
+    p: { xs: 1.5, sm: 3 },
     backgroundColor: dark ? '#111827' : 'white',
     border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`,
     boxShadow: 'none',
@@ -215,7 +215,7 @@ export default function TransferCreatePage() {
 
   return (
     <Layout>
-      <Box sx={{ p: 3 }} className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <Box sx={{ px: { xs: 1, sm: 2, lg: 3 }, py: { xs: 1.5, sm: 3 } }} className="min-h-screen bg-slate-50 dark:bg-slate-950">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <Button
@@ -354,6 +354,7 @@ export default function TransferCreatePage() {
                 variant="contained"
                 onClick={handleAddItem}
                 disabled={!selectedProduct}
+                sx={{ minWidth: 48, minHeight: 48, flexShrink: 0 }}
               >
                 <PlusIcon />
               </Button>

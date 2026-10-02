@@ -350,7 +350,39 @@ export default function SuppliersListPage() {
                 }
               />
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 xl:hidden">
+                {suppliers.map((supplier) => (
+                  <article key={supplier._id} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex min-w-0 items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="break-words font-semibold text-slate-950 dark:text-white">{supplier.name}</p>
+                        <p className="mt-0.5 truncate font-mono text-xs text-slate-500 dark:text-slate-400">{supplier.code}</p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={supplier.isActive
+                          ? 'shrink-0 cursor-pointer border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400'
+                          : 'shrink-0 cursor-pointer border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-400'}
+                        onClick={() => handleToggleStatus(supplier._id)}
+                      >
+                        {supplier.isActive ? t('common.active', 'Active') : t('common.inactive', 'Inactive')}
+                      </Badge>
+                    </div>
+                    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-100 pt-3 text-sm dark:border-slate-800">
+                      <div className="col-span-2 min-w-0"><dt className="text-xs text-slate-500 dark:text-slate-400">{t('suppliers.contact', 'Contact')}</dt><dd className="mt-0.5 space-y-0.5 break-words text-slate-700 dark:text-slate-200">{supplier.contact?.contactPerson && <div>{supplier.contact.contactPerson}</div>}{supplier.contact?.email && <div>{supplier.contact.email}</div>}{supplier.contact?.phone && <div>{supplier.contact.phone}</div>}{!supplier.contact?.contactPerson && !supplier.contact?.email && !supplier.contact?.phone && '—'}</dd></div>
+                      <div><dt className="text-xs text-slate-500 dark:text-slate-400">{t('suppliers.paymentTerms', 'Payment Terms')}</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{getPaymentTermsLabel(supplier.paymentTerms)}</dd></div>
+                      <div><dt className="text-xs text-slate-500 dark:text-slate-400">{t('suppliers.totalPurchases', 'Total Purchases')}</dt><dd className="mt-0.5 font-mono font-medium text-slate-950 dark:text-white">{formatCurrency(supplier.totalPurchases)}</dd></div>
+                    </dl>
+                    <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3 dark:border-slate-800">
+                      <Button variant="outline" className="min-h-11 flex-1" onClick={() => navigate(`/suppliers/${supplier._id}`)}><Eye className="mr-2 h-4 w-4" />{t('common.view', 'View')}</Button>
+                      <Button variant="outline" className="min-h-11 flex-1" onClick={() => navigate(`/suppliers/${supplier._id}/edit`)}><Pencil className="mr-2 h-4 w-4" />{t('common.edit', 'Edit')}</Button>
+                      <Button variant="outline" className="min-h-11 w-12 shrink-0 text-red-600" onClick={() => handleDelete(supplier._id)} aria-label={t('common.delete', 'Delete')}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800 dark:bg-slate-900/50">
@@ -462,6 +494,7 @@ export default function SuppliersListPage() {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
           </Card>
 

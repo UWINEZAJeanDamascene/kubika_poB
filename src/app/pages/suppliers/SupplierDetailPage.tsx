@@ -690,7 +690,25 @@ export default function SupplierDetailPage() {
                   message={t('suppliers.noPurchaseHistory', 'No purchase history found')}
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-3 xl:hidden">
+                  {purchases.map((purchase) => (
+                    <article key={purchase._id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="break-words font-medium text-slate-900 dark:text-white">{purchase.product?.name || '-'}</p>
+                          {purchase.product?.sku && <p className="mt-0.5 truncate font-mono text-xs text-slate-500 dark:text-slate-400">{purchase.product.sku}</p>}
+                        </div>
+                        <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{formatDate(purchase.movementDate)}</span>
+                      </div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-700">
+                        <div><dt className="text-xs text-slate-500 dark:text-slate-400">{t('suppliers.quantity', 'Quantity')}</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{purchase.quantity} {purchase.product?.unit || ''}</dd></div>
+                        <div><dt className="text-xs text-slate-500 dark:text-slate-400">{t('suppliers.totalCost', 'Total Cost')}</dt><dd className="mt-0.5 font-mono font-medium text-slate-950 dark:text-white">{formatCurrency(purchase.totalCost)}</dd></div>
+                      </dl>
+                    </article>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800 dark:bg-slate-900/50">
@@ -736,6 +754,7 @@ export default function SupplierDetailPage() {
                     </TableBody>
                   </Table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>
