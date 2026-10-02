@@ -44,12 +44,15 @@ import {
   TableRow,
 } from '@/app/components/ui/table';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function PayrollRunsListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user, hasPermission } = useAuth();
   const [loading, setLoading] = useState(true);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
+  const [deadlines, setDeadlines] = useState<Array<{ run_id: string; reference_no: string; type: string; stage: string; due_date: string | null; status: string; amount: number }>>([]);
   const [filterStatus, setFilterStatus] = useState<string>('');
 
   // Pagination
@@ -79,6 +82,8 @@ export default function PayrollRunsListPage() {
           setTotalPages(response.pagination.pages || 1);
         }
       }
+      const deadlineResponse = await payrollRunApi.getComplianceDeadlines();
+      setDeadlines((deadlineResponse.data || []).filter((item) => item.status !== 'complete').slice(0, 8));
     } catch (error) {
       console.error('[PayrollRunsListPage] Failed to fetch:', error);
       toast.error(t('payroll.messages.runLoadFailed'));
@@ -186,10 +191,10 @@ export default function PayrollRunsListPage() {
                 <p className="mt-2 max-w-3xl text-sm text-slate-500 dark:text-slate-400">{t('payroll.run.subtitle')}</p>
 
                 <div className="mt-5 flex flex-wrap gap-2">
-                  <Button onClick={() => navigate('/payroll-runs/new')} className="h-10 gap-2 bg-blue-600 hover:bg-blue-700">
+                  {hasPermission('payroll:create') && <Button onClick={() => navigate('/payroll-runs/new')} className="h-10 gap-2 bg-blue-600 hover:bg-blue-700">
                     <Play className="h-4 w-4" />
                     {t('payroll.run.createFromRecords') || 'New Payroll Run'}
-                  </Button>
+                  </Button>}
                   <Button variant="outline" onClick={() => navigate('/payroll')} className="h-10 gap-2">
                     <Eye className="h-4 w-4" />
                     {t('payroll.employeeRecords')}
@@ -213,6 +218,21 @@ export default function PayrollRunsListPage() {
               </div>
             </div>
           </div>
+
+          <Card className="border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20">
+            <CardContent className="p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div><h2 className="font-semibold text-slate-900 dark:text-slate-100">Payroll deadlines</h2><p className="text-xs text-slate-500 dark:text-slate-400">Open PAYE, RSSB, and salary payment actions</p></div>
+                <Badge variant={deadlines.some((item) => item.status === 'overdue') ? 'destructive' : 'secondary'}>{deadlines.filter((item) => item.status === 'overdue').length} overdue</Badge>
+              </div>
+              {deadlines.length === 0 ? <p className="text-sm text-slate-500">No outstanding payroll deadlines.</p> : <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                {deadlines.map((item) => <button key={`${item.run_id}-${item.type}-${item.stage}`} onClick={() => navigate(`/payroll-runs/${item.run_id}`)} className="rounded-lg border border-slate-200 bg-white p-3 text-left hover:border-indigo-400 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-center justify-between gap-2"><span className="font-medium text-slate-900 dark:text-slate-100">{item.type.toUpperCase()} {item.stage}</span><Badge variant={item.status === 'overdue' ? 'destructive' : 'secondary'}>{item.status.replace('_', ' ')}</Badge></div>
+                  <p className="mt-1 text-xs text-slate-500">{item.reference_no} · Due {item.due_date || '—'}</p>
+                </button>)}
+              </div>}
+            </CardContent>
+          </Card>
 
           <Card className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
             <CardContent className="p-4">
@@ -279,15 +299,15 @@ export default function PayrollRunsListPage() {
                               </Button>
                               {run.status === 'draft' && (
                                 <>
-                                  <Button variant="ghost" size="icon" onClick={() => handlePost(run)} disabled={submitting} title={t('payroll.run.postRun')} className="dark:text-green-400 dark:hover:bg-slate-700">
+                                  {hasPermission('payroll:post') && <Button variant="ghost" size="icon" onClick={() => handlePost(run)} disabled={submitting || String(run.created_by || '') === String(user?._id || '')} title={String(run.created_by || '') === String(user?._id || '') ? 'A different user must post this payroll run' : t('payroll.run.postRun')} className="dark:text-green-400 dark:hover:bg-slate-700">
                                     <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-                                  </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => { setSelectedRun(run); setShowDeleteDialog(true); }} title={t('payroll.run.deleteRun')} className="dark:text-red-400 dark:hover:bg-slate-700">
+                                  </Button>}
+                                  {hasPermission('payroll:delete') && <Button variant="ghost" size="icon" onClick={() => { setSelectedRun(run); setShowDeleteDialog(true); }} title={t('payroll.run.deleteRun')} className="dark:text-red-400 dark:hover:bg-slate-700">
                                     <Trash2 className="h-4 w-4 text-red-500 dark:text-red-400" />
-                                  </Button>
+                                  </Button>}
                                 </>
                               )}
-                              {run.status === 'posted' && (
+                              {run.status === 'posted' && hasPermission('payroll:admin') && (
                                 <Button variant="ghost" size="icon" onClick={() => { setSelectedRun(run); setShowReverseDialog(true); }} title={t('payroll.run.reverseRun')} className="dark:text-orange-400 dark:hover:bg-slate-700">
                                   <RotateCcw className="h-4 w-4 text-orange-500 dark:text-orange-400" />
                                 </Button>

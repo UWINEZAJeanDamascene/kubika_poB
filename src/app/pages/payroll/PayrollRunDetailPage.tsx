@@ -26,7 +26,6 @@ import {
   Calendar,
   Info,
   Download,
-  XCircle,
   AlertTriangle,
   Plus,
   Play,
@@ -38,6 +37,7 @@ import {
   CreditCard,
   BadgeCheck,
   Sparkles,
+  History,
 } from "lucide-react";
 
 import { Button } from "@/app/components/ui/button";
@@ -58,12 +58,18 @@ import { Checkbox } from "@/app/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { PayrollAuditHistoryDialog } from "@/app/components/payroll/PayrollAuditHistoryDialog";
+
+const localDateInputValue = () => {
+  const date = new Date();
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+};
 
 export default function PayrollRunDetailPage() {
   const { id } = useParams<{ id: string }>();
   const isCreateMode = !id;
   const { t } = useTranslation();
-  const { hasPermission, hasAnyPermission } = useAuth();
+  const { user, hasPermission } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [run, setRun] = useState<PayrollRun | null>(null);
@@ -75,6 +81,7 @@ export default function PayrollRunDetailPage() {
 
   // Post dialog
   const [showPostDialog, setShowPostDialog] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Reverse dialog
@@ -82,9 +89,11 @@ export default function PayrollRunDetailPage() {
   const [reversalReason, setReversalReason] = useState("");
   const [showRemitPayeDialog, setShowRemitPayeDialog] = useState(false);
   const [showRemitRssbDialog, setShowRemitRssbDialog] = useState(false);
-  const [remitForm, setRemitForm] = useState({ remitted_date: "", reference_no: "", amount: "" });
-  const [showBankTransferDialog, setShowBankTransferDialog] = useState(false);
-  const [bankTransferLoading, setBankTransferLoading] = useState(false);
+  const [remitForm, setRemitForm] = useState({ remitted_date: "", reference_no: "", amount: "", evidence_reference: "", evidence_url: "" });
+  const [showBankConfirmDialog, setShowBankConfirmDialog] = useState(false);
+  const [bankConfirmForm, setBankConfirmForm] = useState({ confirmed_at: localDateInputValue(), transfer_reference: "", bank_statement_reference: "", evidence_reference: "", evidence_url: "" });
+  const [filingType, setFilingType] = useState<"paye" | "rssb" | null>(null);
+  const [filingForm, setFilingForm] = useState({ declaration_reference: "", evidence_reference: "", evidence_url: "", submitted_at: localDateInputValue() });
 
   const [chartAccounts, setChartAccounts] = useState<
     Array<{ _id: string; code: string; name: string; type: string }>
@@ -271,14 +280,16 @@ export default function PayrollRunDetailPage() {
       await payrollRunApi.remitPaye(id!, {
         remitted_date: remitForm.remitted_date || undefined,
         reference_no: remitForm.reference_no || undefined,
+        evidence_reference: remitForm.evidence_reference,
+        evidence_url: remitForm.evidence_url || undefined,
         amount: remitForm.amount ? parseFloat(remitForm.amount) : undefined,
       });
       toast.success("PAYE remitted successfully");
       setShowRemitPayeDialog(false);
-      setRemitForm({ remitted_date: "", reference_no: "", amount: "" });
+      setRemitForm({ remitted_date: "", reference_no: "", amount: "", evidence_reference: "", evidence_url: "" });
       fetchRun();
-    } catch (error) {
-      toast.error("Failed to remit PAYE");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to remit PAYE");
     } finally {
       setSubmitting(false);
     }
@@ -290,17 +301,54 @@ export default function PayrollRunDetailPage() {
       await payrollRunApi.remitRssb(id!, {
         remitted_date: remitForm.remitted_date || undefined,
         reference_no: remitForm.reference_no || undefined,
+        evidence_reference: remitForm.evidence_reference,
+        evidence_url: remitForm.evidence_url || undefined,
         amount: remitForm.amount ? parseFloat(remitForm.amount) : undefined,
       });
       toast.success("RSSB contributions remitted successfully");
       setShowRemitRssbDialog(false);
-      setRemitForm({ remitted_date: "", reference_no: "", amount: "" });
+      setRemitForm({ remitted_date: "", reference_no: "", amount: "", evidence_reference: "", evidence_url: "" });
       fetchRun();
-    } catch (error) {
-      toast.error("Failed to remit RSSB");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to remit RSSB");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleConfirmBankPayment = async () => {
+    if (!run) return;
+    setSubmitting(true);
+    try {
+      await payrollRunApi.confirmBankTransfer(run._id, { ...bankConfirmForm, amount: run.total_net });
+      toast.success("Bank payment confirmation recorded");
+      setShowBankConfirmDialog(false);
+      fetchRun();
+    } catch (error: any) { toast.error(error?.message || "Failed to confirm bank payment"); }
+    finally { setSubmitting(false); }
+  };
+
+  const handleFilingExport = async (type: "paye" | "rssb") => {
+    if (!run) return;
+    try {
+      const response = await payrollRunApi.exportStatutoryFiling(run._id, type);
+      const blob = new Blob([response.data.csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url; anchor.download = response.data.filename; anchor.click(); URL.revokeObjectURL(url);
+      toast.success(`${type.toUpperCase()} filing export downloaded`);
+    } catch (error: any) { toast.error(error?.message || "Could not export statutory filing"); }
+  };
+
+  const handleSubmitFiling = async () => {
+    if (!run || !filingType) return;
+    setSubmitting(true);
+    try {
+      await payrollRunApi.submitStatutoryFiling(run._id, filingType, filingForm);
+      toast.success(`${filingType.toUpperCase()} filing evidence recorded`);
+      setFilingType(null); fetchRun();
+    } catch (error: any) { toast.error(error?.message || "Could not record filing evidence"); }
+    finally { setSubmitting(false); }
   };
 
   const handleBankTransfer = async () => {
@@ -517,7 +565,6 @@ export default function PayrollRunDetailPage() {
       : null;
 
     const totalAvailableGross = availablePeriods.reduce((s, p) => s + p.totalGross, 0);
-    const totalAvailableNet = availablePeriods.reduce((s, p) => s + p.totalNet, 0);
     const totalAvailableEmployees = availablePeriods.reduce((s, p) => s + p.count, 0);
     const selectedRecords = periodPayrollRecords.filter((record) =>
       selectedPayrollIds.has(record._id),
@@ -661,14 +708,14 @@ export default function PayrollRunDetailPage() {
                         <Plus className="h-4 w-4" />
                         Go to Payroll Page — Create Records
                       </Button>
-                      <Button
+                      {hasPermission("payroll:admin") && <Button
                         variant="outline"
                         onClick={() => navigate("/payroll-runs")}
                         className="gap-2"
                       >
                         <ArrowLeft className="h-4 w-4" />
                         Back to Runs
-                      </Button>
+                      </Button>}
                     </div>
                   </div>
                 ) : (
@@ -1037,6 +1084,7 @@ export default function PayrollRunDetailPage() {
                       onClick={handleCreateFromRecords}
                       disabled={
                         submitting ||
+                        !hasPermission("payroll:create") ||
                         !createForm.bank_account_id ||
                         !createForm.salary_account_id ||
                         !createForm.tax_payable_account_id ||
@@ -1090,6 +1138,7 @@ export default function PayrollRunDetailPage() {
 
   // ── Detail view ─────────────────────────────
   const totalDeductions = run.total_tax + run.total_other_deductions;
+  const isRunPreparer = String(typeof run.created_by === "object" ? run.created_by?._id : run.created_by || "") === String(user?._id || "");
   const rssbEmployerTotal = run.lines.reduce((s, l) => s + (l.rssb_employer_total || 0), 0);
   const totalCost = run.total_gross + rssbEmployerTotal;
   const netPayRate = run.total_gross > 0 ? Math.round((run.total_net / run.total_gross) * 100) : 0;
@@ -1143,18 +1192,20 @@ export default function PayrollRunDetailPage() {
                         )}
                         {t("payroll.run.previewJournal")}
                       </Button>
-                      <Button
+                      {hasPermission("payroll:post") && <Button
                         onClick={() => setShowPostDialog(true)}
+                        disabled={isRunPreparer}
+                        title={isRunPreparer ? "A different user must post this payroll run" : undefined}
                         className="h-10 gap-2 bg-green-600 hover:bg-green-700"
                       >
                         <CheckCircle className="h-4 w-4" />
                         {t("payroll.run.postRun")}
-                      </Button>
+                      </Button>}
                     </>
                   )}
                   {run.status === "posted" && (
                     <>
-                      {hasAnyPermission(["admin", "manager"]) && (
+                      {hasPermission("payroll:export") && (
                         <Button
                           variant="outline"
                           onClick={handleBankTransfer}
@@ -1165,14 +1216,14 @@ export default function PayrollRunDetailPage() {
                           Export Bank Transfer
                         </Button>
                       )}
-                      <Button
+                      {hasPermission("payroll:admin") && <Button
                         variant="outline"
                         onClick={() => setShowReverseDialog(true)}
                         className="h-10 gap-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
                       >
                         <RotateCcw className="h-4 w-4" />
                         {t("payroll.run.reverseRun")}
-                      </Button>
+                      </Button>}
                     </>
                   )}
                   <Button
@@ -1183,6 +1234,7 @@ export default function PayrollRunDetailPage() {
                     <Play className="h-4 w-4" />
                     All Runs
                   </Button>
+                  {hasPermission("payroll:read") && <Button variant="outline" onClick={() => setShowAudit(true)} className="h-10 gap-2"><History className="h-4 w-4" />Audit history</Button>}
                 </div>
               </div>
 
@@ -1502,6 +1554,32 @@ export default function PayrollRunDetailPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm dark:border-indigo-900 dark:bg-indigo-950/30">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-medium text-slate-900 dark:text-slate-100">Salary bank payment</span>
+                    <Badge variant={run.bank_transfer?.status === "confirmed" ? "default" : "secondary"}>{run.bank_transfer?.status === "confirmed" ? "Confirmed" : "Confirmation pending"}</Badge>
+                  </div>
+                  <p className="mt-1 text-slate-600 dark:text-slate-400">Due {formatDate(run.payment_date)} · Ledger payment is created when this run is posted; confirmation records the bank evidence.</p>
+                  {run.bank_transfer?.status === "confirmed" && <p className="mt-1 text-slate-600 dark:text-slate-400">Ref: {run.bank_transfer.transfer_reference || "-"} · Evidence: {run.bank_transfer.evidence_reference || "-"}{run.bank_transfer.evidence_url && <> · <a className="underline" href={run.bank_transfer.evidence_url} target="_blank" rel="noreferrer">View</a></>}</p>}
+                  {run.bank_transfer?.status !== "confirmed" && hasPermission("payroll:pay") && <Button size="sm" className="mt-2" onClick={() => setShowBankConfirmDialog(true)}>Confirm bank payment</Button>}
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {(["paye", "rssb"] as const).map((type) => {
+                    const deadline = run.statutory_deadlines?.[type];
+                    const filing = run.compliance?.filings?.[type];
+                    const label = type.toUpperCase();
+                    return <div key={type} className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                      <div className="flex items-center justify-between"><span className="font-semibold">{label} filing</span><Badge variant={filing?.status === "submitted" ? "default" : deadline?.filing_status === "overdue" ? "destructive" : "secondary"}>{filing?.status === "submitted" ? "Filed" : deadline?.filing_status || "Pending"}</Badge></div>
+                      <p className="mt-1 text-sm text-slate-500">Due {deadline?.due_date || "—"}{filing?.declaration_reference ? ` · Ref ${filing.declaration_reference}` : ""}</p>
+                      {filing?.evidence_reference && <p className="text-sm text-slate-500">Evidence: {filing.evidence_reference}{filing.evidence_url && <> · <a className="underline" href={filing.evidence_url} target="_blank" rel="noreferrer">View document</a></>}</p>}
+                      <p className="text-sm text-slate-500">Payment: {deadline?.payment_status || (run.remittance?.[type]?.remitted ? "complete" : "pending")} {deadline?.payment_reference ? `· Ref ${deadline.payment_reference}` : ""}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {hasPermission("payroll:export") && <Button size="sm" variant="outline" onClick={() => handleFilingExport(type)}>Export {label} CSV</Button>}
+                        {filing?.status !== "submitted" && hasPermission("payroll:file") && <Button size="sm" variant="outline" onClick={() => { setFilingForm({ declaration_reference: "", evidence_reference: "", evidence_url: "", submitted_at: localDateInputValue() }); setFilingType(type); }}>Record filing evidence</Button>}
+                      </div>
+                    </div>;
+                  })}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* PAYE Remittance */}
                   <div className={`rounded-xl border-2 p-5 transition-all ${
@@ -1543,18 +1621,20 @@ export default function PayrollRunDetailPage() {
                         <>
                           <p>Date: {formatDate(run.remittance.paye.remitted_date)}</p>
                           <p>Ref: {run.remittance.paye.reference_no || "-"}</p>
+                          <p>Evidence: {run.remittance.paye.evidence_reference || "-"}{run.remittance.paye.evidence_url && <> · <a className="underline" href={run.remittance.paye.evidence_url} target="_blank" rel="noreferrer">View</a></>}</p>
                         </>
                       )}
                     </div>
-                    {!run.remittance?.paye?.remitted && hasPermission("admin") && (
+                    {!run.remittance?.paye?.remitted && hasPermission("payroll:remit") && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="w-full mt-3 gap-2"
                         onClick={() => setShowRemitPayeDialog(true)}
+                        disabled={(run.total_tax || 0) > 0 && run.compliance?.filings?.paye?.status !== "submitted"}
                       >
                         <CheckCircle className="h-4 w-4" />
-                        Mark PAYE Remitted
+                        {run.compliance?.filings?.paye?.status === "submitted" || (run.total_tax || 0) === 0 ? "Record PAYE payment" : "File PAYE before payment"}
                       </Button>
                     )}
                   </div>
@@ -1602,18 +1682,20 @@ export default function PayrollRunDetailPage() {
                         <>
                           <p>Date: {formatDate(run.remittance.rssb.remitted_date)}</p>
                           <p>Ref: {run.remittance.rssb.reference_no || "-"}</p>
+                          <p>Evidence: {run.remittance.rssb.evidence_reference || "-"}{run.remittance.rssb.evidence_url && <> · <a className="underline" href={run.remittance.rssb.evidence_url} target="_blank" rel="noreferrer">View</a></>}</p>
                         </>
                       )}
                     </div>
-                    {!run.remittance?.rssb?.remitted && hasPermission("admin") && (
+                    {!run.remittance?.rssb?.remitted && hasPermission("payroll:remit") && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="w-full mt-3 gap-2"
                         onClick={() => setShowRemitRssbDialog(true)}
+                        disabled={run.compliance?.filings?.rssb?.status !== "submitted"}
                       >
                         <CheckCircle className="h-4 w-4" />
-                        Mark RSSB Remitted
+                        {run.compliance?.filings?.rssb?.status === "submitted" ? "Record RSSB payment" : "File RSSB before payment"}
                       </Button>
                     )}
                   </div>
@@ -1979,6 +2061,8 @@ export default function PayrollRunDetailPage() {
                 className="bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
               />
             </div>
+            <div className="space-y-1"><Label className="dark:text-slate-200">Evidence reference (required)</Label><Input value={remitForm.evidence_reference} onChange={(e) => setRemitForm({ ...remitForm, evidence_reference: e.target.value })} placeholder="Receipt or uploaded document ID" /></div>
+            <div className="space-y-1"><Label className="dark:text-slate-200">Evidence URL (optional)</Label><Input type="url" value={remitForm.evidence_url} onChange={(e) => setRemitForm({ ...remitForm, evidence_url: e.target.value })} placeholder="https://..." /></div>
             <div className="space-y-1">
               <Label className="dark:text-slate-200">Amount (RWF)</Label>
               <Input
@@ -2031,6 +2115,8 @@ export default function PayrollRunDetailPage() {
                 className="bg-white dark:bg-slate-800 dark:text-white dark:border-slate-700"
               />
             </div>
+            <div className="space-y-1"><Label className="dark:text-slate-200">Evidence reference (required)</Label><Input value={remitForm.evidence_reference} onChange={(e) => setRemitForm({ ...remitForm, evidence_reference: e.target.value })} placeholder="Receipt or uploaded document ID" /></div>
+            <div className="space-y-1"><Label className="dark:text-slate-200">Evidence URL (optional)</Label><Input type="url" value={remitForm.evidence_url} onChange={(e) => setRemitForm({ ...remitForm, evidence_url: e.target.value })} placeholder="https://..." /></div>
             <div className="space-y-1">
               <Label className="dark:text-slate-200">Amount (RWF)</Label>
               <Input
@@ -2057,6 +2143,32 @@ export default function PayrollRunDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <Dialog open={showBankConfirmDialog} onOpenChange={setShowBankConfirmDialog}>
+        <DialogContent className="bg-white dark:bg-slate-900 dark:border-slate-800">
+          <DialogHeader><DialogTitle>Confirm salary bank payment</DialogTitle><DialogDescription>Enter the bank transfer reference and retain the payment evidence. Expected amount: {formatCurrency(run?.total_net || 0)}.</DialogDescription></DialogHeader>
+          <div className="space-y-3 py-3">
+            <div><Label>Paid date</Label><Input type="date" value={bankConfirmForm.confirmed_at} onChange={(e) => setBankConfirmForm({ ...bankConfirmForm, confirmed_at: e.target.value })} /></div>
+            <div><Label>Bank transfer reference</Label><Input value={bankConfirmForm.transfer_reference} onChange={(e) => setBankConfirmForm({ ...bankConfirmForm, transfer_reference: e.target.value })} /></div>
+            <div><Label>Statement reference (optional)</Label><Input value={bankConfirmForm.bank_statement_reference} onChange={(e) => setBankConfirmForm({ ...bankConfirmForm, bank_statement_reference: e.target.value })} /></div>
+            <div><Label>Evidence reference</Label><Input value={bankConfirmForm.evidence_reference} onChange={(e) => setBankConfirmForm({ ...bankConfirmForm, evidence_reference: e.target.value })} /></div>
+            <div><Label>Evidence URL (optional)</Label><Input type="url" value={bankConfirmForm.evidence_url} onChange={(e) => setBankConfirmForm({ ...bankConfirmForm, evidence_url: e.target.value })} placeholder="https://..." /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setShowBankConfirmDialog(false)}>Cancel</Button><Button onClick={handleConfirmBankPayment} disabled={submitting || !bankConfirmForm.transfer_reference || !bankConfirmForm.evidence_reference}>{submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm payment</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={filingType !== null} onOpenChange={(open) => !open && setFilingType(null)}>
+        <DialogContent className="bg-white dark:bg-slate-900 dark:border-slate-800">
+          <DialogHeader><DialogTitle>Record {filingType?.toUpperCase()} filing evidence</DialogTitle><DialogDescription>Download the generated CSV and submit it through the statutory portal, then record the portal reference and retained evidence.</DialogDescription></DialogHeader>
+          <div className="space-y-3 py-3">
+            <div><Label>Submitted date</Label><Input type="date" value={filingForm.submitted_at} onChange={(e) => setFilingForm({ ...filingForm, submitted_at: e.target.value })} /></div>
+            <div><Label>Declaration / portal reference</Label><Input value={filingForm.declaration_reference} onChange={(e) => setFilingForm({ ...filingForm, declaration_reference: e.target.value })} /></div>
+            <div><Label>Evidence reference</Label><Input value={filingForm.evidence_reference} onChange={(e) => setFilingForm({ ...filingForm, evidence_reference: e.target.value })} /></div>
+            <div><Label>Evidence URL (optional)</Label><Input type="url" value={filingForm.evidence_url} onChange={(e) => setFilingForm({ ...filingForm, evidence_url: e.target.value })} placeholder="https://..." /></div>
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setFilingType(null)}>Cancel</Button><Button onClick={handleSubmitFiling} disabled={submitting || !filingForm.declaration_reference || !filingForm.evidence_reference}>{submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Record filing</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <PayrollAuditHistoryDialog open={showAudit} onOpenChange={setShowAudit} entityType="payroll_run" entityId={run._id} title="Payroll run audit history" />
     </Layout>
   );
 }

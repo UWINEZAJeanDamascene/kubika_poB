@@ -71,6 +71,7 @@ import {
 } from "@/app/components/ui/table";
 import { toast } from "sonner";
 import { saveAs } from "file-saver";
+import { useAuth } from "@/contexts/AuthContext";
 
 const MONTHS = [
   { value: 1, label: "January" },
@@ -90,6 +91,7 @@ const MONTHS = [
 export default function PayrollListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user, hasPermission } = useAuth();
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState<PayrollRecord[]>([]);
   const [summary, setSummary] = useState({
@@ -289,6 +291,7 @@ export default function PayrollListPage() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
+  const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
   const [createManualMode, setCreateManualMode] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<PayrollRecord | null>(
     null,
@@ -368,8 +371,8 @@ export default function PayrollListPage() {
             otherDeductions: createForm.otherDeductions,
           },
           employee: {
-            isPrimaryEmployer: employees?.find((e) => e._id === selectedEmployeeId)?.isPrimaryEmployer ?? true,
-            employmentType: employees?.find((e) => e._id === selectedEmployeeId)?.employmentType,
+            isPrimaryEmployer: selectedEmployee?.isPrimaryEmployer ?? true,
+            employmentType: selectedEmployee?.employmentType || createForm.employmentType,
           },
           additionalIncome: { vehicleProvided: createForm.vehicleProvided, accommodationProvided: createForm.accommodationProvided },
           period: { month: createForm.month, year: createForm.year },
@@ -414,7 +417,7 @@ export default function PayrollListPage() {
     createForm.month,
     createForm.year,
     selectedEmployeeId,
-    employees,
+    selectedEmployee,
   ]);
 
   const fetchRecords = useCallback(async () => {
@@ -663,18 +666,20 @@ export default function PayrollListPage() {
     setSubmitting(true);
     let successCount = 0;
     let failCount = 0;
+    let firstFailure = "";
     for (const id of selectedIds) {
       try {
         await payrollApi.finalise(id);
         successCount++;
-      } catch {
+      } catch (error: any) {
         failCount++;
+        firstFailure ||= error?.message || "Approval failed";
       }
     }
     setSubmitting(false);
     setSelectedIds(new Set());
     if (successCount > 0) toast.success(`${successCount} record(s) finalised`);
-    if (failCount > 0) toast.error(`${failCount} record(s) failed to finalise`);
+    if (failCount > 0) toast.error(`${failCount} record(s) failed to finalise: ${firstFailure}`);
     fetchRecords();
   };
 
@@ -748,15 +753,18 @@ export default function PayrollListPage() {
       notes: "",
     });
     setSelectedEmployeeId(null);
+    setSelectedEmployee(null);
     setCreateManualMode(false);
   };
 
   const handleEmployeeSelect = (emp: any) => {
     if (!emp) {
       setSelectedEmployeeId(null);
+      setSelectedEmployee(null);
       return;
     }
     setSelectedEmployeeId(emp._id);
+    setSelectedEmployee(emp);
     setCreateForm({
       ...createForm,
       employeeId: emp.employeeId || "",
@@ -830,6 +838,7 @@ export default function PayrollListPage() {
     record.record_status === "draft";
   const canEdit = (record: PayrollRecord) => record.record_status === "draft";
   const canDelete = (record: PayrollRecord) => record.record_status === "draft";
+  const selectedIncludesPreparer = records.some((record) => selectedIds.has(record._id) && String(record.createdBy?._id || "") === String(user?._id || ""));
 
   const currentYearNum = new Date().getFullYear();
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYearNum - 2 + i);
@@ -878,13 +887,13 @@ export default function PayrollListPage() {
                 </p>
 
           <div className="mobile-action-row mt-5 grid grid-cols-1 gap-2 sm:flex sm:flex-wrap">
-                  <Button
+                  {hasPermission("payroll:create") && <Button
                     onClick={() => navigate("/payroll/generate")}
                     className="h-10 gap-2 bg-blue-600 hover:bg-blue-700"
                   >
                     <Users className="h-4 w-4" />
                     Generate Payroll
-                  </Button>
+                  </Button>}
                   <Button
                     variant="outline"
                     onClick={() => navigate("/payroll-runs")}
@@ -893,19 +902,19 @@ export default function PayrollListPage() {
                     <Play className="h-4 w-4" />
                     Payroll Runs
                   </Button>
-                  <Button
+                  {hasPermission("payroll:create") && <Button
                     variant="outline"
                     onClick={() => setShowCreateDialog(true)}
                     className="h-10 gap-2"
                   >
                     <Plus className="h-4 w-4" />
                     New Record
-                  </Button>
-                  <Button variant="outline" onClick={handleExport} className="h-10 gap-2">
+                  </Button>}
+                  {hasPermission("payroll:export") && <Button variant="outline" onClick={handleExport} className="h-10 gap-2">
                     <Download className="h-4 w-4" />
                     Export
-                  </Button>
-                  <Button
+                  </Button>}
+                  {hasPermission("payroll:admin") && <Button
                     variant="ghost"
                     onClick={handleBackfill}
                     disabled={backfilling}
@@ -917,7 +926,7 @@ export default function PayrollListPage() {
                       <BookOpen className="h-4 w-4" />
                     )}
                     Backfill Journals
-                  </Button>
+                  </Button>}
                 </div>
               </div>
 
@@ -1286,7 +1295,7 @@ export default function PayrollListPage() {
                 <Button
                   size="sm"
                   onClick={handleFinaliseSelected}
-                  disabled={submitting}
+                  disabled={submitting || !hasPermission("payroll:approve") || selectedIncludesPreparer}
                   className="gap-2 sm:ml-auto"
                 >
                   {submitting ? (
@@ -1296,6 +1305,7 @@ export default function PayrollListPage() {
                   )}
                   {t("payroll.finaliseSelected")}
                 </Button>
+                {selectedIncludesPreparer && <p className="text-xs text-amber-700 dark:text-amber-300">Deselect records you prepared; another payroll approver must finalise them.</p>}
               </CardContent>
             </Card>
           )}
@@ -1334,17 +1344,17 @@ export default function PayrollListPage() {
                     : "Generate payroll records for all employees, or create an individual record."}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Button
+                  {hasPermission("payroll:create") && <Button
                     onClick={() => navigate("/payroll/generate")}
                     className="bg-blue-600 hover:bg-blue-700"
                   >
                     <Users className="mr-2 h-4 w-4" />
                     Generate Payroll
-                  </Button>
-                  <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
+                  </Button>}
+                  {hasPermission("payroll:create") && <Button variant="outline" onClick={() => setShowCreateDialog(true)}>
                     <Plus className="mr-2 h-4 w-4" />
                     New Individual Record
-                  </Button>
+                  </Button>}
                 </div>
               </div>
             ) : (
@@ -1452,7 +1462,7 @@ export default function PayrollListPage() {
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
-                            {canEdit(record) && (
+                            {canEdit(record) && hasPermission("payroll:update") && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1465,7 +1475,7 @@ export default function PayrollListPage() {
                                 <Edit className="h-4 w-4" />
                               </Button>
                             )}
-                            {canDelete(record) && (
+                            {canDelete(record) && hasPermission("payroll:delete") && (
                               <Button
                                 variant="ghost"
                                 size="icon"

@@ -18,6 +18,7 @@ import {
   UserCheck,
   ChevronRight,
   Clock,
+  History,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -47,6 +48,8 @@ import { Checkbox } from "@/app/components/ui/checkbox";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Separator } from "@/app/components/ui/separator";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { PayrollAuditHistoryDialog } from "@/app/components/payroll/PayrollAuditHistoryDialog";
 
 const MONTHS = [
   { value: 1, label: "January" },
@@ -67,7 +70,7 @@ type PayrollInputDraft = {
   scheduledDays: number; workedDays: number; paidLeaveDays: number; unpaidLeaveDays: number;
   overtime: number; bonuses: number; commissions: number; benefitsInKind: number;
   healthInsurance: number; loanDeductions: number; otherDeductions: number;
-  id?: string; status?: "draft" | "approved" | "applied";
+  id?: string; status?: "draft" | "approved" | "applied"; enteredById?: string | null; approvedById?: string | null;
 };
 
 function defaultPayrollInput(month: number, year: number): PayrollInputDraft {
@@ -125,6 +128,7 @@ export default function PayrollGenerationPage() {
   const navigate = useNavigate();
   const { data: employees, isLoading } = useEmployees({ status: "active", limit: 100 });
   const generateMutation = useGeneratePayroll();
+  const { user, hasPermission } = useAuth();
 
   const [step, setStep] = useState(1);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
@@ -136,6 +140,7 @@ export default function PayrollGenerationPage() {
   const [results, setResults] = useState<any>(null);
   const [payrollInputs, setPayrollInputs] = useState<Record<string, PayrollInputDraft>>({});
   const [inputBusyEmployeeId, setInputBusyEmployeeId] = useState<string | null>(null);
+  const [auditInputId, setAuditInputId] = useState<string | null>(null);
 
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
@@ -240,7 +245,7 @@ export default function PayrollGenerationPage() {
           overtime: Number(input.additionalIncome?.overtime || 0), bonuses: Number(input.additionalIncome?.bonuses || 0),
           commissions: Number(input.additionalIncome?.commissions || 0), benefitsInKind: Number(input.additionalIncome?.benefitsInKind || 0),
           healthInsurance: Number(input.deductions?.healthInsurance || 0), loanDeductions: Number(input.deductions?.loanDeductions || 0), otherDeductions: Number(input.deductions?.otherDeductions || 0),
-          id: input.id, status: input.status,
+          id: input.id, status: input.status, enteredById: input.enteredById, approvedById: input.approvedById,
         };
       }
       setPayrollInputs(next);
@@ -263,7 +268,7 @@ export default function PayrollGenerationPage() {
         additionalIncome: { overtime: input.overtime, bonuses: input.bonuses, commissions: input.commissions, benefitsInKind: input.benefitsInKind },
         deductions: { healthInsurance: input.healthInsurance, loanDeductions: input.loanDeductions, otherDeductions: input.otherDeductions },
       });
-      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...input, id: response.data.id, status: response.data.status as PayrollInputDraft["status"] } }));
+      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...input, id: response.data.id, status: response.data.status as PayrollInputDraft["status"], enteredById: response.data.enteredById } }));
       return response.data.id;
     } catch (error: any) { toast.error(error?.message || "Could not save payroll inputs"); return undefined; }
     finally { setInputBusyEmployeeId(null); }
@@ -277,7 +282,7 @@ export default function PayrollGenerationPage() {
     setInputBusyEmployeeId(employeeId);
     try {
       const response = await payrollApi.approvePeriodInput(id);
-      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...(all[employeeId] || input), id, status: response.data.status as PayrollInputDraft["status"] } }));
+      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...(all[employeeId] || input), id, status: response.data.status as PayrollInputDraft["status"], approvedById: response.data.approvedById } }));
       toast.success("Attendance and leave inputs approved");
     } catch (error: any) { toast.error(error?.message || "Could not approve payroll inputs"); }
     finally { setInputBusyEmployeeId(null); }
@@ -555,8 +560,8 @@ export default function PayrollGenerationPage() {
                         <TableCell className="whitespace-nowrap font-medium">{employee.firstName} {employee.lastName}</TableCell>
                         <TableCell>{numberField("scheduledDays", "scheduled days")}</TableCell><TableCell>{numberField("workedDays", "worked days")}</TableCell><TableCell>{numberField("paidLeaveDays", "paid leave days")}</TableCell><TableCell>{numberField("unpaidLeaveDays", "unpaid leave days")}</TableCell>
                         <TableCell>{numberField("overtime", "overtime")}</TableCell><TableCell>{numberField("bonuses", "bonus")}</TableCell><TableCell>{numberField("commissions", "commission")}</TableCell><TableCell>{numberField("benefitsInKind", "benefits in kind")}</TableCell><TableCell>{numberField("healthInsurance", "health insurance deduction")}</TableCell><TableCell>{numberField("loanDeductions", "loan deduction")}</TableCell><TableCell>{numberField("otherDeductions", "other deduction")}</TableCell>
-                        <TableCell className="capitalize">{input.status || "not saved"}</TableCell>
-                        <TableCell><div className="flex gap-2"><Button size="sm" variant="outline" disabled={locked || inputBusyEmployeeId === employee._id} onClick={() => void savePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save</Button><Button size="sm" disabled={locked || inputBusyEmployeeId === employee._id} onClick={() => void approvePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{input.status === "approved" || input.status === "applied" ? "Approved" : "Approve"}</Button></div></TableCell>
+                        <TableCell><div className="capitalize">{input.status || "not saved"}</div>{input.enteredById && <div className="text-xs text-slate-500">Prepared by {input.enteredById}</div>}{input.approvedById && <div className="text-xs text-slate-500">Approved by {input.approvedById}</div>}</TableCell>
+                        <TableCell><div className="flex gap-2">{input.id && <Button size="sm" variant="ghost" title="View immutable audit history" onClick={() => setAuditInputId(input.id!)}><History className="h-4 w-4" />Audit</Button>}<Button size="sm" variant="outline" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:update")} onClick={() => void savePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save</Button><Button size="sm" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:approve") || (!!input.enteredById && input.enteredById === user?._id)} title={input.enteredById === user?._id ? "A different user must approve inputs you prepared" : undefined} onClick={() => void approvePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{input.status === "approved" || input.status === "applied" ? "Approved" : input.enteredById === user?._id ? "Waiting for another approver" : "Approve"}</Button></div></TableCell>
                       </TableRow>;
                     })}</TableBody>
                   </Table>
@@ -640,7 +645,7 @@ export default function PayrollGenerationPage() {
               </Button>
               <Button
                 onClick={handleGenerate}
-                disabled={generateMutation.isPending || selectedCount === 0}
+                disabled={generateMutation.isPending || selectedCount === 0 || !hasPermission("payroll:create")}
                 className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
               >
                 {generateMutation.isPending && (
@@ -733,6 +738,7 @@ export default function PayrollGenerationPage() {
           </>
         )}
       </div>
+      <PayrollAuditHistoryDialog open={auditInputId !== null} onOpenChange={(open) => !open && setAuditInputId(null)} entityType="payroll_period_input" entityId={auditInputId || ""} title="Attendance and pay-input audit history" />
     </Layout>
   );
 }

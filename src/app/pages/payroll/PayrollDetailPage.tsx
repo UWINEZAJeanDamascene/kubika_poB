@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { payrollApi, PayrollRecord } from '@/lib/api';
+import { payrollApi, PayrollRecord, bankAccountsApi, BankAccount } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import {
   ArrowLeft,
@@ -16,6 +16,8 @@ import {
   User,
   DollarSign,
   TrendingDown,
+  Banknote,
+  History,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -38,6 +40,8 @@ import {
 import { Input } from '@/app/components/ui/input';
 import { Label } from '@/app/components/ui/label';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { PayrollAuditHistoryDialog } from '@/app/components/payroll/PayrollAuditHistoryDialog';
 
 const MONTHS = [
   { value: 1, label: 'January' }, { value: 2, label: 'February' },
@@ -52,6 +56,7 @@ export default function PayrollDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user, hasPermission } = useAuth();
   const location = useLocation();
   const isEditRoute = location.pathname.endsWith('/edit');
   const [loading, setLoading] = useState(true);
@@ -59,6 +64,11 @@ export default function PayrollDetailPage() {
   const [editing, setEditing] = useState(isEditRoute);
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false);
+  const [showAudit, setShowAudit] = useState(false);
+  const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentAccounts, setPaymentAccounts] = useState<BankAccount[]>([]);
+  const [paymentForm, setPaymentForm] = useState({ paymentMethod: 'bank_transfer', bankAccountId: '', reference: '', notes: '' });
   const pensionRateLabels = {
     employee: ((record?.contributions?.rates?.pensionEmployeeRate ?? (record && record.period.year < 2025 ? 0.03 : record && record.period.year < 2027 ? 0.06 : record && record.period.year < 2028 ? 0.07 : record && record.period.year < 2029 ? 0.08 : record && record.period.year < 2030 ? 0.09 : 0.1)) * 100).toFixed(0),
     employer: ((record?.contributions?.rates?.pensionEmployerRate ?? (record && record.period.year < 2025 ? 0.03 : record && record.period.year < 2027 ? 0.06 : record && record.period.year < 2028 ? 0.07 : record && record.period.year < 2029 ? 0.08 : record && record.period.year < 2030 ? 0.09 : 0.1)) * 100).toFixed(0),
@@ -111,6 +121,10 @@ export default function PayrollDetailPage() {
   useEffect(() => {
     fetchRecord();
   }, [id]);
+
+  useEffect(() => {
+    bankAccountsApi.getAll({ isActive: true }).then((response) => setPaymentAccounts(response.data || [])).catch(() => setPaymentAccounts([]));
+  }, []);
 
   useEffect(() => {
     if (!editing || !record) return;
@@ -334,22 +348,44 @@ export default function PayrollDetailPage() {
     }
   };
 
+  const handleProcessPayment = async () => {
+    if (!record) return;
+    setPaymentBusy(true);
+    try {
+      const response = await payrollApi.processPayment(record._id, {
+        paymentMethod: paymentForm.paymentMethod,
+        bankAccountId: paymentForm.paymentMethod === 'bank_transfer' ? paymentForm.bankAccountId : undefined,
+        reference: paymentForm.reference,
+        notes: paymentForm.notes,
+      });
+      toast.success(response.message || 'Payroll payment recorded');
+      setShowPaymentDialog(false);
+      fetchRecord();
+    } catch (error: any) { toast.error(error?.message || 'Could not process payroll payment'); }
+    finally { setPaymentBusy(false); }
+  };
+
+  const handleDownloadPayslip = async () => {
+    if (!record) return;
+    try {
+      const response = await payrollApi.getPayslip(record._id);
+      const slip = response.data;
+      const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
+      const money = (value: number) => formatCurrency(Number(value) || 0);
+      const earningRows = ([ ["Basic salary", slip.earnings.basicSalary], ["Transport allowance", slip.earnings.transportAllowance], ["Housing allowance", slip.earnings.housingAllowance], ["Other allowances", slip.earnings.otherAllowances], ["Overtime", slip.earnings.overtime], ["Bonus", slip.earnings.bonuses], ["Commission", slip.earnings.commissions], ["Benefits in kind", slip.earnings.benefitsInKind] ] as Array<[string, number | undefined]>).filter(([, value]) => Number(value) > 0);
+      const deductionRows = ([ ["PAYE", slip.deductions.paye], ["RSSB pension", slip.deductions.rssbPension], ["RSSB maternity", slip.deductions.rssbMaternity], ["Health insurance", slip.deductions.healthInsurance], ["Loan deductions", slip.deductions.loanDeductions], ["Other deductions", slip.deductions.otherDeductions] ] as Array<[string, number | undefined]>).filter(([, value]) => Number(value) > 0);
+      const renderRows = (rows: Array<[string, number | undefined]>) => rows.map(([label, value]) => `<div class="row"><span>${label}</span><span>${money(Number(value))}</span></div>`).join("");
+      const html = `<!doctype html><html><head><meta charset="utf-8"><title>Payslip ${escapeHtml(slip.period.monthName)} ${escapeHtml(slip.period.year)}</title><style>body{font:14px Arial,sans-serif;max-width:760px;margin:40px auto;color:#172033}h1{margin-bottom:4px}.muted{color:#596579}.row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #d7deea}.total{font-weight:bold;font-size:18px;margin-top:14px}@media print{body{margin:0 auto}}</style></head><body><h1>Payslip</h1><p class="muted">${escapeHtml(slip.employee.firstName)} ${escapeHtml(slip.employee.lastName)} · ${escapeHtml(slip.employee.employeeId)}</p><p>${escapeHtml(slip.period.monthName)} ${escapeHtml(slip.period.year)} · Status: ${escapeHtml(slip.status)}</p><h2>Earnings</h2>${renderRows(earningRows)}<div class="row"><strong>Gross remuneration</strong><strong>${money(slip.earnings.grossSalary)}</strong></div><h2>Deductions</h2>${renderRows(deductionRows)}<div class="row"><strong>Total deductions</strong><strong>${money(slip.deductions.totalDeductions)}</strong></div><p class="total">Net pay: ${money(slip.netPay)} RWF</p><p class="muted">Employer contributions: ${money((slip.employerContributions?.rssbEmployerPension || 0) + (slip.employerContributions?.rssbEmployerMaternity || 0) + (slip.employerContributions?.occupationalHazard || 0))} RWF</p><script>window.onload=()=>window.print()</script></body></html>`;
+      const url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+      const anchor = document.createElement("a"); anchor.href = url; anchor.download = `payslip-${record.employee.employeeId}-${slip.period.year}-${String(slip.period.month).padStart(2, "0")}.html`; anchor.click(); URL.revokeObjectURL(url);
+    } catch (error: any) { toast.error(error?.message || "Could not retrieve payslip"); }
+  };
+
   const formatCurrency = (amount: number) =>
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'RWF', minimumFractionDigits: 0 }).format(amount || 0);
 
   const getStatusBadge = (r: PayrollRecord) => {
     const status = r.record_status || r.payment?.status || 'draft';
-    const config: Record<string, { className: string }> = {
-      draft: { className: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-500' },
-      pending: { className: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' },
-      finalised: { className: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700' },
-      paid: { className: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700' },
-    };
-    const { className } = config[status] || config.draft;
-    return <Badge variant="outline" className={className}>{status}</Badge>;
-  };
-
-  const getStatusBadgeCalc = (status: string) => {
     const config: Record<string, { className: string }> = {
       draft: { className: 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-slate-700 dark:text-slate-300 dark:border-slate-500' },
       pending: { className: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' },
@@ -394,6 +430,7 @@ export default function PayrollDetailPage() {
   }
 
   const employeeName = `${record.employee.firstName} ${record.employee.lastName}`;
+  const isPreparer = String(record.createdBy?._id || '') === String(user?._id || '');
   const rssbEmployerTotal =
     (record.contributions?.rssbEmployerPension || 0) +
     (record.contributions?.rssbEmployerMaternity || 0) +
@@ -451,26 +488,35 @@ export default function PayrollDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {!editing && canEdit(record) && (
+            <Button variant="outline" onClick={() => setShowAudit(true)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"><History className="h-4 w-4" />Audit history</Button>
+            <Button variant="outline" onClick={handleDownloadPayslip} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"><FileText className="h-4 w-4" />Download payslip</Button>
+            {!editing && canEdit(record) && hasPermission('payroll:update') && (
               <Button variant="outline" onClick={() => setEditing(true)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">
                 <Edit className="h-4 w-4" />
                 {t('common.edit')}
               </Button>
             )}
-            {canFinalise(record) && (
+            {canFinalise(record) && hasPermission('payroll:approve') && !isPreparer && (
               <Button variant="outline" onClick={handleFinalise} disabled={submitting} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                 {t('payroll.finaliseSelected') || 'Finalise'}
               </Button>
             )}
-            {canDelete(record) && (
+            {canDelete(record) && hasPermission('payroll:delete') && (
               <Button variant="destructive" onClick={() => setShowDeleteDialog(true)} className="h-10 gap-2">
                 <Trash2 className="h-4 w-4" />
                 {t('common.delete')}
               </Button>
             )}
+            {canFinalise(record) && hasPermission('payroll:approve') && isPreparer && <p className="basis-full text-sm text-amber-700 dark:text-amber-300">You prepared this payroll record. A different user must approve and finalise it.</p>}
+            {record.record_status === 'finalised' && !record.payroll_run_id && record.payment?.status !== 'paid' && hasPermission('payroll:pay') && !isPreparer && (
+              <Button onClick={() => setShowPaymentDialog(true)} className="h-10 gap-2 bg-emerald-600 hover:bg-emerald-700"><Banknote className="h-4 w-4" />Process payment</Button>
+            )}
+            {record.record_status === 'finalised' && !record.payroll_run_id && record.payment?.status !== 'paid' && hasPermission('payroll:pay') && isPreparer && <p className="basis-full text-sm text-amber-700 dark:text-amber-300">A different user must process payment for the record you prepared.</p>}
           </div>
         </div>
+
+        {record.payment?.status === 'paid' && <Card className="border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/60 dark:bg-emerald-950/20"><CardContent className="flex flex-wrap items-center justify-between gap-2 p-4"><div><p className="font-semibold text-emerald-800 dark:text-emerald-300">Payment recorded</p><p className="text-sm text-slate-600 dark:text-slate-400">{record.payment.paymentMethod || 'Payment'} · {record.payment.paymentDate ? new Date(record.payment.paymentDate).toLocaleDateString() : 'Date unavailable'} · Ref: {record.payment.reference || '—'}</p></div><Badge>Paid</Badge></CardContent></Card>}
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
           <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
@@ -988,6 +1034,19 @@ export default function PayrollDetailPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
+          <DialogContent className="bg-white dark:bg-slate-900 dark:border-slate-800">
+            <DialogHeader><DialogTitle className="dark:text-white">Process payroll payment</DialogTitle><DialogDescription className="dark:text-slate-400">Pay {employeeName} {formatCurrency(record.netPay)}. This is available only for standalone payroll records.</DialogDescription></DialogHeader>
+            <div className="space-y-3 py-3">
+              <div className="space-y-1"><Label>Payment method</Label><Select value={paymentForm.paymentMethod} onValueChange={(value) => setPaymentForm({ ...paymentForm, paymentMethod: value, bankAccountId: '' })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="bank_transfer">Bank transfer</SelectItem><SelectItem value="cash">Cash</SelectItem><SelectItem value="cheque">Cheque</SelectItem><SelectItem value="mobile_money">Mobile money</SelectItem></SelectContent></Select></div>
+              {paymentForm.paymentMethod !== 'cash' && <div className="space-y-1"><Label>Bank / mobile-money account</Label><Select value={paymentForm.bankAccountId} onValueChange={(value) => setPaymentForm({ ...paymentForm, bankAccountId: value })}><SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger><SelectContent>{paymentAccounts.map((account) => <SelectItem key={account._id} value={account._id}>{account.name}{account.accountNumber ? ` · ${account.accountNumber}` : ''}</SelectItem>)}</SelectContent></Select></div>}
+              <div className="space-y-1"><Label>Payment reference</Label><Input value={paymentForm.reference} onChange={(event) => setPaymentForm({ ...paymentForm, reference: event.target.value })} placeholder="Bank or transaction reference" /></div>
+              <div className="space-y-1"><Label>Notes (optional)</Label><Input value={paymentForm.notes} onChange={(event) => setPaymentForm({ ...paymentForm, notes: event.target.value })} /></div>
+            </div>
+            <DialogFooter><Button variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancel</Button><Button onClick={handleProcessPayment} disabled={paymentBusy || (paymentForm.paymentMethod !== 'cash' && !paymentForm.bankAccountId)}>{paymentBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm payment</Button></DialogFooter>
+          </DialogContent>
+        </Dialog>
+        <PayrollAuditHistoryDialog open={showAudit} onOpenChange={setShowAudit} entityType="payroll" entityId={record._id} title="Payroll record audit history" />
         </div>
       </div>
     </Layout>

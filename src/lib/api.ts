@@ -7831,12 +7831,23 @@ export interface PayrollPeriodInput {
   additionalIncome: Record<string, number | boolean>;
   deductions: Record<string, number>;
   status: "draft" | "approved" | "applied";
+  enteredById?: string | null;
   approvedById?: string | null;
   approvedAt?: string | null;
   appliedPayrollId?: string | null;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PayrollAuditEvent {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  actorUserId?: string | null;
+  changes: unknown;
+  createdAt: string;
 }
 
 export const payrollApi = {
@@ -7876,6 +7887,10 @@ export const payrollApi = {
     request<{ success: boolean; data: PayrollPeriodInput }>("/payroll/period-inputs", { method: "POST", body: data }),
   approvePeriodInput: (id: string) =>
     request<{ success: boolean; data: PayrollPeriodInput }>(`/payroll/period-inputs/${id}/approve`, { method: "POST" }),
+  getAuditHistory: (id: string) =>
+    request<{ success: boolean; data: PayrollAuditEvent[] }>(`/payroll/${id}/audit`),
+  getPeriodInputAuditHistory: (id: string) =>
+    request<{ success: boolean; data: PayrollAuditEvent[] }>(`/payroll/period-inputs/${id}/audit`),
   create: (data: {
     employee_id?: string;
     employee?: {
@@ -7899,6 +7914,8 @@ export const payrollApi = {
       bonuses?: number;
       commissions?: number;
       benefitsInKind?: number;
+      vehicleProvided?: boolean;
+      accommodationProvided?: boolean;
       healthInsurance?: number;
       loanDeductions?: number;
       otherDeductions?: number;
@@ -7970,10 +7987,12 @@ export const payrollApi = {
       bonuses?: number;
       commissions?: number;
       benefitsInKind?: number;
+      vehicleProvided?: boolean;
+      accommodationProvided?: boolean;
     };
     additionalIncome?: Record<string, number | boolean>;
     deductions?: Record<string, number>;
-    employee?: { isPrimaryEmployer?: boolean };
+    employee?: { isPrimaryEmployer?: boolean; employmentType?: string };
     period?: { month: number; year: number };
   }) =>
     request<{
@@ -7997,7 +8016,7 @@ export const payrollApi = {
     }>("/payroll/calculate", { method: "POST", body: data }),
   processPayment: (
     id: string,
-    data: { paymentMethod?: string; reference?: string },
+    data: { paymentMethod?: string; reference?: string; notes?: string; bankAccountId?: string },
   ) =>
     request<{ success: boolean; data: PayrollRecord; message: string }>(
       `/payroll/${id}/pay`,
@@ -8086,12 +8105,19 @@ export const payrollApi = {
           transportAllowance: number;
           housingAllowance: number;
           otherAllowances: number;
+          overtime?: number;
+          bonuses?: number;
+          commissions?: number;
+          benefitsInKind?: number;
           grossSalary: number;
         };
         deductions: {
           paye: number;
           rssbPension: number;
           rssbMaternity: number;
+          healthInsurance?: number;
+          loanDeductions?: number;
+          otherDeductions?: number;
           totalDeductions: number;
         };
         netPay: number;
@@ -8178,6 +8204,7 @@ export interface PayrollRun {
   reversal_journal_entry_id?: string | null;
   notes?: string | null;
   posted_by?: { _id: string; name: string } | null;
+  created_by?: string | { _id: string; name?: string } | null;
   lines: PayrollRunLine[];
   employee_count: number;
   // Remittance tracking (Rwanda RRA / RSSB)
@@ -8187,12 +8214,16 @@ export interface PayrollRun {
       remitted_date?: string | null;
       reference_no?: string | null;
       amount: number;
+      evidence_reference?: string | null;
+      evidence_url?: string | null;
     };
     rssb?: {
       remitted: boolean;
       remitted_date?: string | null;
       reference_no?: string | null;
       amount: number;
+      evidence_reference?: string | null;
+      evidence_url?: string | null;
     };
   };
   // Bank transfer export
@@ -8201,7 +8232,20 @@ export interface PayrollRun {
     generated_at?: string | null;
     file_name?: string | null;
     format?: 'csv' | 'excel' | 'xml';
+    status?: string;
+    confirmed_at?: string | null;
+    transfer_reference?: string | null;
+    evidence_reference?: string | null;
+    evidence_url?: string | null;
   };
+  statutory_deadlines?: Record<string, {
+    due_date: string | null;
+    filing_status?: string;
+    payment_status: string;
+    filing_reference?: string | null;
+    payment_reference?: string | null;
+  }>;
+  compliance?: { filings?: Record<string, { status?: string; declaration_reference?: string; evidence_reference?: string; evidence_url?: string | null }> };
   createdAt: string;
   updatedAt: string;
 }
@@ -8261,6 +8305,8 @@ export const payrollRunApi = {
   },
   getById: (id: string) =>
     request<{ success: boolean; data: PayrollRun }>(`/payroll-runs/${id}`),
+  getAuditHistory: (id: string) =>
+    request<{ success: boolean; data: PayrollAuditEvent[] }>(`/payroll-runs/${id}/audit`),
   create: (data: {
     pay_period_start: string;
     pay_period_end: string;
@@ -8332,12 +8378,12 @@ export const payrollRunApi = {
       "/payroll-runs/from-records",
       { method: "POST", body: data },
     ),
-  remitPaye: (id: string, data: { remitted_date?: string; reference_no?: string; amount?: number }) =>
+  remitPaye: (id: string, data: { remitted_date?: string; reference_no?: string; evidence_reference: string; evidence_url?: string; amount?: number }) =>
     request<{ success: boolean; data: PayrollRun; message: string }>(
       `/payroll-runs/${id}/remit-paye`,
       { method: "POST", body: data },
     ),
-  remitRssb: (id: string, data: { remitted_date?: string; reference_no?: string; amount?: number }) =>
+  remitRssb: (id: string, data: { remitted_date?: string; reference_no?: string; evidence_reference: string; evidence_url?: string; amount?: number }) =>
     request<{ success: boolean; data: PayrollRun; message: string }>(
       `/payroll-runs/${id}/remit-rssb`,
       { method: "POST", body: data },
@@ -8363,6 +8409,14 @@ export const payrollRunApi = {
         }>;
       };
     }>(`/payroll-runs/${id}/bank-transfer`),
+  confirmBankTransfer: (id: string, data: { amount: number; confirmed_at?: string; transfer_reference: string; bank_statement_reference?: string; evidence_reference: string; evidence_url?: string; notes?: string }) =>
+    request<{ success: boolean; data: PayrollRun; message: string }>(`/payroll-runs/${id}/bank-transfer/confirm`, { method: "POST", body: data }),
+  exportStatutoryFiling: (id: string, type: "paye" | "rssb") =>
+    request<{ success: boolean; data: { filename: string; csv: string; due_date: string | null; total: number; currency: string } }>(`/payroll-runs/${id}/statutory-export/${type}`),
+  submitStatutoryFiling: (id: string, type: "paye" | "rssb", data: { declaration_reference: string; evidence_reference: string; evidence_url?: string; submitted_at?: string; notes?: string }) =>
+    request<{ success: boolean; data: PayrollRun; message: string }>(`/payroll-runs/${id}/filings/${type}`, { method: "POST", body: data }),
+  getComplianceDeadlines: (params?: { status?: string; from?: string; to?: string }) =>
+    request<{ success: boolean; data: Array<{ run_id: string; reference_no: string; type: string; stage: string; due_date: string | null; status: string; amount: number }> }>(`/payroll-runs/compliance/deadlines${buildQuery(params as Record<string, any>) ? `?${buildQuery(params as Record<string, any>)}` : ""}`),
   // Returns months that have finalised, unprocessed payroll records
   getAvailablePeriods: () =>
     request<{

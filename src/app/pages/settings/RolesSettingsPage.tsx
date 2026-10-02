@@ -63,7 +63,7 @@ const ALL_RESOURCES = [
   'fixed_assets', 'tax', 'notifications', 'settings'
 ];
 
-const ALL_ACTIONS = ['read', 'create', 'update', 'delete', 'approve', 'post', 'reverse', 'confirm', 'send', 'convert', 'close', 'reopen', 'depreciate', 'dispose'];
+const ALL_ACTIONS = ['read', 'create', 'update', 'delete', 'approve', 'post', 'reverse', 'confirm', 'send', 'convert', 'close', 'reopen', 'depreciate', 'dispose', 'pay', 'remit', 'export', 'file', 'admin'];
 
 const resourceLabel = (r: string) => r.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
@@ -650,7 +650,7 @@ export default function RolesSettingsPage() {
                                 <TableHead className="text-slate-500 dark:text-slate-400 min-w-[160px]">
                                   Resource
                                 </TableHead>
-                                {ALL_ACTIONS.slice(0, 6).map((a) => (
+                                {ALL_ACTIONS.map((a) => (
                                   <TableHead
                                     key={a}
                                     className="text-center text-slate-500 dark:text-slate-400 w-16 text-xs"
@@ -671,7 +671,7 @@ export default function RolesSettingsPage() {
                                     <TableCell className="text-sm font-medium text-slate-900 dark:text-slate-200">
                                       {resourceLabel(resource)}
                                     </TableCell>
-                                    {ALL_ACTIONS.slice(0, 6).map((action) => {
+                                    {ALL_ACTIONS.map((action) => {
                                       const checked = perm?.actions.includes(action) || false;
                                       return (
                                         <TableCell key={action} className="text-center">
