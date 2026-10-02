@@ -1746,6 +1746,20 @@
   -webkit-overflow-scrolling: touch;
   scrollbar-gutter: auto;
   min-width: 0;
+  padding: 0 !important;
+  background: var(--background);
+}
+
+.app-page-scroll > * {
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+}
+
+/* Legacy page roots should fill the shell's available scroll height rather
+   than add the browser viewport height on top of the app bars. */
+.app-page-scroll .min-h-screen {
+  min-height: 100%;
 }
 
 .app-page-scroll--dashboard {

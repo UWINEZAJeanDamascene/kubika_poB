@@ -47,7 +47,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/app/components/ui/pagination';
-import { Badge } from '@/app/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import {
