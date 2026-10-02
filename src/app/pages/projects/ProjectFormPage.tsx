@@ -161,7 +161,7 @@ export default function ProjectFormPage() {
     try {
       const response: any = await projectsApi.getAll({ is_active: "true" });
       if (response.success) {
-        setProjects(response.data || []);
+        setProjects((response.data || []).filter((project: Project) => !project.is_template));
         const parentId = searchParams.get("parent_id");
         const parent = (response.data || []).find((item: Project) => item._id === parentId);
         if (!isEditing && parent) {
@@ -271,7 +271,7 @@ export default function ProjectFormPage() {
             ? t("projects.updated", "Project updated successfully")
             : t("projects.created", "Project created successfully")
         );
-        navigate(!isEditing && dataToSubmit.is_template ? "/projects?include_templates=true" : "/projects");
+        navigate("/projects");
       }
     } catch (error: any) {
       toast.error(
