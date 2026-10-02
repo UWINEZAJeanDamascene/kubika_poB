@@ -259,7 +259,7 @@ export default function ProjectFormPage() {
             ? t("projects.updated", "Project updated successfully")
             : t("projects.created", "Project created successfully")
         );
-        navigate("/projects");
+        navigate(!isEditing && dataToSubmit.is_template ? "/projects?include_templates=true" : "/projects");
       }
     } catch (error: any) {
       toast.error(

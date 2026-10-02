@@ -12813,6 +12813,7 @@ export const projectsApi = {
     search?: string;
     is_active?: string;
     is_template?: boolean;
+    include_templates?: boolean;
   }) => {
     const query = buildQuery(filters as Record<string, any>);
     return request<{ success: boolean; data: Project[]; count: number }>(

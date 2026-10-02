@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import { useTranslation } from "react-i18next";
 import { projectsApi, type Project } from "@/lib/api";
 import { Button } from "@/app/components/ui/button";
@@ -81,16 +81,18 @@ const toAmount = (value: unknown) => {
 export default function ProjectsListPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [showArchived, setShowArchived] = useState(false);
+  const showTemplates = searchParams.get("include_templates") === "true";
 
   useEffect(() => {
     fetchProjects();
-  }, [statusFilter, typeFilter, showArchived]);
+  }, [statusFilter, typeFilter, showArchived, showTemplates]);
 
   const fetchProjects = async () => {
     try {
@@ -99,6 +101,7 @@ export default function ProjectsListPage() {
       if (statusFilter) filters.status = statusFilter;
       if (typeFilter) filters.type = typeFilter;
       filters.is_active = showArchived ? "false" : "true";
+      if (showTemplates) filters.include_templates = "true";
 
       const response: any = await projectsApi.getAll(filters);
       if (response.success) {
@@ -217,6 +220,18 @@ export default function ProjectsListPage() {
                   <Button variant="outline" onClick={() => navigate("/projects/my-tasks")} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"><ListTodo className="h-4 w-4" />My Tasks</Button>
                   <Button variant="outline" onClick={() => setShowArchived((value) => !value)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">
                     <Archive className="h-4 w-4" />{showArchived ? "Show Active" : "Show Archived"}
+                  </Button>
+                  <Button
+                    variant={showTemplates ? "default" : "outline"}
+                    onClick={() => {
+                      const next = new URLSearchParams(searchParams);
+                      if (showTemplates) next.delete("include_templates");
+                      else next.set("include_templates", "true");
+                      setSearchParams(next);
+                    }}
+                    className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    {showTemplates ? "Hide Templates" : "Show Templates"}
                   </Button>
                   <Button
                     variant="outline"
@@ -451,7 +466,10 @@ export default function ProjectsListPage() {
                           <span className="font-mono text-xs text-slate-500 dark:text-slate-400">{project.wbs_code}</span>
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-slate-950 dark:text-white">{project.name}</div>
+                          <div className="flex flex-wrap items-center gap-2 font-medium text-slate-950 dark:text-white">
+                            {project.name}
+                            {project.is_template && <Badge variant="outline" className="text-[10px]">Template</Badge>}
+                          </div>
                           <div className="text-xs text-slate-500 dark:text-slate-400">{project.project_code}</div>
                         </TableCell>
                         <TableCell>
