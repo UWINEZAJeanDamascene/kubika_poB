@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
-import { projectsApi, type Project, type ProjectBudgetSummary } from "@/lib/api";
+import { projectsApi, type Project, type ProjectBudgetSummary, type ProjectSetupOptions } from "@/lib/api";
 import { Button } from "@/app/components/ui/button";
 import { Badge } from "@/app/components/ui/badge";
 import {
@@ -64,6 +64,7 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [wbsTree, setWbsTree] = useState<WBSTreeNode[]>([]);
   const [budgetSummary, setBudgetSummary] = useState<ProjectBudgetSummary | null>(null);
+  const [setupOptions, setSetupOptions] = useState<ProjectSetupOptions | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -71,6 +72,7 @@ export default function ProjectDetailPage() {
       fetchProject();
       fetchWBSTree();
       fetchBudgetSummary();
+      projectsApi.getSetupOptions().then((response) => setSetupOptions(response.data)).catch((error) => console.error("Failed to load project reference names:", error));
     }
   }, [id]);
 
@@ -106,6 +108,17 @@ export default function ProjectDetailPage() {
       }
     } catch (error) {
       console.error("Failed to fetch budget summary:", error);
+    }
+  };
+
+  const createProjectFromTemplate = async () => {
+    if (!project) return;
+    try {
+      const response = await projectsApi.clone(project._id, {});
+      toast.success(response.message || "Project created from template");
+      navigate(`/projects/${response.data._id}`);
+    } catch (error: any) {
+      toast.error(error?.message || "Could not create a project from this template");
     }
   };
 
@@ -147,6 +160,21 @@ export default function ProjectDetailPage() {
       ? allocatedAmount - spentAmount - encumberedAmount
       : toAmount(project.budget_remaining);
   const progressPercent = toAmount(project.progress_percent);
+  const clientId = typeof project.client_id === "string" ? project.client_id : project.client_id?._id;
+  const clientName = typeof project.client_id === "object" && project.client_id?.name
+    ? project.client_id.name
+    : setupOptions?.clients.find((client) => client._id === clientId)?.name || (clientId ? "Client unavailable" : "—");
+  const managerId = typeof project.manager_id === "string" ? project.manager_id : project.manager_id?._id;
+  const managerName = typeof project.manager_id === "object" && project.manager_id?.firstName
+    ? `${project.manager_id.firstName} ${project.manager_id.lastName}`.trim()
+    : setupOptions?.users.find((user) => user._id === managerId)?.name || (managerId ? "Manager unavailable" : "—");
+  const sponsorName = setupOptions?.users.find((user) => user._id === project.sponsor_id)?.name || (project.sponsor_id ? "Sponsor unavailable" : "—");
+  const teamNames = (project.team_member_ids || [])
+    .map((memberId) => setupOptions?.users.find((user) => user._id === memberId)?.name)
+    .filter((name): name is string => Boolean(name));
+  const teamDisplay = teamNames.length
+    ? teamNames.join(", ")
+    : project.team_member_ids?.length ? `${project.team_member_ids.length} assigned member(s)` : "—";
   const displayedWbsTree: WBSTreeNode[] =
     wbsTree.length > 0
       ? wbsTree
@@ -184,6 +212,7 @@ export default function ProjectDetailPage() {
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     {project.type}
                   </Badge>
+                  {project.is_template && <Badge variant="outline">Template</Badge>}
                   <Badge variant="secondary" className="dark:bg-slate-800 dark:text-slate-300">
                     {project.priority}
                   </Badge>
@@ -192,8 +221,8 @@ export default function ProjectDetailPage() {
                   </span>
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
-                  {["project", "job"].includes(project.type) && <Button variant="outline" onClick={() => navigate(`/projects/new?parent_id=${project._id}&type=phase`)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">Add Phase</Button>}
-                  {["project", "job", "phase"].includes(project.type) && <Button variant="outline" onClick={() => navigate(`/projects/new?parent_id=${project._id}&type=work_package`)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">Add Work Package</Button>}
+                  {!project.is_template && ["project", "job"].includes(project.type) && <Button variant="outline" onClick={() => navigate(`/projects/new?parent_id=${project._id}&type=phase`)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">Add Phase</Button>}
+                  {!project.is_template && ["project", "job", "phase"].includes(project.type) && <Button variant="outline" onClick={() => navigate(`/projects/new?parent_id=${project._id}&type=work_package`)} className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200">Add Work Package</Button>}
                   <Button
                     variant="outline"
                     onClick={() => navigate(`/projects/${project._id}/edit`)}
@@ -399,10 +428,10 @@ export default function ProjectDetailPage() {
                 </div>
                 {project.purpose && <div><span className="text-slate-500 dark:text-slate-400">Purpose</span><p className="mt-1 text-sm leading-relaxed text-slate-700 dark:text-slate-300">{project.purpose}</p></div>}
                 <div className="grid grid-cols-2 gap-4 border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
-                  <div><span className="text-slate-500 dark:text-slate-400">Client reference</span><p className="mt-0.5 break-all font-medium text-slate-950 dark:text-white">{project.client_id ? (typeof project.client_id === "string" ? project.client_id : project.client_id.name) : "—"}</p></div>
-                  <div><span className="text-slate-500 dark:text-slate-400">Project manager</span><p className="mt-0.5 break-all font-medium text-slate-950 dark:text-white">{project.manager_id ? (typeof project.manager_id === "string" ? project.manager_id : `${project.manager_id.firstName} ${project.manager_id.lastName}`) : "—"}</p></div>
-                  <div><span className="text-slate-500 dark:text-slate-400">Sponsor reference</span><p className="mt-0.5 break-all font-medium text-slate-950 dark:text-white">{project.sponsor_id || "—"}</p></div>
-                  <div><span className="text-slate-500 dark:text-slate-400">Assigned team</span><p className="mt-0.5 font-medium text-slate-950 dark:text-white">{project.team_member_ids?.length || 0} member(s)</p></div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Client</span><p className="mt-0.5 font-medium text-slate-950 dark:text-white">{clientName}</p></div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Project manager</span><p className="mt-0.5 font-medium text-slate-950 dark:text-white">{managerName}</p></div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Sponsor</span><p className="mt-0.5 font-medium text-slate-950 dark:text-white">{sponsorName}</p></div>
+                  <div><span className="text-slate-500 dark:text-slate-400">Project team</span><p className="mt-0.5 font-medium text-slate-950 dark:text-white">{teamDisplay}</p></div>
                 </div>
                 {project.description && (
                   <div>
@@ -487,7 +516,18 @@ export default function ProjectDetailPage() {
             </Card>
           </div>
 
-          {/* Tabs for WBS and Budget Lines */}
+          {/* Templates are blueprints. Operational panels belong to a project cloned from the template. */}
+          {project.is_template ? (
+            <Card className="border-indigo-200 bg-indigo-50/70 dark:border-indigo-900 dark:bg-indigo-950/30">
+              <CardContent className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                <div>
+                  <h2 className="font-semibold text-slate-950 dark:text-white">Reusable project template</h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">Create a project from this template to manage tasks, materials, milestones, closure, reports, risks, and team activity.</p>
+                </div>
+                <Button onClick={createProjectFromTemplate}>Create Project from Template</Button>
+              </CardContent>
+            </Card>
+          ) : (
           <Tabs defaultValue="wbs">
             <TabsList className="dark:border-slate-700 dark:bg-slate-900">
               <TabsTrigger value="wbs" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
@@ -604,6 +644,7 @@ export default function ProjectDetailPage() {
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950"><CardContent className="p-5"><ProjectCollaborationPanel project={project} /></CardContent></Card>
             </TabsContent>
           </Tabs>
+          )}
         </div>
       </div>
     </Layout>
