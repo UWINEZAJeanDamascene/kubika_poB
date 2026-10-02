@@ -1,5 +1,5 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { periodApi, AccountingPeriod } from "@/lib/api";
+import { periodApi, journalEntriesApi, AccountingPeriod, JournalEntry } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
 import {
   Loader2,
@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   TrendingUp,
   FileText,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -135,6 +137,44 @@ export default function AccountingPeriodsPage() {
   const [generateYear, setGenerateYear] = useState(new Date().getFullYear());
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [expandedPeriodId, setExpandedPeriodId] = useState<string | null>(null);
+  const [periodEntries, setPeriodEntries] = useState<Record<string, JournalEntry[]>>({});
+  const [entriesLoadingId, setEntriesLoadingId] = useState<string | null>(null);
+
+  const togglePeriodEntries = async (period: AccountingPeriod) => {
+    if (expandedPeriodId === period._id) {
+      setExpandedPeriodId(null);
+      return;
+    }
+    setExpandedPeriodId(period._id);
+    if (periodEntries[period._id]) return;
+
+    setEntriesLoadingId(period._id);
+    try {
+      const response = await journalEntriesApi.getAll({
+        startDate: new Date(period.start_date).toISOString(),
+        endDate: new Date(period.end_date).toISOString(),
+        page: 1,
+        limit: 100,
+      });
+      const entries = [...response.data];
+      for (let page = 2; page <= response.pages; page += 1) {
+        const nextPage = await journalEntriesApi.getAll({
+          startDate: new Date(period.start_date).toISOString(),
+          endDate: new Date(period.end_date).toISOString(),
+          page,
+          limit: 100,
+        });
+        entries.push(...nextPage.data);
+      }
+      setPeriodEntries((current) => ({ ...current, [period._id]: entries }));
+    } catch (error: any) {
+      toast.error(error.message || `Failed to load entries for ${period.name}`);
+      setExpandedPeriodId(null);
+    } finally {
+      setEntriesLoadingId(null);
+    }
+  };
 
   const fetchPeriods = async () => {
     setLoading(true);
@@ -579,6 +619,22 @@ export default function AccountingPeriodsPage() {
                                   </span>
                                 </div>
                               )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => togglePeriodEntries(period)}
+                                disabled={entriesLoadingId === period._id}
+                                className="mt-1 h-7 px-2 text-xs text-blue-600 dark:text-blue-400"
+                              >
+                                {entriesLoadingId === period._id ? (
+                                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                                ) : expandedPeriodId === period._id ? (
+                                  <ChevronUp className="mr-1 h-3.5 w-3.5" />
+                                ) : (
+                                  <ChevronDown className="mr-1 h-3.5 w-3.5" />
+                                )}
+                                {expandedPeriodId === period._id ? "Hide journal entries" : "View journal entries"}
+                              </Button>
                             </div>
                           </div>
 
@@ -649,6 +705,40 @@ export default function AccountingPeriodsPage() {
                             )}
                           </div>
                         </div>
+                        {expandedPeriodId === period._id && (
+                          <div className="mt-3 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800">
+                            {(periodEntries[period._id] || []).length === 0 ? (
+                              <p className="p-4 text-sm text-slate-500 dark:text-slate-400">
+                                No journal entries recorded in this period.
+                              </p>
+                            ) : (
+                              <table className="w-full min-w-[640px] text-left text-sm">
+                                <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+                                  <tr>
+                                    <th className="px-3 py-2">Date</th>
+                                    <th className="px-3 py-2">Entry</th>
+                                    <th className="px-3 py-2">Description</th>
+                                    <th className="px-3 py-2">Status</th>
+                                    <th className="px-3 py-2 text-right">Debit</th>
+                                    <th className="px-3 py-2 text-right">Credit</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                                  {periodEntries[period._id].map((entry) => (
+                                    <tr key={entry._id}>
+                                      <td className="whitespace-nowrap px-3 py-2">{format(new Date(entry.date), "dd MMM yyyy")}</td>
+                                      <td className="whitespace-nowrap px-3 py-2 font-mono">{entry.entryNumber}</td>
+                                      <td className="px-3 py-2">{entry.description}</td>
+                                      <td className="px-3 py-2 capitalize">{entry.status}</td>
+                                      <td className="whitespace-nowrap px-3 py-2 text-right">{formatCurrency(Number(entry.totalDebit) || 0)}</td>
+                                      <td className="whitespace-nowrap px-3 py-2 text-right">{formatCurrency(Number(entry.totalCredit) || 0)}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        )}
                       </div>
                     );
                   })}
