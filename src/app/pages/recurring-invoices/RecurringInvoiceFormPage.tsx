@@ -16,7 +16,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
 import { Skeleton } from '@/app/components/ui/skeleton';
 import {
   Table,
@@ -366,8 +365,8 @@ export default function RecurringInvoiceFormPage() {
         <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1600px] 2xl:max-w-[2200px] space-y-6">
             <Skeleton className="h-40 w-full rounded-xl" />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <Skeleton className="h-96 w-full rounded-xl lg:col-span-2" />
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <Skeleton className="h-96 w-full rounded-xl xl:col-span-2" />
               <Skeleton className="h-96 w-full rounded-xl" />
             </div>
           </div>
@@ -414,9 +413,9 @@ export default function RecurringInvoiceFormPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Form */}
-            <div className="space-y-6 lg:col-span-2">
+            <div className="space-y-6 xl:col-span-2">
               {/* Basic Info */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="border-b border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50">
@@ -585,7 +584,11 @@ export default function RecurringInvoiceFormPage() {
                       <p className="text-sm text-slate-500 dark:text-slate-400">{t('recurringInvoices.noLineItems', 'No line items yet. Click "Add Line" to add products.')}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {lines.map((line) => <article key={line.id} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-start justify-between gap-2"><h3 className="font-medium text-slate-900 dark:text-white">{line.product?.name || t('recurringInvoices.selectProduct', 'Select product')}</h3><Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-600" onClick={() => handleRemoveLine(line.id)}><Trash2 className="h-4 w-4" /></Button></div><Select value={line.product?._id || ''} onValueChange={(value) => handleLineChange(line.id, 'product', value)}><SelectTrigger><SelectValue placeholder={t('recurringInvoices.selectProduct', 'Select Product')} /></SelectTrigger><SelectContent>{products.map((product) => <SelectItem key={product._id} value={product._id}>{product.name} ({product.code})</SelectItem>)}</SelectContent></Select><Select value={line.warehouse?._id || ''} onValueChange={(value) => handleLineChange(line.id, 'warehouse', value)}><SelectTrigger><SelectValue placeholder={t('recurringInvoices.selectWarehouse', 'Select warehouse')} /></SelectTrigger><SelectContent>{warehouses.map((warehouse) => <SelectItem key={warehouse._id} value={warehouse._id}>{warehouse.name}</SelectItem>)}</SelectContent></Select><div className="grid grid-cols-2 gap-3">{([['qty', 'Qty'], ['unitPrice', 'Unit price'], ['taxRate', 'Tax %'], ['discountPct', 'Discount %']] as const).map(([field, label]) => <label key={field} className="space-y-1 text-xs text-slate-500">{label}<Input type="number" min="0" value={line[field]} onChange={(e) => handleLineChange(line.id, field, e.target.value)} /></label>)}</div><p className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</p></article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -694,6 +697,7 @@ export default function RecurringInvoiceFormPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

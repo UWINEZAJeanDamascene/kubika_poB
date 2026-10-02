@@ -562,7 +562,7 @@ export default function DeliveryNotesListPage() {
           {/* Filters */}
           <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <CardContent className="p-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
@@ -652,7 +652,11 @@ export default function DeliveryNotesListPage() {
                   className="m-4"
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-3 p-3 xl:hidden">
+                  {filteredDeliveryNotes.map((dn) => <article key={dn._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-start justify-between gap-2"><div><h3 className="font-semibold">{dn.referenceNo}</h3><p className="text-sm text-slate-500">{dn.client?.name || '—'}</p></div>{getStatusBadge(dn.status)}</div><p className="mt-1 text-xs text-slate-500">{formatDate(dn.deliveryDate)} · {dn.carrier || '—'}</p><p className="mt-2 text-right font-semibold">{formatCurrency(toNumber(dn.grandTotal))}</p><div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3 dark:border-slate-700"><Button variant="outline" size="sm" onClick={() => navigate(`/delivery-notes/${dn._id}`)}><Eye className="mr-1 h-4 w-4" />View</Button>{dn.status === 'draft' && <><Button variant="outline" size="sm" onClick={() => navigate(`/delivery-notes/${dn._id}/edit`)}><Edit className="mr-1 h-4 w-4" />Edit</Button><Button variant="outline" size="sm" onClick={() => handleConfirm(dn._id)}><CheckCircle className="mr-1 h-4 w-4" />Confirm</Button><Button variant="outline" size="sm" onClick={() => handleDelete(dn._id)}><Trash2 className="mr-1 h-4 w-4" />Delete</Button></>}{dn.status === 'confirmed' && <><Button variant="outline" size="sm" onClick={() => handleDispatch(dn._id)}><Truck className="mr-1 h-4 w-4" />Dispatch</Button><Button variant="outline" size="sm" onClick={() => handleCancel(dn._id)}><XCircle className="mr-1 h-4 w-4" />Cancel</Button></>}{dn.status === 'delivered' && <Button variant="outline" size="sm" onClick={() => handleCreateInvoice(dn._id)}><FilePlus className="mr-1 h-4 w-4" />Invoice</Button>}</div></article>)}
+                </div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -773,6 +777,7 @@ export default function DeliveryNotesListPage() {
                     </TableBody>
                   </Table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>

@@ -224,8 +224,8 @@ export default function SalesOrderDetailPage() {
                 </Card>
               ))}
             </div>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="space-y-6 xl:col-span-2">
                 <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardContent className="p-5">
                     <Skeleton className="h-4 w-24" />
@@ -508,8 +508,8 @@ export default function SalesOrderDetailPage() {
           </div>
 
           {/* Main Content */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+            <div className="space-y-6 xl:col-span-2">
               <Tabs defaultValue="lines">
                 <TabsList className="dark:border-slate-700 dark:bg-slate-900">
                   <TabsTrigger value="lines" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
@@ -528,7 +528,10 @@ export default function SalesOrderDetailPage() {
                       <CardTitle className="text-lg text-slate-950 dark:text-white">Order Lines</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="overflow-x-auto">
+                      <div className="space-y-3 xl:hidden">
+                        {order.lines.map((line) => <article key={line._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-950 dark:text-white">{line.description}</h3><p className="text-xs text-slate-500">{line.product?.sku}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Qty</dt><dd>{toNumber(line.qty)}</dd></div><div><dt className="text-slate-500">Reserved</dt><dd>{toNumber(line.qtyReserved)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(toNumber(line.unitPrice), baseCurrency)}</dd></div><div><dt className="text-slate-500">Total</dt><dd className="font-semibold">{formatCurrency(toNumber(line.lineTotal), baseCurrency)}</dd></div></dl></article>)}
+                      </div>
+                      <div className="hidden overflow-x-auto xl:block">
                         <table className="w-full">
                           <thead>
                             <tr className="border-b border-slate-200 dark:border-slate-800">

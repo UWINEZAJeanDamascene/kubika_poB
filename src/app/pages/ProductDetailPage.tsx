@@ -15,10 +15,8 @@ import {
   AlertTriangle,
   History,
   BarChart3,
-  QrCode,
   FileText,
   Clock,
-  ShoppingCart,
   Receipt,
   ShieldCheck
 } from 'lucide-react';
@@ -38,7 +36,6 @@ import {
   Pagination,
   PaginationContent,
   PaginationItem,
-  PaginationLink,
   PaginationNext,
   PaginationPrevious,
 } from '@/app/components/ui/pagination';
@@ -410,15 +407,6 @@ export default function ProductDetailPage() {
     });
   };
 
-  const formatDateShort = (date: string | undefined) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
   const getStockStatus = () => {
     if (!product) return { label: '-', color: '' };
     const stock = Number(product.currentStock) || 0;
@@ -460,7 +448,7 @@ export default function ProductDetailPage() {
           </div>
 
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 sm:grid-cols-5 lg:max-w-4xl">
+            <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 md:grid-cols-3 xl:grid-cols-5 lg:max-w-4xl">
               <TabsTrigger value="details">
                 <Package className="h-4 w-4 mr-2" />
                 {tr('products.details', 'Details')}
@@ -659,7 +647,7 @@ export default function ProductDetailPage() {
 
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 sm:grid-cols-5 lg:max-w-4xl">
+          <TabsList className="grid w-full grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-800 md:grid-cols-3 xl:grid-cols-5 lg:max-w-4xl">
             <TabsTrigger value="details">
               <Package className="h-4 w-4 mr-2" />
               {tr('products.details', 'Details')}
@@ -922,7 +910,7 @@ export default function ProductDetailPage() {
                   />
                 ) : (
                   <>
-                    <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="hidden overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700 xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-100/80 dark:bg-slate-800/80">
@@ -962,6 +950,25 @@ export default function ProductDetailPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
+
+                    <div className="space-y-3 xl:hidden">
+                      {movements.map((movement) => (
+                        <article key={movement._id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0"><p className="text-xs font-semibold text-slate-900 dark:text-white">{getReasonLabel(movement.reason, t)}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formatDate(movement.movementDate)}</p></div>
+                            <Badge variant={movement.type === 'in' ? 'default' : movement.type === 'out' ? 'destructive' : 'outline'} className={movement.type === 'in' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : movement.type === 'out' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : ''}>
+                              {movement.type === 'in' ? <TrendingUp className="mr-1 h-3 w-3" /> : movement.type === 'out' ? <TrendingDown className="mr-1 h-3 w-3" /> : null}{movement.type}
+                            </Badge>
+                          </div>
+                          <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
+                            <div><dt className="text-slate-500 dark:text-slate-400">{t('products.quantity') || 'Quantity'}</dt><dd className="mt-0.5 font-semibold text-slate-900 dark:text-white">{movement.type === 'in' ? '+' : movement.type === 'out' ? '-' : ''}{movement.quantity}</dd></div>
+                            <div><dt className="text-slate-500 dark:text-slate-400">{t('products.reference') || 'Reference'}</dt><dd className="mt-0.5 break-all font-mono text-slate-900 dark:text-white">{movement.referenceNumber || '-'}</dd></div>
+                            <div><dt className="text-slate-500 dark:text-slate-400">{t('products.from') || 'From'}</dt><dd className="mt-0.5 text-slate-900 dark:text-white">{movement.previousStock || '-'}</dd></div>
+                            <div><dt className="text-slate-500 dark:text-slate-400">{t('products.to') || 'To'}</dt><dd className="mt-0.5 text-slate-900 dark:text-white">{movement.newStock || '-'}</dd></div>
+                          </dl>
+                        </article>
+                      ))}
                     </div>
 
                     {resolvedMovementPagination.totalPages > 1 && (

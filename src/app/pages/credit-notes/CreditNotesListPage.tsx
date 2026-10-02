@@ -574,7 +574,7 @@ export default function CreditNotesListPage() {
           ) : (
             <>
               {/* Desktop Table */}
-              <Card className="hidden overflow-hidden border-slate-200 bg-white shadow-sm sm:block dark:border-slate-800 dark:bg-slate-950">
+              <Card className="hidden overflow-hidden border-slate-200 bg-white shadow-sm xl:block dark:border-slate-800 dark:bg-slate-950">
                 <CardContent className="p-0">
                   <Table>
                     <TableHeader>
@@ -644,7 +644,7 @@ export default function CreditNotesListPage() {
               </Card>
 
               {/* Mobile Cards */}
-              <div className="space-y-3 sm:hidden">
+              <div className="space-y-3 xl:hidden">
                 {filteredCreditNotes.map((cn) => (
                   <Card key={cn._id} className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <CardContent className="p-4">

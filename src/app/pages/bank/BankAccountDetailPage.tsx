@@ -986,7 +986,29 @@ export default function BankAccountDetailPage() {
                   </div>
 
                   {/* Transactions table */}
-                  <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                  <div className="space-y-2 md:hidden">
+                    {transactions.map((tx) => {
+                      const inflow = isBankInflow(tx.type);
+                      return (
+                        <div key={tx._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(tx.date)}</p>
+                              <p className="mt-1 truncate text-sm font-medium text-slate-900 dark:text-white">{tx.description || "-"}</p>
+                              <p className="mt-1 truncate font-mono text-xs text-slate-500 dark:text-slate-400">{getTransactionReference(tx)}</p>
+                            </div>
+                            <Badge variant="outline" className={inflow ? "shrink-0 border-emerald-200 text-emerald-700 dark:border-emerald-900 dark:text-emerald-400" : "shrink-0 border-red-200 text-red-700 dark:border-red-900 dark:text-red-400"}>{tx.type}</Badge>
+                          </div>
+                          <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
+                            <span className={`text-sm font-semibold ${inflow ? "text-emerald-600 dark:text-emerald-400" : "text-red-600 dark:text-red-400"}`}>{inflow ? "+" : "-"}{formatCurrency(tx.amount, currencyCode)}</span>
+                            <span className="text-right text-xs text-slate-500 dark:text-slate-400">Balance <span className="font-mono font-medium text-slate-800 dark:text-slate-200">{formatCurrency(tx.runningBalance, currencyCode)}</span></span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {!transactions.length && <p className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-500 dark:border-slate-700">{t("bankAccount.noTransactions", "No transactions found")}</p>}
+                  </div>
+                  <div className="hidden overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 md:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

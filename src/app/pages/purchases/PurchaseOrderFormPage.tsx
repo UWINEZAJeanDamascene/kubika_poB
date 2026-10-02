@@ -621,9 +621,9 @@ export default function PurchaseOrderFormPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Form */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* Order Details */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
@@ -754,7 +754,19 @@ export default function PurchaseOrderFormPage() {
                       <p className="text-sm">{t('purchase.form.noLines', 'No line items. Click "Add Line" to add products.')}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {formData.lines.map((line, index) => (
+                        <article key={index} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                          <div className="flex items-center justify-between gap-3"><span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('purchase.form.product', 'Product')} {index + 1}</span><Button variant="ghost" size="icon" onClick={() => removeLine(index)} title={t('common.remove', 'Remove')} aria-label={`${t('common.remove', 'Remove')} line ${index + 1}`}><Trash2 className="h-4 w-4 text-red-600 dark:text-red-400" /></Button></div>
+                          <div className="mt-2"><Select value={line.product || 'none'} onValueChange={(value) => value !== 'none' && handleProductSelect(index, value)}><SelectTrigger className="w-full border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"><SelectValue placeholder={t('purchase.form.selectProduct', 'Select product...')} /></SelectTrigger><SelectContent className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><SelectItem value="none">{t('purchase.form.selectProduct', 'Select product...')}</SelectItem>{products.map((product) => <SelectItem key={product._id} value={product._id}><span className="flex flex-col"><span className="font-medium">{product.name}</span><span className="text-xs text-muted-foreground">{product.sku}</span></span></SelectItem>)}</SelectContent></Select>{line.productUnit && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Unit: {line.productUnit}</p>}</div>
+                          <div className="mt-3 grid grid-cols-2 gap-3"><div><Label className="text-xs">{t('purchase.form.qty', 'Qty')}</Label><Input type="number" min="1" inputMode="numeric" className="mt-1 w-full border-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:text-white" value={line.qtyOrdered} onChange={(e) => handleLineChange(index, 'qtyOrdered', parseInt(e.target.value) || 0)} /></div><div><Label className="text-xs">{t('purchase.form.unitCost', 'Unit Cost')}</Label><Input type="number" className="mt-1 w-full border-slate-200 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300" value={line.unitCost} readOnly title={t('purchase.form.autoFilled', 'Auto-filled from product')} /></div><div><Label className="text-xs">{t('purchase.form.taxRate', 'Tax %')}</Label><Input type="number" className="mt-1 w-full border-slate-200 bg-slate-50/50 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-300" value={line.taxRate} readOnly title={t('purchase.form.autoFilled', 'Auto-filled from product')} /></div><div><Label className="text-xs">{t('purchase.form.tax', 'Tax')}</Label><p className="mt-2 font-mono text-sm">{formatCurrency(line.taxAmount)}</p></div></div>
+                          <div className="mt-3 grid grid-cols-1 gap-3"><div><Label className="text-xs">{t('purchase.form.budget', 'Budget')}</Label><Select value={line.budgetId || 'none'} onValueChange={(value) => handleLineBudgetChange(index, value === 'none' ? '' : value)}><SelectTrigger className="mt-1 w-full border-slate-200 bg-white text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"><SelectValue placeholder={t('purchase.form.selectBudget', 'Select budget...')} /></SelectTrigger><SelectContent className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><SelectItem value="none">{t('common.none', 'None')}</SelectItem>{budgets.map((budget) => <SelectItem key={budget._id} value={budget._id}>{budget.name} · {budget.fiscalYear}</SelectItem>)}</SelectContent></Select></div><div><Label className="text-xs">{t('purchase.form.account', 'Account')}</Label>{line.budgetId ? <Select value={line.budget_line_id || 'none'} onValueChange={(value) => handleLineBudgetLineChange(index, value === 'none' ? '' : value)}><SelectTrigger className="mt-1 w-full border-slate-200 bg-white text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"><SelectValue placeholder="Select budget line..." /></SelectTrigger><SelectContent className="max-h-[240px] border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><SelectItem value="none">{t('common.none', 'None')}</SelectItem>{(budgetLinesByBudget[line.budgetId] || []).map((budgetLine) => <SelectItem key={budgetLine._id} value={budgetLine._id}>{getBudgetLineLabel(budgetLine)}</SelectItem>)}</SelectContent></Select> : <Select value={line.accountId || 'none'} onValueChange={(value) => handleLineChange(index, 'accountId', value === 'none' ? '' : value)}><SelectTrigger className="mt-1 w-full border-slate-200 bg-white text-xs dark:border-slate-700 dark:bg-slate-900 dark:text-white"><SelectValue placeholder={t('purchase.form.selectAccount', 'Select account...')} /></SelectTrigger><SelectContent className="max-h-[200px] border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><SelectItem value="none">{t('common.none', 'None')}</SelectItem>{expenseAccounts.map((account) => <SelectItem key={account._id} value={account._id}>{account.code} - {account.name}</SelectItem>)}</SelectContent></Select>}</div></div>
+                          <div className="mt-3 flex justify-between border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><span className="text-slate-500 dark:text-slate-400">{t('purchase.form.total', 'Total')}</span><strong className="font-mono">{formatCurrency(line.lineTotal)}</strong></div>
+                        </article>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800 dark:bg-slate-900/50">
@@ -936,6 +948,7 @@ export default function PurchaseOrderFormPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

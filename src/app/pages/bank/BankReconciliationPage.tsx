@@ -391,6 +391,31 @@ function TransactionPanel({
         <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
       <CardContent className="max-h-[560px] overflow-auto p-0">
+        <div className="space-y-2 p-3 lg:hidden">
+          {items.map((item) => {
+            const id = item._id;
+            const amount = side === "statement" ? Number(item.credit || item.debit || 0) : Number(item.amount || 0);
+            const status = side === "statement" ? item.matchStatus : item.reconciliationStatus === "reconciled" ? "matched" : "unmatched";
+            return (
+              <button key={id} type="button" onClick={() => status === "matched" ? undefined : onSelect(id)} disabled={status === "matched"}
+                className={`w-full rounded-xl border p-3 text-left transition ${selected === id ? "border-blue-400 bg-blue-50 dark:bg-blue-950/30" : "border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"} ${status === "matched" ? "opacity-70" : "active:scale-[.99]"}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs text-slate-500">{new Date(item.date).toLocaleDateString()}</p>
+                    <p className="mt-1 truncate text-sm font-medium">{item.description || "—"}</p>
+                    <p className="mt-1 truncate text-xs text-slate-500">{item.reference || item.referenceNumber || item.sourceReference || "No reference"}</p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-semibold">{formatCurrency(amount, currencyCode)}</p>
+                    <Badge variant="outline" className="mt-1">{status}</Badge>
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+          {!items.length && <p className="py-8 text-center text-sm text-slate-500">No transactions found.</p>}
+        </div>
+        <div className="hidden lg:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -430,6 +455,7 @@ function TransactionPanel({
             )}
           </TableBody>
         </Table>
+        </div>
         {pages > 1 && <div className="px-4 pb-3"><PaginationControls page={page} pages={pages} onPageChange={onPageChange} label={`${title} pagination`} /></div>}
       </CardContent>
     </Card>

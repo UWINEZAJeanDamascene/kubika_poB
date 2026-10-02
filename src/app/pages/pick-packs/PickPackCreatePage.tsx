@@ -219,9 +219,9 @@ export default function PickPackCreatePage() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
               {/* Main Form */}
-              <div className="lg:col-span-2 space-y-6">
+              <div className="space-y-6 xl:col-span-2">
                 <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardHeader className="space-y-1 pb-2">
                     <div className="flex items-center gap-2">
@@ -335,7 +335,10 @@ export default function PickPackCreatePage() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                      <div className="overflow-x-auto">
+                      <div className="space-y-3 p-3 xl:hidden">
+                        {selectedSalesOrder.lines?.map((line, index) => <article key={line._id || index} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{line.description || '-'}</h3><p className="text-xs text-slate-500">{line.product?.sku || '-'}</p><dl className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Ordered</dt><dd>{toNumber(line.qty)}</dd></div><div><dt className="text-slate-500">Reserved</dt><dd>{toNumber(line.qtyReserved)}</dd></div><div><dt className="text-slate-500">To pick</dt><dd className="font-semibold text-blue-600">{toNumber(line.qtyReserved)}</dd></div></dl></article>)}
+                      </div>
+                      <div className="hidden overflow-x-auto xl:block">
                         {selectedSalesOrder.lines && selectedSalesOrder.lines.length > 0 ? (
                           <Table>
                             <TableHeader>

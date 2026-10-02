@@ -66,7 +66,6 @@ export default function TransferCreatePage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
   
   // Form data
   const [fromWarehouse, setFromWarehouse] = useState('');
@@ -361,7 +360,22 @@ export default function TransferCreatePage() {
             </div>
 
             {/* Items Table */}
-            <TableContainer sx={{ border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, borderRadius: 1 }}>
+            <div className="space-y-3 xl:hidden">
+              {items.length === 0 ? (
+                <div className="rounded-lg border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">{t('transfers.noItems', 'No items added')}</div>
+              ) : items.map((item, index) => (
+                <Paper key={index} sx={{ p: 1.5, border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, backgroundColor: dark ? '#111827' : '#fff' }}>
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><Typography variant="body2" fontWeight={600}>{item.productName}</Typography><Typography variant="caption" color="text.secondary">{item.productSku}</Typography></div><IconButton size="small" onClick={() => handleRemoveItem(index)} aria-label={`${t('common.remove', 'Remove')} ${item.productName}`}><TrashIcon size={16} /></IconButton></div>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <TextField type="number" size="small" label={t('transfers.quantity', 'Qty')} value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value) || 0)} inputProps={{ min: 1 }} sx={{ width: '100%', ...fieldSx }} />
+                    <TextField type="number" size="small" label={t('transfers.unitCost', 'Unit Cost')} value={item.unitCost} onChange={(e) => handleItemChange(index, 'unitCost', parseFloat(e.target.value) || 0)} inputProps={{ min: 0, step: 0.01 }} sx={{ width: '100%', ...fieldSx }} />
+                  </div>
+                  <div className="mt-3 flex justify-between border-t border-slate-200 pt-2 text-xs dark:border-slate-700"><span className="text-slate-500 dark:text-slate-400">{t('transfers.total', 'Total')}</span><strong>${(item.quantity * item.unitCost).toFixed(2)}</strong></div>
+                </Paper>
+              ))}
+              {items.length > 0 && <div className="flex justify-between rounded-lg bg-slate-100 px-3 py-3 text-sm dark:bg-slate-800"><span>{t('transfers.total', 'Total')}</span><strong>${totalValue.toFixed(2)}</strong></div>}
+            </div>
+            <TableContainer className="hidden xl:block" sx={{ border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, borderRadius: 1 }}>
               <Table size="small">
                 <TableHead>
                   <TableRow sx={{ backgroundColor: dark ? '#0f172a' : '#f8fafc' }}>
@@ -437,15 +451,19 @@ export default function TransferCreatePage() {
         </div>
 
         {/* Submit Button */}
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="mt-6 flex flex-col-reverse justify-end gap-2 sm:flex-row">
           <Button
             variant="outlined"
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
             onClick={() => navigate('/stock-transfers')}
           >
             {t('common.cancel', 'Cancel')}
           </Button>
           <Button
             variant="contained"
+            fullWidth
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
             startIcon={<SaveIcon />}
             onClick={handleSubmit}
             disabled={loading || !fromWarehouse || !toWarehouse || items.length === 0}

@@ -697,7 +697,16 @@ export default function PurchaseFormPage() {
                       <p className="text-sm text-slate-500 dark:text-slate-400">{t('purchase.form.noLines', 'No line items. Click "Add Line" to add products.')}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 xl:hidden">
+                      {formData.items.map((line, index) => <article key={index} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900">
+                        <div className="flex items-center justify-between gap-2"><h3 className="text-sm font-semibold text-slate-900 dark:text-white">{products.find((product) => product._id === line.product)?.name || t('purchase.form.selectProduct', 'Select product')}</h3><Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => removeLine(index)}><Trash2 className="h-4 w-4 text-red-500" /></Button></div>
+                        <Select value={line.product} onValueChange={(value) => handleProductSelect(index, value)}><SelectTrigger className="h-9 text-sm"><SelectValue placeholder={t('purchase.form.selectProduct', 'Select product...')} /></SelectTrigger><SelectContent>{products.map((product) => <SelectItem key={product._id} value={product._id}>{product.name} ({product.sku})</SelectItem>)}</SelectContent></Select>
+                        <div className="grid grid-cols-2 gap-3"><label className="space-y-1 text-xs text-slate-500">{t('purchase.form.qty', 'Quantity')}<Input type="number" min="0.0001" step="any" value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', parseFloat(e.target.value) || 0)} /></label><label className="space-y-1 text-xs text-slate-500">{t('purchase.form.unitCost', 'Unit cost')} ({formData.currency})<Input type="number" min="0" step="0.01" value={line.unitCost} onChange={(e) => handleLineChange(index, 'unitCost', parseFloat(e.target.value) || 0)} /></label><label className="space-y-1 text-xs text-slate-500">{t('purchase.form.discount', 'Discount')}<Input type="number" min="0" step="0.01" value={line.discount} onChange={(e) => handleLineChange(index, 'discount', parseFloat(e.target.value) || 0)} /></label><label className="space-y-1 text-xs text-slate-500">{t('purchase.form.taxRate', 'Tax %')}<Input type="number" min="0" max="100" value={line.taxRate} onChange={(e) => handleLineChange(index, 'taxRate', parseFloat(e.target.value) || 0)} /></label></div>
+                        <div className="flex justify-between border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><span className="text-slate-500">{t('purchase.form.tax', 'Tax')}: {formatCurrency(line.taxAmount)}</span><strong className="text-slate-900 dark:text-white">{formatCurrency(line.totalWithTax)}</strong></div>
+                      </article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">
@@ -753,6 +762,7 @@ export default function PurchaseFormPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

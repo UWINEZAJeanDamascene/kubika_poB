@@ -340,7 +340,7 @@ export default function ClientsListPage() {
           </Card>
 
           {/* Desktop Table */}
-          <div className="hidden md:block">
+          <div className="hidden xl:block">
             <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               {loading ? (
                 <CardContent className="space-y-3 p-6">
@@ -453,7 +453,7 @@ export default function ClientsListPage() {
           </div>
 
           {/* Mobile Cards */}
-          <div className="space-y-3 md:hidden">
+          <div className="space-y-3 xl:hidden">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <Card key={i} className="border-slate-200 dark:border-slate-800 dark:bg-slate-950">

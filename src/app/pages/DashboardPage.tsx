@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { Layout } from "../layout/Layout";
 import {
   dashboardApi,
-  type ExecutiveDashboardData,
   type FinanceDashboardData,
   type InventoryDashboardData,
   type PurchaseDashboardData,
@@ -282,7 +281,19 @@ export default function DashboardPage() {
 
           <IndustrialSection eyebrow="Needs attention" title="Operating priorities" subtitle="Items that may need follow-up, with a suggested next step." action={<span className="industrial-mono text-[10px] text-(--dashboard-muted)">{formatCount(priorityRows.length)} items</span>}>
             {loading ? <IndustrialState status="loading" /> : priorityRows.length === 0 ? <IndustrialState status="empty" message="No operational exceptions for the selected period." /> : (
-              <IndustrialTableFrame>
+              <IndustrialTableFrame mobile={<div className="space-y-2">{priorityRows.map((row) => (
+                <article key={`${row.issue}-${row.reference}`} className="industrial-mobile-record">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0"><p className="text-xs font-semibold text-(--dashboard-ink)">{row.issue}</p><p className="industrial-mono mt-1 break-words text-[10px] text-(--dashboard-muted)">{row.reference}</p></div>
+                    <IndustrialStatusLabel label={row.status} tone={row.tone} />
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-[10px]">
+                    <div><span className="text-(--dashboard-muted)">Exposure</span><p className="industrial-mono mt-0.5 font-semibold">{row.exposure}</p></div>
+                    <div><span className="text-(--dashboard-muted)">Age · Owner</span><p className="mt-0.5">{row.age} · {row.owner}</p></div>
+                  </div>
+                  <div className="mt-3 flex justify-end"><Button type="button" variant={row.tone === "critical" ? "default" : "outline"} size="sm" className="industrial-button" onClick={() => navigate(row.route)}>{row.action}<ArrowRight className="h-3 w-3" /></Button></div>
+                </article>
+              ))}</div>}>
                 <Table>
                   <TableHeader><TableRow><TableHead className="w-5" /><TableHead>Entity / issue</TableHead><TableHead>Exposure</TableHead><TableHead>Age</TableHead><TableHead>Owner</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Next action</TableHead></TableRow></TableHeader>
                   <TableBody>
@@ -302,7 +313,12 @@ export default function DashboardPage() {
 
           <IndustrialSection eyebrow="Accounting" title="Recent journal entries" subtitle="Latest posted entries." action={<span className="industrial-mono text-[10px] text-(--dashboard-muted)">{formatCount(entries.length)} entries</span>}>
             {loading ? <IndustrialState status="loading" /> : entries.length === 0 ? <IndustrialState status="empty" message="No journal entries for the selected period." /> : (
-              <IndustrialTableFrame>
+              <IndustrialTableFrame mobile={<div className="space-y-2">{entries.slice(0, 8).map((entry) => (
+                <article key={entry._id} className="industrial-mobile-record">
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs font-semibold text-(--dashboard-ink)">{formatJournalDescription(entry.description) || entry.entryNumber || "Journal entry"}</p><p className="mt-1 text-[10px] text-(--dashboard-muted)">{formatDashboardDate(entry.date)} · {formatJournalSourceType(entry.sourceType)}</p></div><IndustrialStatusLabel label="Posted" tone="healthy" /></div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 border-t border-(--dashboard-rule) pt-2 text-[10px]"><div><span className="text-(--dashboard-muted)">Debit</span><p className="industrial-mono mt-0.5 font-semibold">{formatRwf(entry.totalDebit ?? 0)}</p></div><div><span className="text-(--dashboard-muted)">Credit</span><p className="industrial-mono mt-0.5 font-semibold">{formatRwf(entry.totalCredit ?? 0)}</p></div></div>
+                </article>
+              ))}</div>}>
                 <Table>
                   <TableHeader><TableRow><TableHead>Timestamp</TableHead><TableHead>Source</TableHead><TableHead>Description</TableHead><TableHead className="text-right">Debit</TableHead><TableHead className="text-right">Credit</TableHead><TableHead className="text-right">Status</TableHead></TableRow></TableHeader>
                   <TableBody>{entries.slice(0, 8).map((entry) => <TableRow key={entry._id}><TableCell className="industrial-mono text-(--dashboard-muted)">{formatDashboardDate(entry.date)}</TableCell><TableCell>{formatJournalSourceType(entry.sourceType)}</TableCell><TableCell className="font-semibold">{formatJournalDescription(entry.description) || entry.entryNumber || "Journal entry"}</TableCell><TableCell className="industrial-mono text-right">{formatRwf(entry.totalDebit ?? 0)}</TableCell><TableCell className="industrial-mono text-right">{formatRwf(entry.totalCredit ?? 0)}</TableCell><TableCell className="text-right"><IndustrialStatusLabel label="Posted" tone="healthy" /></TableCell></TableRow>)}</TableBody>

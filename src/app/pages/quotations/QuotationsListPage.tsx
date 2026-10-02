@@ -434,7 +434,7 @@ export default function QuotationsListPage() {
           {/* Filters */}
           <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <CardContent className="p-5">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('quotation.statusLabel', 'Status')}</label>
                   <Select value={statusFilter || 'all'} onValueChange={(value) => { setStatusFilter(value === 'all' ? '' : value); setPage(1); }}>
@@ -511,7 +511,11 @@ export default function QuotationsListPage() {
           {/* Table */}
           <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="space-y-3 p-3 xl:hidden">
+                {loading ? [...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />) : quotations.map((quotation) => <article key={quotation._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="truncate font-semibold text-slate-950 dark:text-white">{quotation.referenceNo || t('common.notAvailable', 'N/A')}</h2><p className="mt-0.5 truncate text-sm text-slate-500">{quotation.client?.name || '-'}</p></div><Badge variant="outline" className={`${STATUS_COLORS[quotation.status]} capitalize text-xs`}>{quotation.status}</Badge></div><div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><span className="text-slate-500">{t('quotation.date', 'Date')}</span><p>{formatDate(quotation.quotationDate)}</p></div><div><span className="text-slate-500">{t('quotation.expiryDate', 'Expiry')}</span><p>{formatDate(quotation.expiryDate)}</p></div></div><p className="mt-2 text-right font-semibold">{formatCurrency(quotation.totalAmount, quotation.currency)}</p><div className="mt-3 flex flex-wrap gap-2"><Button variant="outline" size="sm" onClick={() => navigate(`/quotations/${quotation._id}?view=true`)}><Eye className="mr-1 h-4 w-4" />{t('common.view', 'View')}</Button>{quotation.status === 'draft' && <><Button variant="outline" size="sm" onClick={() => navigate(`/quotations/${quotation._id}/edit`)}><Pencil className="mr-1 h-4 w-4" />{t('common.edit', 'Edit')}</Button><Button variant="outline" size="sm" onClick={() => handleActionWithEmail('send', quotation._id)}><Send className="mr-1 h-4 w-4" />{t('quotation.send', 'Send')}</Button></>}{quotation.status === 'sent' && <><Button variant="outline" size="sm" onClick={() => handleActionWithEmail('accept', quotation._id)}><CheckCircle className="mr-1 h-4 w-4" />{t('quotation.accept', 'Accept')}</Button><Button variant="outline" size="sm" onClick={() => handleActionWithEmail('reject', quotation._id)}><XCircle className="mr-1 h-4 w-4" />{t('quotation.reject', 'Reject')}</Button></>}{(quotation.status === 'accepted' || quotation.status === 'sent') && !quotation.convertedToInvoice && <Button variant="outline" size="sm" onClick={() => handleConvert(quotation._id)}><ArrowRight className="mr-1 h-4 w-4" />{t('quotation.convertToInvoice', 'Convert')}</Button>}{quotation.convertedToInvoice && <Button variant="link" size="sm" onClick={() => navigate(`/invoices/${quotation.convertedToInvoice}`)}>{t('quotation.viewInvoice', 'View Invoice')}</Button>}</div></article>)}
+                {!loading && quotations.length === 0 && <EmptyState compact icon={Receipt} title={t('quotation.noQuotations', 'No quotations yet')} description={t('quotation.noQuotationsHint', 'Create your first quotation to send to a client and convert it into an invoice when accepted.')} />}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

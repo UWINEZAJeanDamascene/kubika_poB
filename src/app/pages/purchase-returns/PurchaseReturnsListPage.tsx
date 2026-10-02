@@ -261,7 +261,7 @@ export default function PurchaseReturnsListPage() {
             </CardHeader>
             {showFilters && (
               <CardContent>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("purchaseReturn.status", "Status")}</label>
                     <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
@@ -310,8 +310,20 @@ export default function PurchaseReturnsListPage() {
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
                 </div>
+              ) : returnList.length === 0 ? (
+                <div className="p-4"><EmptyState compact icon={ArrowLeftRight} title={t('purchaseReturn.noReturns', 'No purchase returns yet')} description={t('purchaseReturn.noReturnsHint', 'Purchase returns will appear here once goods are returned to suppliers.')} /></div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-3 p-3 xl:hidden">
+                  {returnList.map((pr) => (
+                    <article key={pr._id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="break-all text-sm font-semibold text-slate-900 dark:text-white">{pr.referenceNo || 'N/A'}</h2><p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{pr.supplier?.name || '-'}</p></div><StatusBadge status={pr.status} /></div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">{t('purchaseReturn.grnReference', 'GRN')}</dt><dd className="mt-0.5 break-all">{pr.grn?.referenceNo || '-'}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('purchaseReturn.returnDate', 'Return Date')}</dt><dd className="mt-0.5">{formatDate(pr.returnDate)}</dd></div><div className="col-span-2"><dt className="text-slate-500 dark:text-slate-400">{t('purchaseReturn.totalAmount', 'Total')}</dt><dd className="mt-0.5 font-semibold text-slate-900 dark:text-white">{formatCurrency(numericAmount(pr.totalAmount))}</dd></div></dl>
+                      <div className="mt-3 flex justify-end border-t border-slate-200 pt-2 dark:border-slate-700"><Button variant="ghost" size="icon" onClick={() => navigate(`/purchase-returns/${pr._id}`)} title={t('common.view', 'View')} aria-label={`${t('common.view', 'View')} ${pr.referenceNo}`}><Eye className="h-4 w-4 text-slate-500" /></Button></div>
+                    </article>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">
@@ -361,6 +373,7 @@ export default function PurchaseReturnsListPage() {
                     </TableBody>
                   </Table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>

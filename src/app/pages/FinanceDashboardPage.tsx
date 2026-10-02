@@ -5,12 +5,12 @@ import { Layout } from "../layout/Layout";
 import { dashboardApi, taxDashboardApi } from "@/lib/api";
 import { useLiveRefresh } from "@/lib/hooks/useLiveRefresh";
 import { useCurrency } from "@/contexts/CurrencyContext";
-import { formatDashboardError, formatDashboardDateTime } from "@/app/components/dashboard/dashboardPageUtils";
+import { formatDashboardError } from "@/app/components/dashboard/dashboardPageUtils";
 import { Button } from "@/app/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/app/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
-import { ArrowRight, Landmark, Receipt } from "lucide-react";
+import { Landmark } from "lucide-react";
 import { IndustrialDashboardHeader, IndustrialKpiStrip, IndustrialSection, IndustrialSourceNote, IndustrialState, IndustrialStatusLabel, IndustrialTableFrame, IndustrialProgress, formatCompactRwf, formatCount, formatPercent, formatRwf, type DashboardTone } from "@/app/components/dashboard/IndustrialDashboard";
 
 const chartConfig = { inflows: { label: "Inflows", color: "var(--dashboard-green)" }, outflows: { label: "Outflows", color: "var(--dashboard-red)" }, value: { label: "Amount", color: "var(--dashboard-blue)" }, budgeted: { label: "Budgeted", color: "var(--dashboard-blue)" }, actual: { label: "Actual", color: "var(--dashboard-amber)" } } satisfies ChartConfig;
@@ -24,7 +24,7 @@ export default function FinanceDashboardPage() {
   const data = dashboardData?.finance;
   const taxData = dashboardData?.tax;
   const error = queryError ? formatDashboardError(queryError.message || "Failed to load finance dashboard") : null;
-  useLiveRefresh(fetchDashboard);
+  useLiveRefresh(() => { void fetchDashboard(); });
 
   const summary = data?.summary;
   const banks = data?.bank_balances;
@@ -53,7 +53,6 @@ export default function FinanceDashboardPage() {
     : 0;
   const health: DashboardTone = netFlow < 0 || apCoverage < 100 || budget?.over_budget ? "critical" : "healthy";
   const bankData = useMemo(() => banks?.accounts.filter((account) => account.current_balance > 0).map((account) => ({ name: account.bank_name, value: account.current_balance })) ?? [], [banks?.accounts]);
-  const sourceData = useMemo(() => cashFlow?.by_source.slice(0, 7).map((source) => ({ name: source.source_type.replace(/_/g, " "), value: Math.max(source.cash_debit, source.cash_credit) })) ?? [], [cashFlow?.by_source]);
   const kpis = [
     { label: "Bank balances", value: formatCurrency(bankBalance, displayCurrency), meta: `${formatCount(banks?.accounts.length)} accounts · ${displayCurrency}`, tone: "healthy" as const },
     { label: "Upcoming payables", value: formatCompactRwf(upcomingAp), meta: `${formatCount(payments?.count)} payments due`, tone: apCoverage < 100 ? "warning" as const : "neutral" as const },

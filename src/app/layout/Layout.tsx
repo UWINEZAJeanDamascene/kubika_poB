@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Sheet, SheetContent } from '@/app/components/ui/sheet';
 import { useIsMobile } from '@/app/components/ui/use-mobile';
-import { Menu, Sun, Moon, Home, Sparkles, Search, LayoutDashboard } from 'lucide-react';
+import { Menu, Sun, Moon, Home, Sparkles, Search, LayoutDashboard, Boxes, TrendingUp, PieChart, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Link, useNavigate, useLocation } from 'react-router';
@@ -135,7 +135,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div
-      className="relative flex h-screen overflow-hidden"
+      className="app-shell relative flex h-dvh min-h-0 overflow-hidden"
       style={{ paddingRight: isLg && effectiveChatOpen ? chatWidth : undefined }}
     >
       {/* Full-app background */}
@@ -146,9 +146,9 @@ export function Layout({ children }: LayoutProps) {
       </div>
 
       {/* Mobile Sidebar - sheet/drawer (render only on mobile to avoid duplicate sidebars) */}
-      {isMobile && (
+      {!isLg && (
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent side="left" className="p-0 w-72 bg-slate-900 border-r border-slate-800">
+          <SheetContent side="left" className="app-navigation-drawer h-dvh max-h-dvh w-[min(20rem,88vw)] p-0 bg-slate-900 border-r border-slate-800">
             <Sidebar onNavigate={() => setSidebarOpen(false)} />
           </SheetContent>
         </Sheet>
@@ -157,7 +157,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Mobile Header - show on screens smaller than lg */}
-        <div className="lg:hidden sticky top-0 z-50 flex items-center gap-2 border-b border-border bg-card/95 px-3 py-2 shadow-sm backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-3">
+        <div className="app-mobile-header lg:hidden sticky top-0 z-50 flex items-center gap-2 border-b border-border bg-card/95 px-3 py-2 shadow-sm backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-3">
           <Button
             variant="ghost"
             size="icon"
@@ -267,7 +267,7 @@ export function Layout({ children }: LayoutProps) {
         )}
 
         {/* Mobile breadcrumbs */}
-        <div className="flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-2 lg:hidden">
+        <div className="app-mobile-breadcrumbs flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-2 lg:hidden">
           <div className="min-w-0"><Breadcrumbs /></div>
           {renderHeaderNavigation(true)}
         </div>
@@ -283,10 +283,34 @@ export function Layout({ children }: LayoutProps) {
             immediately when the sidebar currency selector changes. */}
         <div
           key={`${displayCurrency}:${rates ? 'r' : 'n'}`}
-          className="flex-1 overflow-auto px-3 py-3 pb-24 sm:px-4 md:px-5 md:py-5 md:pb-8 xl:px-6"
+          className="app-page-scroll flex-1 min-h-0 overflow-auto overscroll-y-contain px-3 py-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-4 md:px-5 md:py-5 md:pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 xl:px-6"
         >
           {children}
         </div>
+
+        {/* App-style navigation stays within thumb reach on phones and tablets. */}
+        <nav className="app-bottom-navigation lg:hidden" aria-label="Main navigation">
+          <Link to="/dashboard" aria-current={location.pathname === '/dashboard' ? 'page' : undefined} className={`app-bottom-navigation__item ${location.pathname === '/dashboard' ? 'is-active' : ''}`}>
+            <LayoutDashboard aria-hidden="true" />
+            <span>{t('nav.dashboardShort', { defaultValue: 'Home' })}</span>
+          </Link>
+          <Link to="/dashboard/inventory" aria-current={location.pathname.startsWith('/dashboard/inventory') ? 'page' : undefined} className={`app-bottom-navigation__item ${location.pathname.startsWith('/dashboard/inventory') ? 'is-active' : ''}`}>
+            <Boxes aria-hidden="true" />
+            <span>{t('nav.inventoryShort', { defaultValue: 'Stock' })}</span>
+          </Link>
+          <Link to="/dashboard/sales" aria-current={location.pathname.startsWith('/dashboard/sales') ? 'page' : undefined} className={`app-bottom-navigation__item ${location.pathname.startsWith('/dashboard/sales') ? 'is-active' : ''}`}>
+            <TrendingUp aria-hidden="true" />
+            <span>{t('nav.salesShort', { defaultValue: 'Sales' })}</span>
+          </Link>
+          <Link to="/dashboard/finance" aria-current={location.pathname.startsWith('/dashboard/finance') ? 'page' : undefined} className={`app-bottom-navigation__item ${location.pathname.startsWith('/dashboard/finance') ? 'is-active' : ''}`}>
+            <PieChart aria-hidden="true" />
+            <span>{t('nav.financeShort', { defaultValue: 'Finance' })}</span>
+          </Link>
+          <button type="button" className="app-bottom-navigation__item" onClick={() => setSidebarOpen(true)} aria-label={t('common.openMenu', { defaultValue: 'Open menu' })}>
+            <MoreHorizontal aria-hidden="true" />
+            <span>{t('common.more', { defaultValue: 'More' })}</span>
+          </button>
+        </nav>
       </main>
 
       {/* Global command palette */}

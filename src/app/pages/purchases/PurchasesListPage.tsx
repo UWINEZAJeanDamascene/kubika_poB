@@ -273,7 +273,7 @@ export default function PurchasesListPage() {
           </div>
 
           {/* Stat Tiles */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="flex items-center gap-3 p-4">
                 <div className="rounded-lg bg-slate-50 p-2.5 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800">
@@ -329,7 +329,7 @@ export default function PurchasesListPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-400">{t('purchases.status', 'Status')}</label>
                   <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
@@ -379,8 +379,20 @@ export default function PurchasesListPage() {
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
               </div>
+            ) : purchaseList.length === 0 ? (
+              <div className="p-4"><EmptyState compact icon={ShoppingCart} title={t('purchases.noPurchases', 'No purchases yet')} description={t('purchases.noPurchasesHint', 'Purchase transactions will appear here once goods are received from suppliers.')} /></div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 xl:hidden">
+                {purchaseList.map((p) => (
+                  <article key={p._id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="break-all text-sm font-semibold text-slate-900 dark:text-white">{p.purchaseNumber || 'N/A'}</h2><p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{p.supplier?.name || '-'}</p></div><StatusBadge status={p.status} /></div>
+                    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">{t('purchases.purchaseDate', 'Date')}</dt><dd className="mt-0.5">{formatDate(p.purchaseDate)}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('purchases.items', 'Items')}</dt><dd className="mt-0.5">{p.lineCount ?? p.items?.length ?? 0}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('purchases.totalAmount', 'Total')}</dt><dd className="mt-0.5 font-semibold text-slate-900 dark:text-white">{formatPurchaseCurrency(getPurchaseTotal(p), p.currency)}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('purchases.balance', 'Balance')}</dt><dd className="mt-0.5 font-semibold">{formatPurchaseCurrency(Math.max(0, getPurchaseTotal(p) - getPaymentTotal(p)), p.currency)}</dd></div></dl>
+                    <div className="mt-3 flex justify-end gap-1 border-t border-slate-200 pt-2 dark:border-slate-700"><Button variant="ghost" size="icon" onClick={() => navigate(`/purchases/${p._id}`)} title={t('common.view', 'View')} aria-label={`${t('common.view', 'View')} ${p.purchaseNumber}`}><Eye className="h-4 w-4" /></Button>{(p.status === 'draft' || p.status === 'ordered') && <Button variant="ghost" size="icon" onClick={() => handleReceive(p._id)} title={t('purchases.receive', 'Receive')} aria-label={`${t('purchases.receive', 'Receive')} ${p.purchaseNumber}`}><Truck className="h-4 w-4 text-emerald-600" /></Button>}{p.status !== 'cancelled' && p.status !== 'received' && p.status !== 'paid' && <Button variant="ghost" size="icon" onClick={() => handleCancel(p._id)} title={t('common.cancel', 'Cancel')} aria-label={`${t('common.cancel', 'Cancel')} ${p.purchaseNumber}`}><XCircle className="h-4 w-4 text-red-500" /></Button>}</div>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">
@@ -448,6 +460,7 @@ export default function PurchasesListPage() {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
           </Card>
 

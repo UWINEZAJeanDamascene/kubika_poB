@@ -388,7 +388,7 @@ export default function PickPacksListPage() {
           {/* Content */}
           <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             {/* Desktop Table */}
-            <div className="hidden md:block">
+            <div className="hidden xl:block">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -565,7 +565,7 @@ export default function PickPacksListPage() {
             </div>
 
             {/* Mobile Cards */}
-            <div className="md:hidden">
+            <div className="xl:hidden">
               {loading ? (
                 <div className="space-y-3 p-3">
                   {Array.from({ length: 3 }).map((_, i) => (

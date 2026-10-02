@@ -9,7 +9,7 @@ import { Button } from "@/app/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/app/components/ui/table";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/app/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
-import { ArrowRight, Package, RefreshCw } from "lucide-react";
+import { ArrowRight, Package } from "lucide-react";
 import {
   IndustrialDashboardHeader,
   IndustrialKpiStrip,
@@ -23,7 +23,6 @@ import {
   formatCount,
   formatPercent,
   formatRwf,
-  type DashboardTone,
 } from "@/app/components/dashboard/IndustrialDashboard";
 
 const movementConfig = { total_qty: { label: "Units moved", color: "var(--dashboard-blue-2)" } } satisfies ChartConfig;
@@ -38,7 +37,7 @@ export default function InventoryDashboardPage() {
     staleTime: 60_000,
   });
   const error = queryError ? formatDashboardError(queryError.message || "Failed to load inventory dashboard") : null;
-  useLiveRefresh(fetchDashboard);
+  useLiveRefresh(() => { void fetchDashboard(); });
 
   const summary = data?.summary;
   const lowStock = data?.low_stock_alerts.items ?? [];

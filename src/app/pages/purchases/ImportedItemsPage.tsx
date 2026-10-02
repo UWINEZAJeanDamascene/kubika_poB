@@ -301,7 +301,18 @@ export function ImportedItemsContent({ branchId }: { branchId?: string } = {}) {
                 imports
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 xl:hidden">
+                {items.map((item) => <article key={item._id} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-3"><div><p className="font-medium">{item.itemName}</p><p className="text-xs text-slate-500">{item.importDeclarationNo || item.importTaskCode} · {item.importDate ? new Date(item.importDate).toLocaleDateString() : "-"}</p></div><Badge variant="outline" className={statusClass[item.confirmationStatus]}>{item.confirmationStatus}</Badge></div>
+                  <p className="text-xs text-slate-500">{item.quantity} {item.unitCode || ""} · {item.originCountryCode || "-"} · {item.itemClassCode || "-"}</p>
+                  {item.grn && <Link to={`/grn/${item.grn._id}`} className="text-xs text-blue-600 hover:underline">GRN {item.grn.referenceNo}</Link>}
+                  {item.stockUpdateError && <p className="text-xs text-red-600">{item.stockUpdateError}</p>}
+                  {item.confirmationStatus === "pending" && <><div className="grid gap-2"><Select value={selected[item._id]?.productId || ""} onValueChange={(value) => updateSelected(item._id, { productId: value })}><SelectTrigger><SelectValue placeholder="Product" /></SelectTrigger><SelectContent>{products.map((product) => <SelectItem key={product._id} value={product._id}>{product.name} {product.sku ? `(${product.sku})` : ""}</SelectItem>)}</SelectContent></Select><Select value={selected[item._id]?.warehouseId || ""} onValueChange={(value) => updateSelected(item._id, { warehouseId: value })}><SelectTrigger><SelectValue placeholder="Warehouse" /></SelectTrigger><SelectContent>{warehouses.map((warehouse) => <SelectItem key={warehouse._id} value={warehouse._id}>{warehouse.name}</SelectItem>)}</SelectContent></Select><Select value={selected[item._id]?.supplierId || ""} onValueChange={(value) => updateSelected(item._id, { supplierId: value })}><SelectTrigger><SelectValue placeholder="Supplier optional" /></SelectTrigger><SelectContent>{suppliers.map((supplier) => <SelectItem key={supplier._id} value={supplier._id}>{supplier.name}</SelectItem>)}</SelectContent></Select><Input placeholder="Rejection reason" value={selected[item._id]?.reason || ""} onChange={(event) => updateSelected(item._id, { reason: event.target.value })} /></div><div className="flex gap-2"><Button className="flex-1" size="sm" onClick={() => confirmImport(item)} disabled={busyId === item._id}>{busyId === item._id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Confirm</Button><Button className="flex-1" size="sm" variant="outline" onClick={() => rejectImport(item)} disabled={busyId === item._id}>Reject</Button></div></>}
+                </article>)}
+                {items.length === 0 && <EmptyState compact icon={DownloadCloud} title="No imported items yet" description="EBM-imported stock items will appear here once goods are received via the EBM system." />}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -480,6 +491,7 @@ export function ImportedItemsContent({ branchId }: { branchId?: string } = {}) {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>

@@ -31,7 +31,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import {
   Table,
@@ -493,11 +492,6 @@ export default function InvoiceDetailPage() {
     return Number.isFinite(n) ? n : 0;
   };
 
-  const journalEntryLabel = (entry: Invoice['revenueJournalEntry']) => {
-    if (!entry) return '-';
-    return typeof entry === 'string' ? entry : entry.entryNumber || entry._id || '-';
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -874,7 +868,10 @@ export default function InvoiceDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {invoice.lines?.map((line) => <article key={line._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{line.product?.name || '-'}</h3><p className="text-xs text-slate-500">{line.product?.sku}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Qty</dt><dd>{line.qty || line.quantity || 0}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice || 0)}</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{formatCurrency(line.lineTax || line.taxAmount || 0)}</dd></div><div><dt className="text-slate-500">Total</dt><dd className="font-semibold">{formatCurrency(line.lineTotal || 0)}</dd></div></dl></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -956,7 +953,11 @@ export default function InvoiceDetailPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {invoice.payments && invoice.payments.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {invoice.payments.map((payment, idx) => <article key={payment._id || `pay-card-${idx}`} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><span className="text-sm text-slate-500">{formatDate(payment.paidDate || payment.recordedAt || '')}</span><span className="text-xs capitalize text-slate-600 dark:text-slate-300">{payment.paymentMethod?.replace('_', ' ') || '-'}</span></div><p className="mt-2 text-lg font-semibold">{formatCurrency(money(payment.amount))}</p><p className="mt-1 text-xs text-slate-500">{payment.reference || '-'} · {typeof payment.recordedBy === 'object' && payment.recordedBy ? payment.recordedBy.name : '-'}</p></article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table className="table-fixed">
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -986,6 +987,7 @@ export default function InvoiceDetailPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12">
                       <div className="mb-3 rounded-full bg-slate-100 p-4 dark:bg-slate-800">
@@ -1081,7 +1083,11 @@ export default function InvoiceDetailPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {creditNotes.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {creditNotes.map((cn) => <article key={cn._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><h3 className="font-medium">{cn.referenceNo || cn.creditNoteNumber}</h3><span className="text-xs capitalize text-slate-500">{cn.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(cn.createdAt)}</p><p className="mt-2 text-right font-semibold">{formatCurrency(cn.grandTotal)}</p></article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -1103,6 +1109,7 @@ export default function InvoiceDetailPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12">
                       <div className="mb-3 rounded-full bg-slate-100 p-4 dark:bg-slate-800">
@@ -1133,7 +1140,11 @@ export default function InvoiceDetailPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   {deliveryNotes.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {deliveryNotes.map((dn) => <article key={dn._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><h3 className="font-medium">{dn.referenceNo || dn.deliveryNoteNumber}</h3><span className="text-xs capitalize text-slate-500">{dn.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(dn.createdAt)}</p><p className="mt-2 text-right font-semibold">{formatCurrency(dn.grandTotal)}</p></article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -1155,6 +1166,7 @@ export default function InvoiceDetailPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-12">
                       <div className="mb-3 rounded-full bg-slate-100 p-4 dark:bg-slate-800">

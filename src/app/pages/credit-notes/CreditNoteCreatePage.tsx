@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { creditNotesApi, invoicesApi, productsApi, warehousesApi } from '@/lib/api';
+import { creditNotesApi, invoicesApi, warehousesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCompany } from '@/hooks/useCompany';
 import {
@@ -392,8 +392,8 @@ export default function CreditNoteCreatePage() {
         <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1400px] space-y-6">
             <Skeleton className="h-32 w-full rounded-xl" />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="space-y-6 xl:col-span-2">
                 <Skeleton className="h-64 w-full rounded-xl" />
                 <Skeleton className="h-80 w-full rounded-xl" />
               </div>
@@ -452,9 +452,9 @@ export default function CreditNoteCreatePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Form */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* Basic Info */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="pb-3">
@@ -527,7 +527,11 @@ export default function CreditNoteCreatePage() {
                         <p className="text-sm">Select an invoice to see line items</p>
                       </div>
                     ) : (
-                      <div className="overflow-x-auto">
+                      <>
+                      <div className="space-y-3 p-3 xl:hidden">
+                        {lines.map((line, index) => <article key={line.invoiceLineId} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productCode}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Invoiced qty</dt><dd>{toNumber(line.originalQty)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice)}</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{toNumber(line.taxRate)}%</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to credit<Input type="number" min="0" max={toNumber(line.originalQty)} value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', e.target.value)} /></label><div className="space-y-1 text-xs text-slate-500">Return to warehouse<Select value={line.returnToWarehouse || ''} onValueChange={(value) => handleLineChange(index, 'returnToWarehouse', value)}><SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger><SelectContent>{warehouses.map((wh) => <SelectItem key={wh._id} value={wh._id}>{wh.name}</SelectItem>)}</SelectContent></Select></div><p className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</p></article>)}
+                      </div>
+                      <div className="hidden overflow-x-auto xl:block">
                         <Table>
                           <TableHeader>
                             <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -571,6 +575,7 @@ export default function CreditNoteCreatePage() {
                           </TableBody>
                         </Table>
                       </div>
+                      </>
                     )}
                   </CardContent>
                 </Card>

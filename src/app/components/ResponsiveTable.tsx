@@ -2,9 +2,9 @@ import { type ReactNode } from 'react';
 import { cn } from '@/app/components/ui/utils';
 
 interface ResponsiveTableProps {
-  /** Render this on screens >= md (the actual <Table>...</Table>). */
+  /** Render this on screens >= xl (the actual <Table>...</Table>). */
   table: ReactNode;
-  /** Render this on screens < md (a vertical list of `<MobileCardRow>` items). */
+  /** Render this on screens < xl (a vertical list of `<MobileCardRow>` items). */
   mobile: ReactNode;
   /** Apply a sticky first column on md+ (useful for wide tables). Default: true. */
   stickyFirstCol?: boolean;
@@ -12,7 +12,7 @@ interface ResponsiveTableProps {
 }
 
 /**
- * Container that swaps between a desktop table and a stacked mobile card list.
+ * Container that swaps between a wide-screen table and touch-friendly cards.
  *
  * @example
  * <ResponsiveTable
@@ -37,12 +37,12 @@ export function ResponsiveTable({
   return (
     <div className={cn('w-full', className)}>
       {/* Mobile: stacked cards */}
-      <div className="space-y-2 md:hidden">{mobile}</div>
+      <div className="space-y-2 xl:hidden">{mobile}</div>
 
       {/* Desktop: scrollable table with optional sticky first column */}
       <div
         className={cn(
-          'hidden md:block overflow-x-auto rounded-lg bg-card shadow-sm',
+          'hidden xl:block overflow-x-auto rounded-lg bg-card shadow-sm',
           stickyFirstCol && '[&_table_th:first-child]:sticky [&_table_td:first-child]:sticky [&_table_th:first-child]:left-0 [&_table_td:first-child]:left-0 [&_table_th:first-child]:z-10 [&_table_td:first-child]:bg-inherit [&_table_th:first-child]:bg-muted',
         )}
       >

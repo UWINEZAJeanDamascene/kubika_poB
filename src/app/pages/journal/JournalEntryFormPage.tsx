@@ -275,7 +275,23 @@ export default function JournalEntryFormPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="space-y-3 p-3 xl:hidden">
+                {lines.map((line, idx) => (
+                  <div key={idx} className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                    <div className="flex items-center justify-between gap-2"><Label className="text-xs text-slate-500">Account</Label><Button variant="ghost" size="icon" onClick={() => removeLine(idx)} disabled={lines.length <= 2} className="h-10 w-10 text-red-500"><Trash2 className="h-4 w-4" /></Button></div>
+                    <Select value={line.accountCode} onValueChange={(value) => updateLine(idx, 'accountCode', value)}>
+                      <SelectTrigger className="min-h-11 font-mono text-sm dark:bg-slate-900 dark:text-white dark:border-slate-700"><SelectValue placeholder="Select account" /></SelectTrigger>
+                      <SelectContent className="dark:bg-slate-900 dark:border-slate-700">{accounts.map(acc => <SelectItem key={acc.code} value={acc.code} className="dark:text-slate-200">{acc.code} - {acc.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <div><Label className="text-xs text-slate-500">Description</Label><Input value={line.description} onChange={(e) => updateLine(idx, 'description', e.target.value)} placeholder="Line description" className="mt-1 min-h-11 dark:bg-slate-900 dark:text-white" /></div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div><Label className="text-xs text-slate-500">Debit</Label><Input type="number" inputMode="decimal" step="0.01" min="0" value={line.debit || ''} onChange={(e) => updateLine(idx, 'debit', parseFloat(e.target.value) || 0)} className="mt-1 min-h-11 text-right font-mono dark:bg-slate-900 dark:text-white" placeholder="0.00" /></div>
+                      <div><Label className="text-xs text-slate-500">Credit</Label><Input type="number" inputMode="decimal" step="0.01" min="0" value={line.credit || ''} onChange={(e) => updateLine(idx, 'credit', parseFloat(e.target.value) || 0)} className="mt-1 min-h-11 text-right font-mono dark:bg-slate-900 dark:text-white" placeholder="0.00" /></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

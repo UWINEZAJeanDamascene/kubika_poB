@@ -323,7 +323,7 @@ export default function RecurringInvoicesListPage() {
           </div>
 
           {/* Status Pipeline */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-5">
             {[
               { key: 'active', label: 'Active', color: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-400' },
               { key: 'paused', label: 'Paused', color: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-400' },
@@ -345,7 +345,7 @@ export default function RecurringInvoicesListPage() {
           </div>
 
           {/* Metric Tiles */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
               <CardContent className="flex items-center gap-4 p-5">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950/50">
@@ -403,7 +403,7 @@ export default function RecurringInvoicesListPage() {
           {/* Filters */}
           <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
             <CardContent className="p-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
@@ -482,7 +482,11 @@ export default function RecurringInvoicesListPage() {
                   className="m-4"
                 />
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-3 p-3 xl:hidden">
+                  {filteredRecurringInvoices.map((inv) => <article key={inv._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-start justify-between gap-2"><div><h3 className="font-semibold text-slate-900 dark:text-white">{inv.referenceNo}</h3><p className="text-sm text-slate-500">{inv.client?.name || '-'}</p></div>{getStatusBadge(inv.status)}</div><dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Frequency</dt><dd>{formatFrequency(inv.schedule)}</dd></div><div><dt className="text-slate-500">Next run</dt><dd>{formatDate(inv.nextRunDate)}</dd></div><div><dt className="text-slate-500">Auto confirm</dt><dd>{inv.autoConfirm ? t('common.yes', 'Yes') : t('common.no', 'No')}</dd></div><div><dt className="text-slate-500">Last run</dt><dd>{inv.lastRunAt ? formatDate(inv.lastRunAt) : '-'}</dd></div></dl><div className="mt-3 flex flex-wrap gap-2 border-t border-slate-200 pt-3 dark:border-slate-700"><Button variant="outline" size="sm" onClick={() => navigate(`/recurring-invoices/${inv._id}`)}><Eye className="mr-1 h-4 w-4" />View</Button>{(inv.status === 'active' || inv.status === 'paused') && <Button variant="outline" size="sm" onClick={() => navigate(`/recurring-invoices/${inv._id}/edit`)}><Edit className="mr-1 h-4 w-4" />Edit</Button>}{inv.status === 'active' && <Button variant="outline" size="sm" onClick={() => handlePause(inv._id)} disabled={processing === inv._id}><Pause className="mr-1 h-4 w-4" />Pause</Button>}{inv.status === 'paused' && <Button variant="outline" size="sm" onClick={() => handleResume(inv._id)} disabled={processing === inv._id}><Play className="mr-1 h-4 w-4" />Resume</Button>}{inv.status !== 'cancelled' && inv.status !== 'completed' && <Button variant="outline" size="sm" onClick={() => handleTrigger(inv._id)} disabled={processing === inv._id}><Zap className="mr-1 h-4 w-4" />Run now</Button>}{(inv.status === 'active' || inv.status === 'paused') && <Button variant="outline" size="sm" onClick={() => handleCancel(inv._id)} disabled={processing === inv._id}><XCircle className="mr-1 h-4 w-4" />Cancel</Button>}</div></article>)}
+                </div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -551,6 +555,7 @@ export default function RecurringInvoicesListPage() {
                     </TableBody>
                   </Table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>

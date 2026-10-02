@@ -199,8 +199,8 @@ export default function ClientFormPage() {
         <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1400px] 2xl:max-w-[2200px] space-y-6">
             <Skeleton className="h-28 w-full rounded-xl" />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="space-y-6 lg:col-span-2">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="space-y-6 xl:col-span-2">
                 <Skeleton className="h-64 w-full rounded-xl" />
                 <Skeleton className="h-80 w-full rounded-xl" />
               </div>
@@ -253,9 +253,9 @@ export default function ClientFormPage() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
               {/* Main */}
-              <div className="space-y-6 lg:col-span-2">
+              <div className="space-y-6 xl:col-span-2">
                 {/* Basic Info */}
                 <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardHeader className="pb-3">

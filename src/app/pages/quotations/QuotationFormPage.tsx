@@ -794,7 +794,16 @@ export default function QuotationFormPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {formData.lines.map((line, index) => <article key={index} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900">
+                      <div className="flex items-center justify-between gap-2"><h3 className="font-medium text-slate-950 dark:text-white">{line.productName || products.find((p) => p._id === line.product)?.name || t('quotation.selectProduct', 'Select product')}</h3>{!isViewMode && <Button variant="ghost" size="sm" onClick={() => removeLine(index)} disabled={formData.lines.length === 1} className="h-8 w-8 p-0"><Trash2 className="h-4 w-4 text-red-500" /></Button>}</div>
+                      {!isViewMode ? <Select value={line.product || undefined} onValueChange={(value) => handleLineChange(index, 'product', value)}><SelectTrigger className="h-9"><SelectValue placeholder={t('quotation.selectProduct')} /></SelectTrigger><SelectContent>{products.map((product) => <SelectItem key={product._id} value={product._id}>{product.name} ({product.sku})</SelectItem>)}</SelectContent></Select> : <p className="text-xs text-slate-500">{line.productSku || ''}</p>}
+                      {!isViewMode ? <Input value={line.description} onChange={(e) => handleLineChange(index, 'description', e.target.value)} placeholder={t('quotation.descriptionOverride', 'Description override')} /> : <p className="text-sm text-slate-600 dark:text-slate-300">{line.description}</p>}
+                      <div className="grid grid-cols-2 gap-3 text-xs">{([['qty', t('quotation.qty', 'Qty')], ['unitPrice', t('quotation.unitPrice', 'Unit price')], ['discountPercent', t('quotation.discount', 'Discount %')], ['taxRate', t('quotation.taxRate', 'Tax %')]] as const).map(([field, label]) => <label key={field} className="space-y-1 text-slate-500">{label}{isViewMode ? <p className="text-sm text-slate-800 dark:text-slate-200">{field === 'unitPrice' ? formatCurrency(line[field]) : line[field]}{field === 'discountPercent' || field === 'taxRate' ? '%' : ''}</p> : <Input type="number" min="0" max={field === 'discountPercent' || field === 'taxRate' ? 100 : undefined} step={field === 'qty' ? '1' : '0.01'} value={line[field]} onChange={(e) => handleLineChange(index, field, e.target.value)} />}</label>)}</div>
+                      <div className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</div>
+                    </article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

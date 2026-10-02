@@ -1160,7 +1160,7 @@ export function Sidebar({
   return (
     <div
       className={cn(
-        "relative flex h-screen flex-col overflow-hidden border-r border-white/10 bg-(--dashboard-rail) font-sans transition-all duration-300",
+        "relative flex h-full flex-col overflow-hidden border-r border-white/10 bg-(--dashboard-rail) font-sans transition-all duration-300",
         collapsed ? "w-[72px]" : "w-[340px]",
       )}
     >

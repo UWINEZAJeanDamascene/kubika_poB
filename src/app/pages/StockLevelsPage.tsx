@@ -403,7 +403,7 @@ export default function StockLevelsPage() {
 
       {/* Table */}
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-        <TableContainer>
+        <TableContainer className="hidden xl:block">
           <Table>
             <TableHead>
               <TableRow sx={{ backgroundColor: dark ? '#1e293b' : '#f1f5f9' }}>
@@ -492,6 +492,40 @@ export default function StockLevelsPage() {
             </TableBody>
           </Table>
         </TableContainer>
+        <div className="space-y-3 p-3 xl:hidden">
+          {loading ? (
+            <div className="flex items-center justify-center rounded-lg border border-slate-200 bg-white py-10 dark:border-slate-700 dark:bg-slate-900" role="status" aria-label={t('common.loading', 'Loading stock levels')}>
+              <CircularProgress size={28} />
+            </div>
+          ) : products.length === 0 ? (
+            <div className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900">
+              <EmptyState compact icon={Package} title={t('stockLevels.noData', 'No stock levels yet')} description={t('stockLevels.noDataHint', 'Stock levels will appear here once products are added and received into inventory.')} />
+            </div>
+          ) : products.map((item) => {
+            const status = getStockStatus(item);
+            const availableTone = item.availableQuantity === 0 ? 'text-red-600 dark:text-red-400' : item.availableQuantity <= item.lowStockThreshold ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400';
+            return (
+              <article key={item._id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h2 className="break-words text-sm font-semibold text-slate-900 dark:text-white">{item.name}</h2>
+                    <p className="mt-0.5 font-mono text-xs text-slate-500 dark:text-slate-400">{item.sku}</p>
+                    {item.category?.name && <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.category.name}</p>}
+                  </div>
+                  <Chip label={status.label} color={status.color} size="small" variant={item.currentStock === 0 ? 'filled' : 'outlined'} />
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700 sm:grid-cols-3">
+                  <div><dt className="text-slate-500 dark:text-slate-400">{t('stockLevels.qtyOnHand', 'On hand')}</dt><dd className="mt-0.5 font-semibold text-slate-900 dark:text-white">{item.currentStock.toLocaleString()} {item.unit}</dd></div>
+                  <div><dt className="text-slate-500 dark:text-slate-400">{t('stockLevels.qtyReserved', 'Reserved')}</dt><dd className="mt-0.5 font-semibold text-slate-900 dark:text-white">{item.reservedQuantity.toLocaleString()}</dd></div>
+                  <div><dt className="text-slate-500 dark:text-slate-400">{t('stockLevels.qtyAvailable', 'Available')}</dt><dd className={`mt-0.5 font-semibold ${availableTone}`}>{item.availableQuantity.toLocaleString()}</dd></div>
+                  <div><dt className="text-slate-500 dark:text-slate-400">{t('stockLevels.avgCost', 'Average cost')}</dt><dd className="mt-0.5 font-medium text-slate-900 dark:text-white">{formatCurrency(item.averageCost)}</dd></div>
+                  <div><dt className="text-slate-500 dark:text-slate-400">{t('stockLevels.totalValue', 'Total value')}</dt><dd className="mt-0.5 font-semibold text-slate-900 dark:text-white">{formatCurrency(item.totalValue)}</dd></div>
+                  <div><dt className="text-slate-500 dark:text-slate-400">{t('stockLevels.warehouse', 'Warehouse')}</dt><dd className="mt-0.5 truncate text-slate-900 dark:text-white">{item.defaultWarehouse?.name || '—'}</dd></div>
+                </dl>
+              </article>
+            );
+          })}
+        </div>
         <TablePagination
           component="div"
           count={total}
@@ -504,6 +538,15 @@ export default function StockLevelsPage() {
             borderTop: `1px solid ${dark ? '#334155' : '#cbd5e1'}`,
             backgroundColor: dark ? '#1e293b' : 'white',
             color: dark ? '#e2e8f0' : '#1e293b',
+            '& .MuiTablePagination-toolbar': {
+              flexWrap: { xs: 'wrap', sm: 'nowrap' },
+              justifyContent: { xs: 'center', sm: 'flex-end' },
+              minHeight: { xs: 72, sm: 52 },
+              px: { xs: 1, sm: 2 },
+            },
+            '& .MuiTablePagination-displayedRows, & .MuiTablePagination-selectLabel': {
+              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+            },
             '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
               color: 'inherit',
             },

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { deferredRevenueApi, type DeferredRevenue } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Card, CardContent } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Input } from '@/app/components/ui/input';
@@ -16,9 +16,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/app/components/ui/select';
 import {
-  Plus, Loader2, Calendar, Wallet, TrendingDown, CheckCircle2,
+  Plus, Loader2, Wallet, TrendingDown, CheckCircle2,
   Clock, AlertCircle, Search, RefreshCcw, Receipt, Trash2, FileCheck,
-  ArrowRight, Banknote, ChevronDown, ChevronUp
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -207,7 +207,6 @@ export default function DeferredRevenueTab() {
   const totalDeferred = items.reduce((s, i) => s + i.totalAmount, 0);
   const totalRecognized = items.reduce((s, i) => s + i.totalRecognized, 0);
   const totalRemaining = items.reduce((s, i) => s + i.remainingBalance, 0);
-  const activeCount = items.filter(i => i.status === 'active').length;
 
   return (
     <div className="space-y-4">
@@ -326,7 +325,11 @@ export default function DeferredRevenueTab() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-3 p-3 xl:hidden">
+              {items.map((item) => <article key={item._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><h3 className="truncate font-semibold text-slate-900 dark:text-white">{item.referenceNo}</h3><p className="text-sm text-slate-500">{item.customer || '-'}</p></div>{getStatusBadge(item.status)}</div><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{item.description}</p><p className="mt-1 text-xs text-slate-500">{formatDate(item.startDate)} – {formatDate(item.endDate)}</p><div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><span>{formatCurrency(item.remainingBalance)} remaining</span><strong>{formatCurrency(item.totalAmount)}</strong></div><div className="mt-3 flex justify-end gap-2"><Button size="sm" variant="outline" onClick={() => setExpandedId(expandedId === item._id ? null : item._id)}>{expandedId === item._id ? <ChevronUp className="mr-1 h-4 w-4" /> : <ChevronDown className="mr-1 h-4 w-4" />}{expandedId === item._id ? 'Hide schedule' : 'Schedule'}</Button><Button size="sm" variant="outline" onClick={() => handleDeleteClick(item._id)}><Trash2 className="mr-1 h-4 w-4 text-rose-600" />Delete</Button></div>{expandedId === item._id && <div className="mt-3 space-y-2 border-t border-slate-200 pt-3 dark:border-slate-700"><h4 className="text-sm font-semibold">Recognition Schedule</h4>{item.recognitions?.length ? item.recognitions.map((rec: RecognitionEntry, idx: number) => <div key={rec._id} className="rounded-md bg-slate-50 p-3 text-xs dark:bg-slate-950"><div className="flex justify-between gap-2"><span>Period {idx + 1} · {formatDate(rec.date)}</span><span>{getStatusBadge(rec.status)}</span></div><div className="mt-2 flex items-center justify-between gap-2"><span>{formatCurrency(rec.amount)}{rec.journalEntryId ? ` · ${rec.journalEntryId.entryNumber}` : ''}</span>{rec.status === 'pending' && item.status !== 'cancelled' && <Button size="sm" className="h-7" onClick={() => handlePostRecognition(item._id, rec._id)}><FileCheck className="mr-1 h-3 w-3" />Recognize</Button>}</div></div>) : <p className="text-xs text-slate-500">No recognition schedule generated.</p>}</div>}</article>)}
+            </div>
+            <div className="hidden overflow-x-auto xl:block">
               <Table>
                 <TableHeader>
                   <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -470,6 +473,7 @@ export default function DeferredRevenueTab() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

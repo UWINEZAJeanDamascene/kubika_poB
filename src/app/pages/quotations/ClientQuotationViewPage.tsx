@@ -37,7 +37,6 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/app/components/ui/dialog';
 import { Textarea } from '@/app/components/ui/textarea';
 import { toast } from 'sonner';
-import { useTranslation } from 'react-i18next';
 
 interface QuotationLine {
   _id?: string;
@@ -79,7 +78,6 @@ interface Quotation {
 }
 
 export default function ClientQuotationViewPage() {
-  const { t } = useTranslation();
   const { formatCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -475,7 +473,10 @@ export default function ClientQuotationViewPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {quotation.lines?.map((line, index) => <article key={line._id || index} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-950 dark:text-white">{line.productName || line.product?.name}</h3><p className="text-xs text-slate-500">{line.productSku || line.product?.sku}</p><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{line.description || '—'}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Qty</dt><dd>{line.qty}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice)}</dd></div><div><dt className="text-slate-500">Discount</dt><dd>{line.discountPercent}%</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{line.taxRate}%</dd></div></dl><p className="mt-2 text-right font-semibold">{formatCurrency(line.lineTotal)}</p></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

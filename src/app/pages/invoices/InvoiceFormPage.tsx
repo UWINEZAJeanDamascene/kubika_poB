@@ -410,8 +410,8 @@ export default function InvoiceFormPage() {
         <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1400px] 2xl:max-w-[2200px] space-y-6">
             <Skeleton className="h-32 w-full rounded-xl" />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="space-y-6 xl:col-span-2">
                 <Skeleton className="h-64 w-full rounded-xl" />
                 <Skeleton className="h-80 w-full rounded-xl" />
               </div>
@@ -455,9 +455,9 @@ export default function InvoiceFormPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* Basic Information */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="pb-3">
@@ -540,7 +540,15 @@ export default function InvoiceFormPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {formData.lines.map((line, index) => <article key={index} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900">
+                      <div className="flex items-center justify-between gap-2"><p className="font-medium text-slate-900 dark:text-white">{line.description || 'Invoice line'}</p><Button variant="ghost" size="sm" onClick={() => removeLine(index)} disabled={formData.lines.length === 1} className="h-8 w-8 p-0"><Trash2 className="h-4 w-4 text-rose-600" /></Button></div>
+                      <div className="grid gap-2"><Select value={line.product} onValueChange={(value) => handleLineChange(index, 'product', value)}><SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger><SelectContent>{productOptions}</SelectContent></Select><Input value={line.description} onChange={(e) => handleLineChange(index, 'description', e.target.value)} placeholder="Description" /><Select value={line.warehouse || ''} onValueChange={(value) => handleLineChange(index, 'warehouse', value)}><SelectTrigger><SelectValue placeholder="Warehouse" /></SelectTrigger><SelectContent>{warehouses.map((warehouse) => <SelectItem key={warehouse._id} value={warehouse._id}>{warehouse.name}</SelectItem>)}</SelectContent></Select></div>
+                      <div className="grid grid-cols-2 gap-3">{([['qty', 'Qty'], ['unitPrice', 'Price'], ['discountPct', 'Discount %'], ['taxRate', 'Tax %']] as const).map(([field, label]) => <label key={field} className="space-y-1 text-xs text-slate-500">{label}<Input type="number" min="0" value={line[field] ?? ''} onChange={(e) => handleLineChange(index, field, e.target.value)} /></label>)}</div>
+                      <div className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</div>
+                    </article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">

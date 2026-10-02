@@ -354,7 +354,26 @@ export default function AuditDetailPage() {
 
         {/* Items Table */}
         <Paper>
-          <TableContainer>
+          <div className="space-y-2 xl:hidden">
+            {getSortedItems().map((item) => {
+              const variance = parseFloat(item.qtyVariance) || 0;
+              const hasVariance = variance !== 0;
+              const isCounted = item.qtyCounted !== null && item.qtyCounted !== '';
+              return (
+                <article key={item._id} className={`rounded-lg border p-3 dark:border-slate-700 ${hasVariance ? 'border-amber-300 bg-amber-50/60 dark:bg-amber-950/20' : !isCounted && isCountingMode ? 'border-red-300 bg-red-50/50 dark:bg-red-950/20' : 'border-slate-200 bg-white dark:bg-slate-900'}`}>
+                  <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-sm font-semibold">{item.product?.name || '-'}</h3><p className="mt-0.5 font-mono text-xs text-slate-500 dark:text-slate-400">{item.product?.sku || '-'}</p></div><span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${isCounted ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300'}`}>{isCounted ? t('common.stockAudits.counted', 'Counted') : t('common.stockAudits.notCounted', 'Not counted')}</span></div>
+                  <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
+                    <div><dt className="text-slate-500 dark:text-slate-400">{t('common.stockAudits.systemQty')}</dt><dd className="mt-0.5 font-medium">{formatCurrency(item.qtySystem)}</dd></div>
+                    <div><dt className="text-slate-500 dark:text-slate-400">{t('common.stockAudits.countedQty')}</dt><dd className="mt-0.5">{isCountingMode ? <TextField type="number" size="small" fullWidth value={editedLines[item._id] ?? ''} onChange={(e) => handleQuantityChange(item._id, e.target.value)} inputProps={{ min: 0, inputMode: 'decimal' }} /> : formatCurrency(item.qtyCounted || '0')}</dd></div>
+                    <div><dt className="text-slate-500 dark:text-slate-400">{t('common.stockAudits.variance')}</dt><dd className={`mt-0.5 font-semibold ${variance > 0 ? 'text-emerald-600 dark:text-emerald-400' : variance < 0 ? 'text-red-600 dark:text-red-400' : ''}`}>{variance > 0 ? '+' : ''}{formatCurrency(item.qtyVariance)}</dd></div>
+                    <div><dt className="text-slate-500 dark:text-slate-400">{t('common.stockAudits.unitCost')}</dt><dd className="mt-0.5">{formatCurrency(item.unitCost)}</dd></div>
+                    <div className="col-span-2 border-t border-slate-200 pt-2 dark:border-slate-700"><dt className="text-slate-500 dark:text-slate-400">{t('common.stockAudits.varianceValue')}</dt><dd className={`mt-0.5 font-semibold ${hasVariance ? parseFloat(item.varianceValue) > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' : ''}`}>{formatCurrency(item.varianceValue)}</dd></div>
+                  </dl>
+                </article>
+              );
+            })}
+          </div>
+          <TableContainer className="hidden xl:block">
             <Table>
               <TableHead>
                 <TableRow>

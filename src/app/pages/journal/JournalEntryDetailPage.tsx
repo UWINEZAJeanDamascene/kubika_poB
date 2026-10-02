@@ -186,7 +186,7 @@ export default function JournalEntryDetailPage() {
         </div>
 
         {/* Entry Details */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 xl:gap-4">
           <Card className="dark:bg-slate-800">
             <CardContent className="pt-4">
               <p className="text-xs text-slate-500 dark:text-slate-400">Entry Number</p>
@@ -228,6 +228,18 @@ export default function JournalEntryDetailPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            <div className="space-y-3 xl:hidden">
+              {entry.lines.map((line, idx) => (
+                <div key={idx} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0"><p className="font-mono text-xs text-slate-500">{line.accountCode}</p><p className="mt-1 text-sm font-semibold dark:text-white">{line.accountName}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{line.description || "—"}</p></div>
+                    <div className="shrink-0 text-right text-sm"><p className="text-slate-500">Debit</p><p className="font-mono font-medium dark:text-white">{line.debit > 0 ? line.debit.toLocaleString() : "—"}</p><p className="mt-2 text-slate-500">Credit</p><p className="font-mono font-medium dark:text-white">{line.credit > 0 ? line.credit.toLocaleString() : "—"}</p></div>
+                  </div>
+                </div>
+              ))}
+              <div className="flex justify-between rounded-lg bg-slate-50 p-3 text-sm font-semibold dark:bg-slate-900"><span>Total</span><span className="text-right">Dr {entry.totalDebit.toLocaleString()}<br/>Cr {entry.totalCredit.toLocaleString()}</span></div>
+            </div>
+            <div className="hidden overflow-x-auto xl:block">
             <Table>
               <TableHeader>
                 <TableRow className="dark:bg-slate-700/50 dark:border-slate-600">
@@ -261,6 +273,7 @@ export default function JournalEntryDetailPage() {
                 </TableRow>
               </TableFooter>
             </Table>
+            </div>
           </CardContent>
         </Card>
 

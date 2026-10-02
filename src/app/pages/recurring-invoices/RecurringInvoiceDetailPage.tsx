@@ -573,7 +573,11 @@ export default function RecurringInvoiceDetailPage() {
                       <p className="text-sm text-slate-500 dark:text-slate-400">{t('recurringInvoices.noLineItems', 'No line items configured')}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {recurringInvoice.lines.map((line) => <article key={line._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productCode}</p><dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Qty</dt><dd>{toNumber(line.qty || line.quantity)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice, recurringInvoice.currencyCode)}</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{toNumber(line.taxRate)}%</dd></div><div><dt className="text-slate-500">Total</dt><dd className="font-semibold">{formatCurrency(line.lineTotal || (line.qty || line.quantity) * line.unitPrice * (1 + line.taxRate / 100), recurringInvoice.currencyCode)}</dd></div></dl></article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -602,6 +606,7 @@ export default function RecurringInvoiceDetailPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -625,7 +630,11 @@ export default function RecurringInvoiceDetailPage() {
                       <p className="text-sm text-slate-500 dark:text-slate-400">{t('recurringInvoices.noRuns', 'No invoices generated yet')}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {runs.map((run) => <article key={run._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><p className="text-sm text-slate-600 dark:text-slate-300">{formatDate(run.runDate)}</p>{run.status === 'success' ? <Badge variant="outline" className="text-emerald-700">Success</Badge> : <Badge variant="outline" className="text-red-700">Failed</Badge>}</div><div className="mt-2 flex items-center justify-between gap-2">{run.invoice ? <Button variant="link" className="h-auto p-0" onClick={() => navigate(`/invoices/${run.invoice?._id}`)}>{run.invoice.referenceNo}</Button> : <span className="text-xs text-slate-500">No invoice</span>}<strong>{run.invoice ? formatCurrency(run.invoice.totalAmount, recurringInvoice.currencyCode) : '-'}</strong></div>{run.errorMessage && <p className="mt-2 break-words text-xs text-red-600">{run.errorMessage}</p>}</article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -673,6 +682,7 @@ export default function RecurringInvoiceDetailPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

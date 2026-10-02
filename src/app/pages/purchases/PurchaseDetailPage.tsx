@@ -569,7 +569,15 @@ export default function PurchaseDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 xl:hidden">
+                    {purchase.items?.map((item, idx) => {
+                      const quantity = Number(item.quantity ?? item.qty) || 0;
+                      const total = Number(item.totalWithTax ?? item.lineTotal) || 0;
+                      const tax = Number(item.taxAmount ?? (total - quantity * (Number(item.unitCost) || 0))) || 0;
+                      return <article key={idx} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{typeof item.product?.name === 'string' ? item.product.name : '-'}</h3><p className="text-xs text-slate-500 dark:text-slate-400">{typeof item.product?.sku === 'string' ? item.product.sku : ''}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">{t('purchases.detail.qty', 'Qty')}</dt><dd>{quantity}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.unitCost', 'Unit cost')}</dt><dd>{formatCurrency(item.unitCost)}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.tax', 'Tax')}</dt><dd>{formatCurrency(tax)}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.total', 'Total')}</dt><dd className="font-semibold text-slate-900 dark:text-white">{formatCurrency(total)}</dd></div></dl></article>;
+                    })}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">

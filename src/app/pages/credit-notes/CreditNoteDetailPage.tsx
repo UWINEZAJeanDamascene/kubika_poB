@@ -32,7 +32,6 @@ import {
   TableHeader, 
   TableRow 
 } from '@/app/components/ui/table';
-import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/app/components/ui/dialog';
 import { Separator } from '@/app/components/ui/separator';
 import { toast } from 'sonner';
@@ -141,7 +140,6 @@ const toNumber = (val: any): number => {
 };
 
 export default function CreditNoteDetailPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
   const { currency: companyCurrency } = useCompany();
@@ -230,20 +228,6 @@ export default function CreditNoteDetailPage() {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString();
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'outline' | 'destructive'; label: string; className?: string }> = {
-      draft: { variant: 'secondary', label: t('creditNotes.statusList.draft', 'Draft'), className: 'dark:bg-slate-700 dark:text-gray-200' },
-      confirmed: { variant: 'default', label: t('creditNotes.statusList.confirmed', 'Confirmed'), className: 'dark:bg-blue-900 dark:text-blue-200' },
-      issued: { variant: 'default', label: t('creditNotes.statusList.issued', 'Issued'), className: 'dark:bg-green-900 dark:text-green-200' },
-      applied: { variant: 'outline', label: t('creditNotes.statusList.applied', 'Applied'), className: 'dark:text-yellow-300 dark:border-yellow-600' },
-      refunded: { variant: 'outline', label: t('creditNotes.statusList.refunded', 'Refunded'), className: 'dark:text-purple-300 dark:border-purple-600' },
-      cancelled: { variant: 'destructive', label: t('creditNotes.statusList.cancelled', 'Cancelled'), className: 'dark:bg-red-900 dark:text-red-200' },
-    };
-    
-    const config = statusConfig[status] || { variant: 'outline', label: status, className: 'dark:text-gray-300 dark:border-gray-600' };
-    return <Badge variant={config.variant} className={config.className}>{config.label}</Badge>;
   };
 
   const getStatusStyle = (status: string) => {
@@ -446,9 +430,9 @@ export default function CreditNoteDetailPage() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* Details */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="pb-3">
@@ -508,7 +492,10 @@ export default function CreditNoteDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {creditNote.lines.map((line) => <article key={line._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productCode}</p><dl className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Quantity</dt><dd>{toNumber(line.quantity)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice, creditNote.currencyCode)}</dd></div><div><dt className="text-slate-500">Tax rate</dt><dd>{toNumber(line.taxRate)}%</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{formatCurrency(line.lineTax, creditNote.currencyCode)}</dd></div></dl><p className="mt-2 text-right text-sm font-semibold">{formatCurrency(line.lineTotal, creditNote.currencyCode)}</p></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">

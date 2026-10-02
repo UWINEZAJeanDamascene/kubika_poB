@@ -413,11 +413,11 @@ export default function WarehousesPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto py-6 px-4 space-y-6 bg-slate-50 dark:bg-slate-950 min-h-screen 2xl:max-w-[2200px]">
+      <div className="container mx-auto space-y-6 bg-slate-50 px-3 py-4 dark:bg-slate-950 sm:px-4 sm:py-6 2xl:max-w-[2200px]">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 dark:text-white">{t('pages.warehouses.title')}</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">{t('pages.warehouses.title')}</h1>
             <p className="text-muted-foreground">{t('pages.warehouses.subtitle')}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -446,7 +446,7 @@ export default function WarehousesPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-center justify-between">
               <div>
@@ -511,7 +511,32 @@ export default function WarehousesPage() {
                 className="m-4"
               />
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 xl:hidden">
+                {warehouses.map((warehouse) => (
+                  <article key={warehouse._id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-950/60">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0"><h2 className="break-words text-sm font-semibold text-slate-900 dark:text-white">{warehouse.name}</h2><p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">{warehouse.code}</p></div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">{warehouse.isDefault && <span className="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">{t('pages.warehouses.default')}</span>}{warehouse.isActive ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">{t('common.active')}</span> : <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">{t('common.inactive')}</span>}</div>
+                    </div>
+                    {warehouse.description && <p className="mt-2 break-words text-xs text-slate-500 dark:text-slate-400">{warehouse.description}</p>}
+                    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
+                      <div className="min-w-0"><dt className="text-slate-500 dark:text-slate-400">{t('pages.warehouses.address')}</dt><dd className="mt-0.5 break-words text-slate-900 dark:text-white">{getAddress(warehouse)}</dd></div>
+                      <div className="min-w-0"><dt className="text-slate-500 dark:text-slate-400">{t('pages.warehouses.inventoryAccount')}</dt><dd className="mt-0.5 break-all font-mono text-slate-900 dark:text-white">{warehouse.inventoryAccount || '-'}</dd></div>
+                      <div className="min-w-0"><dt className="text-slate-500 dark:text-slate-400">RRA Branch</dt><dd className="mt-0.5 break-all font-mono text-slate-900 dark:text-white">{warehouse.rraBranchId || '-'}</dd><dd className="mt-1 text-[10px]">{warehouse.ebmRegistrationStatus === 'registered' ? 'Registered' : warehouse.ebmRegistrationStatus === 'failed' ? <span className="text-red-600 dark:text-red-400" title={warehouse.ebmRegistrationError || ''}>Registration failed</span> : 'Not registered'}</dd></div>
+                      <div className="min-w-0"><dt className="text-slate-500 dark:text-slate-400">Branch insurance</dt><dd className="mt-0.5 text-slate-900 dark:text-white">{warehouse.ebmInsuranceSubmitted ? 'Synced' : 'Pending'}</dd>{warehouse.ebmRegisteredAt && <dd className="mt-1 text-[10px] text-slate-500">{new Date(warehouse.ebmRegisteredAt).toLocaleDateString()}</dd>}</div>
+                    </dl>
+                    <div className="mt-3 flex flex-wrap justify-end gap-1 border-t border-slate-200 pt-2 dark:border-slate-700">
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenDialog(warehouse)} title={t('common.edit')} aria-label={`${t('common.edit')} ${warehouse.name}`}><Pencil className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleOpenInsuranceDialog(warehouse)} title="Branch insurance" aria-label={`Branch insurance ${warehouse.name}`}><ShieldCheck className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => handleRegisterBranch(warehouse)} title="Register branch with RRA" aria-label={`Register ${warehouse.name} with RRA`}><RefreshCw className="h-4 w-4" /></Button>
+                      {warehouse.isActive && warehouse.isDefault !== true && <Button variant="ghost" size="icon" onClick={() => handleDeactivate(warehouse)} title={t('common.deactivate')} aria-label={`${t('common.deactivate')} ${warehouse.name}`}><XCircle className="h-4 w-4" /></Button>}
+                      {warehouse.isDefault !== true && <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(warehouse)} title={t('common.delete')} aria-label={`${t('common.delete')} ${warehouse.name}`} className="text-destructive"><Trash2 className="h-4 w-4" /></Button>}
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                 <table className="w-full">
                   <thead className="border-b bg-slate-100/80 dark:bg-slate-800/80">
                     <tr>
@@ -649,6 +674,7 @@ export default function WarehousesPage() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -947,4 +973,3 @@ export default function WarehousesPage() {
     </Layout>
   );
 }
-

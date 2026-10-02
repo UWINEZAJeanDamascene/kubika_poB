@@ -14,17 +14,13 @@ import {
   Phone,
   Mail,
   CheckCircle,
-  Clock,
   XCircle,
   AlertCircle,
   BarChart3,
   FileText,
   Tag,
   ArrowRight,
-  RefreshCw,
   Send,
-  ClipboardList,
-  Hash,
   Building,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
@@ -311,8 +307,8 @@ export default function DeliveryNoteDetailPage() {
           <div className="mx-auto max-w-[1600px] 2xl:max-w-[2200px] space-y-6">
             <Skeleton className="h-40 w-full rounded-xl" />
             <Skeleton className="h-24 w-full rounded-xl" />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <Skeleton className="h-96 w-full rounded-xl lg:col-span-2" />
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <Skeleton className="h-96 w-full rounded-xl xl:col-span-2" />
               <Skeleton className="h-96 w-full rounded-xl" />
             </div>
           </div>
@@ -486,9 +482,9 @@ export default function DeliveryNoteDetailPage() {
           </div>
 
           {/* Content Grid */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
-            <div className="space-y-6 lg:col-span-2">
+            <div className="space-y-6 xl:col-span-2">
               {/* Items Table */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="border-b border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50">
@@ -498,7 +494,10 @@ export default function DeliveryNoteDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {(deliveryNote.lines || []).map((item: DeliveryNoteItem) => <article key={item._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{item.product?.name || item.productName || item.description || '—'}</h3><p className="text-xs text-slate-500">{item.product?.sku || item.productCode || ''}</p><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{item.description || item.productName || '—'}</p><div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><span>Quantity</span><strong>{getQty(item)} {item.unit || 'pcs'}</strong></div></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <table className="w-full">
                       <thead className="bg-slate-50/70 dark:bg-slate-900/50">
                         <tr>
@@ -682,7 +681,7 @@ export default function DeliveryNoteDetailPage() {
                     <span>Total</span>
                     <span>{formatCurrency(toNumber(
                       deliveryNote.grandTotal
-                      ?? deliveryNote.totalAmount
+                      ?? (deliveryNote as DeliveryNote & { totalAmount?: number }).totalAmount
                       ?? (deliveryNote.lines || []).reduce((sum, l: any) => {
                         const qty = getQty(l);
                         return sum + (toNumber(l.lineTotal) || toNumber(l.unitPrice) * qty || toNumber(l.unitCost) * qty);

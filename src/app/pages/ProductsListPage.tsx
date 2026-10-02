@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { API_BASE_URL, productsApi, categoriesApi } from '@/lib/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -57,7 +57,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { EmptyState } from '@/app/components/EmptyState';
 import { ResponsiveTable, MobileCardRow } from '@/app/components/ResponsiveTable';
 import { PageHeader } from '@/app/components/PageHeader';
-import { ErrorState, LoadingState } from '@/app/components/PageState';
+import { ErrorState } from '@/app/components/PageState';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 
@@ -592,6 +592,11 @@ export default function ProductsListPage() {
         {/* Products Table */}
         <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm">
           {loading ? (
+            <>
+            <div className="grid gap-2 p-2 xl:hidden" aria-label={t('common.loading', 'Loading products')} aria-busy="true">
+              {Array.from({ length: 5 }).map((_, index) => <div key={index} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="h-4 w-2/3 animate-pulse rounded bg-slate-200 dark:bg-slate-700" /><div className="mt-3 grid grid-cols-2 gap-2">{Array.from({ length: 4 }).map((__, field) => <div key={field} className="h-8 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />)}</div></div>)}
+            </div>
+            <div className="hidden xl:block">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-100/80 dark:bg-slate-800/80">
@@ -619,6 +624,8 @@ export default function ProductsListPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           ) : products.length === 0 ? (
             <EmptyState
               icon={Package}
@@ -657,7 +664,10 @@ export default function ProductsListPage() {
                       { label: t('products.category') || 'Category', value: product.category?.name || '-' },
                       { label: t('products.stock') || 'Stock', value: `${stock.toFixed(0)} ${product.unit}` },
                       { label: t('products.sellingPrice') || 'Price', value: formatCurrency(product.sellingPrice) },
+                      { label: t('products.averageCost') || 'Average cost', value: formatCurrency(effectiveCost) },
                       { label: t('products.stockValue') || 'Value', value: formatCurrency(stock * effectiveCost) },
+                      { label: t('products.costingMethod') || 'Costing', value: (product.costingMethod || 'fifo').toUpperCase() },
+                      { label: t('products.ebmColumn') || 'EBM', value: product.ebm?.isRegisteredWithEBM ? t('products.ebmRegistered') : product.ebm?.ebmRegistrationError ? t('products.ebmFailed') : t('products.ebmNotRegistered') },
                     ]}
                     actions={
                       <>

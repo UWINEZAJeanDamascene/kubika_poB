@@ -357,9 +357,9 @@ export default function GRNDetailPage() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* Document Info */}
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="pb-2">
@@ -402,7 +402,10 @@ export default function GRNDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="space-y-2 xl:hidden">
+                    {grn.lines?.map((line, index) => <article key={index} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="text-sm font-semibold text-slate-900 dark:text-white">{line.product?.name || '-'}</h3><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{line.product?.sku || '-'}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.qtyReceived', 'Received')}</dt><dd className="mt-0.5">{line.qtyReceived}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.unitCost', 'Unit Cost')}</dt><dd className="mt-0.5 font-mono">{formatCurrency(line.unitCost)}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.taxRate', 'Tax %')}</dt><dd className="mt-0.5">{line.taxRate}%</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.lineTotal', 'Total')}</dt><dd className="mt-0.5 font-semibold">{formatCurrency(toNum(line.qtyReceived) * toNum(line.unitCost))}</dd></div></dl></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">

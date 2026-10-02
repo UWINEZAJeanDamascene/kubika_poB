@@ -165,8 +165,8 @@ export default function PickPackPickPage() {
               <Skeleton className="h-8 w-48" />
               <Skeleton className="mt-2 h-4 w-64" />
             </div>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 space-y-4">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="space-y-4 xl:col-span-2">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Card key={i} className="border-slate-200 dark:border-slate-800 dark:bg-slate-950">
                     <CardContent className="space-y-3 p-4">
@@ -259,9 +259,9 @@ export default function PickPackPickPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Picking List */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="space-y-4 xl:col-span-2">
               {pickPack.lines.map((line) => {
                 const qtyToPick = toNumber(line.qtyToPick);
                 const pickedQty = pickingLines[line._id] || 0;

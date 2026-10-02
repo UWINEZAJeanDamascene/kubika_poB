@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { Layout } from "../layout/Layout";
@@ -45,7 +45,7 @@ export default function SalesDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const { data, isPending: loading, error: queryError, refetch: fetchDashboard } = useQuery({ queryKey: ['dashboard', 'sales'], queryFn: ({ signal }) => dashboardApi.getSales(signal), staleTime: 60_000 });
   const error = queryError ? formatDashboardError(queryError.message || "Failed to load sales dashboard") : null;
-  useLiveRefresh(fetchDashboard);
+  useLiveRefresh(() => { void fetchDashboard(); });
 
   const summary = data?.summary;
   const invoices = data?.invoices;

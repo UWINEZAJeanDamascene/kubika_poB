@@ -716,7 +716,10 @@ export default function PurchaseOrderDetailPage() {
                   <PanelTitle icon={<ClipboardList className="h-4 w-4" />} title={t('purchase.detail.lineItems', 'Line Items')} />
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {purchaseOrder.lines?.map((line) => <article key={line._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{line.product?.name || (line as any).productName || '-'}</h3><p className="text-xs text-slate-500">{line.product?.sku || (line as any).productCode || ''}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">{t('purchase.detail.qtyOrdered', 'Ordered')}</dt><dd>{line.qtyOrdered}</dd></div><div><dt className="text-slate-500">{t('purchase.detail.qtyReceived', 'Received')}</dt><dd>{line.qtyReceived || 0}</dd></div><div><dt className="text-slate-500">{t('purchase.detail.unitCost', 'Unit cost')}</dt><dd>{formatCurrency(line.unitCost, purchaseOrder.currencyCode)}</dd></div><div><dt className="text-slate-500">{t('purchase.detail.tax', 'Tax')}</dt><dd>{formatCurrency(line.taxAmount, purchaseOrder.currencyCode)}</dd></div></dl><p className="mt-2 text-right text-sm font-semibold">{formatCurrency(line.lineTotal, purchaseOrder.currencyCode)}</p><p className="mt-2 border-t border-slate-200 pt-2 text-xs text-slate-500 dark:border-slate-700">{typeof line.budgetId === 'object' ? line.budgetId?.name || '-' : line.budgetId || '-'} · {typeof line.accountId === 'object' ? `${line.accountId?.code || ''} ${line.accountId?.name || ''}` : line.accountId || '-'}</p></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800 dark:bg-slate-900/50">
@@ -869,7 +872,11 @@ export default function PurchaseOrderDetailPage() {
                       <p className="text-sm">{t('purchase.detail.noGRNs', 'No GRNs found for this purchase order')}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {grns.map((grn) => <article key={grn._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-start justify-between gap-2"><h3 className="font-medium text-slate-900 dark:text-white">{grn.referenceNo}</h3><Badge variant="outline">{grn.status === 'confirmed' ? t('purchase.grn.confirmed', 'Confirmed') : t('purchase.grn.draft', 'Draft')}</Badge></div><p className="mt-1 text-xs text-slate-500">{formatDate(grn.receivedDate)}</p><p className="mt-2 text-right font-semibold">{formatCurrency(grn.totalAmount, purchaseOrder.currencyCode)}</p><p className="mt-1 text-xs text-slate-500">{grn.confirmedBy?.name || '-'}</p></article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800 dark:bg-slate-900/50">
@@ -907,6 +914,7 @@ export default function PurchaseOrderDetailPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -957,7 +965,11 @@ export default function PurchaseOrderDetailPage() {
                       <p className="text-sm">{t('purchase.detail.noPayments', 'No payments recorded yet')}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 xl:hidden">
+                      {(purchaseOrder.payments || []).map((payment: any, idx: number) => <article key={idx} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><span className="text-sm text-slate-500">{new Date(payment.paidDate || payment.date).toLocaleDateString()}</span><Badge variant="outline">{payment.paymentMethod}</Badge></div><p className="mt-2 text-lg font-semibold">{formatCurrency(payment.amount, purchaseOrder.currencyCode)}</p>{payment.notes && <p className="mt-1 text-sm text-slate-500">{payment.notes}</p>}</article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800 dark:bg-slate-900/50">
@@ -983,6 +995,7 @@ export default function PurchaseOrderDetailPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

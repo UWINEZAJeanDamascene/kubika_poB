@@ -8,7 +8,6 @@ import {
   CheckCircle,
   Box,
   Truck,
-  Loader2,
   Package,
   User,
   Warehouse,
@@ -153,42 +152,6 @@ export default function PickPackDetailPage() {
     }
   };
 
-  const handleCompletePicking = async () => {
-    try {
-      const response = await pickPackApi.completePicking(id as string);
-      if (response.success) {
-        toast.success('Picking completed');
-        fetchPickPack();
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to complete picking');
-    }
-  };
-
-  const handleStartPacking = async () => {
-    try {
-      const response = await pickPackApi.startPacking(id as string);
-      if (response.success) {
-        toast.success('Packing started');
-        fetchPickPack();
-      }
-    } catch (error) {
-      toast.error('Failed to start packing');
-    }
-  };
-
-  const handleCompletePacking = async () => {
-    try {
-      const response = await pickPackApi.completePacking(id as string);
-      if (response.success) {
-        toast.success('Packing completed - Delivery Note created');
-        fetchPickPack();
-      }
-    } catch (error) {
-      toast.error('Failed to complete packing');
-    }
-  };
-
   const formatDate = (date: string) => {
     if (!date) return '-';
     return new Date(date).toLocaleDateString();
@@ -206,8 +169,8 @@ export default function PickPackDetailPage() {
               </div>
               <Skeleton className="mt-3 h-4 w-72" />
             </div>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <div className="space-y-6 xl:col-span-2">
                 <Card className="border-slate-200 dark:border-slate-800 dark:bg-slate-950">
                   <CardHeader className="space-y-1 pb-2">
                     <Skeleton className="h-5 w-24" />
@@ -408,9 +371,9 @@ export default function PickPackDetailPage() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* Progress */}
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="space-y-1 pb-2">
@@ -466,7 +429,10 @@ export default function PickPackDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+              <div className="space-y-3 p-3 xl:hidden">
+                {pickPack.lines.map((line) => <article key={line._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-start justify-between gap-2"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.product?.name || line.description}</h3><p className="text-xs text-slate-500">{line.product?.sku}</p></div><Badge className={`${STATUS_COLORS[line.status] || 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'} capitalize text-xs`}>{line.status}</Badge></div><dl className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">To pick</dt><dd>{toNumber(line.qtyToPick)}</dd></div><div><dt className="text-slate-500">Picked</dt><dd>{toNumber(line.qtyPicked)}</dd></div><div><dt className="text-slate-500">Packed</dt><dd>{toNumber(line.qtyPacked)}</dd></div></dl></article>)}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b border-slate-200 bg-slate-50/50 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">

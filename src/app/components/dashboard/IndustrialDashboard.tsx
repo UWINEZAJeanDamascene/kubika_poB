@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { Children, isValidElement, type ReactElement, type ReactNode } from "react";
 import { AlertCircle, Check, Clock3, RefreshCw } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { formatDashboardDateTime } from "./dashboardPageUtils";
+import { Table, TableBody, TableCell, TableHeader, TableRow } from "@/app/components/ui/table";
 
 export type DashboardTone = "neutral" | "healthy" | "warning" | "critical";
 
@@ -266,8 +267,55 @@ export function IndustrialState({
   );
 }
 
-export function IndustrialTableFrame({ children }: { children: ReactNode }) {
-  return <div className="industrial-table-frame">{children}</div>;
+type ElementWithChildren = ReactElement<{ children?: ReactNode }>;
+
+function firstChildOfType(parent: ReactNode, type: ReactElement["type"]): ElementWithChildren | undefined {
+  return Children.toArray(parent).find((child) => isValidElement(child) && child.type === type) as ElementWithChildren | undefined;
+}
+
+function tableCards(tableNode: ReactNode): ReactNode {
+  const table = firstChildOfType(tableNode, Table);
+  const header = table && firstChildOfType(table.props.children, TableHeader);
+  const body = table && firstChildOfType(table.props.children, TableBody);
+  const headingRow = header && firstChildOfType(header.props.children, TableRow);
+  const headings = headingRow
+    ? Children.toArray(headingRow.props.children).map((cell) => isValidElement(cell) ? (cell.props as { children?: ReactNode }).children : null)
+    : [];
+  if (!body) return null;
+
+  return (
+    <div className="space-y-2">
+      {Children.toArray(body.props.children).filter((row) => isValidElement(row) && row.type === TableRow).map((row, rowIndex) => {
+        const cells = Children.toArray((row as ElementWithChildren).props.children).filter((cell) => isValidElement(cell) && cell.type === TableCell) as ElementWithChildren[];
+        if (!cells.length) return null;
+        return (
+          <article key={(row as ReactElement).key ?? rowIndex} className="industrial-mobile-record">
+            <div className="industrial-mobile-record__title">{(cells[0].props as { children?: ReactNode }).children}</div>
+            {cells.length > 1 && (
+              <dl className="industrial-mobile-record__fields">
+                {cells.slice(1).map((cell, cellIndex) => (
+                  <div key={cell.key ?? cellIndex} className="min-w-0">
+                    <dt>{headings[cellIndex + 1] ?? `Field ${cellIndex + 2}`}</dt>
+                    <dd>{(cell.props as { children?: ReactNode }).children}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+export function IndustrialTableFrame({ children, mobile }: { children: ReactNode; mobile?: ReactNode }) {
+  const content = mobile ?? tableCards(children);
+  return (
+    <>
+      {content && <div className="industrial-mobile-table lg:hidden">{content}</div>}
+      <div className={`industrial-table-frame ${content ? "industrial-desktop-table" : ""}`}>{children}</div>
+    </>
+  );
 }
 
 export function IndustrialStatusLabel({ label, tone = "neutral" }: { label: string; tone?: DashboardTone }) {

@@ -136,7 +136,6 @@ export default function InvoicesListPage() {
   const {
     data: invoiceData,
     isPending: loading,
-    refetch: fetchInvoices,
   } = useQuery({
     queryKey: ['invoices', 'list', invoiceParams],
     queryFn: async ({ signal }) => {
@@ -346,7 +345,7 @@ export default function InvoicesListPage() {
           {/* Filters */}
           <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
@@ -435,7 +434,7 @@ export default function InvoicesListPage() {
               ) : (
                 <>
                   {/* Desktop Table */}
-                  <div className="hidden overflow-x-auto md:block">
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -507,7 +506,7 @@ export default function InvoicesListPage() {
                   </div>
 
                   {/* Mobile Cards */}
-                  <div className="space-y-3 p-4 md:hidden">
+                  <div className="space-y-3 p-4 xl:hidden">
                     {invoices.map((invoice) => (
                       <div
                         key={invoice._id}

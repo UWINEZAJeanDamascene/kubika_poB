@@ -14,8 +14,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow,
-  Divider
+  TableRow
 } from '@mui/material';
 import {
   ArrowLeft as ArrowLeftIcon,
@@ -368,7 +367,15 @@ export default function TransferDetailPage() {
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
             {t('transfers.items', 'Transfer Items')}
           </Typography>
-          <TableContainer>
+          <div className="space-y-2 xl:hidden">
+            {transfer.items.map((item) => {
+              const product = typeof item.product === 'object' ? item.product : null;
+              const qty = toNum(item.qty || item.quantity);
+              const cost = toNum(item.unitCost);
+              return <article key={item._id} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="text-sm font-semibold">{product?.name || '-'}</h3><p className="mt-0.5 font-mono text-xs text-slate-500 dark:text-slate-400">{product?.sku || '-'}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-2 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">{t('transfers.quantity', 'Quantity')}</dt><dd className="mt-0.5 font-medium">{qty}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('transfers.unitCost', 'Unit Cost')}</dt><dd className="mt-0.5">{formatCurrency(cost)}</dd></div><div className="col-span-2"><dt className="text-slate-500 dark:text-slate-400">{t('transfers.totalCost', 'Total Cost')}</dt><dd className="mt-0.5 font-semibold">{formatCurrency(qty * cost)}</dd></div></dl></article>;
+            })}
+          </div>
+          <TableContainer className="hidden xl:block">
             <Table size="small">
               <TableHead>
                 <TableRow>
@@ -409,7 +416,11 @@ export default function TransferDetailPage() {
               <Typography variant="body2" color="text.secondary">{journal.description}</Typography>
               <Chip label={journal.status} size="small" color={journal.status === 'posted' ? 'success' : 'default'} />
             </div>
-            <TableContainer>
+            <div className="space-y-2 xl:hidden">
+              {journal.lines.map((line, idx) => <article key={idx} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h3 className="break-words text-xs font-semibold">{line.accountName || '-'}</h3><p className="mt-1 font-mono text-[10px] text-slate-500 dark:text-slate-400">{line.accountCode}</p></div><span className="max-w-[45%] break-words text-right text-xs text-slate-500 dark:text-slate-400">{line.description || '-'}</span></div><div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-2 text-xs dark:border-slate-700"><div><span className="text-slate-500 dark:text-slate-400">{t('journal.debit', 'Debit')}</span><p className="mt-0.5 font-medium">{line.debit ? formatCurrency(line.debit) : '-'}</p></div><div><span className="text-slate-500 dark:text-slate-400">{t('journal.credit', 'Credit')}</span><p className="mt-0.5 font-medium">{line.credit ? formatCurrency(line.credit) : '-'}</p></div></div></article>)}
+              <div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-100 p-3 text-xs dark:bg-slate-800"><div><span className="text-slate-500 dark:text-slate-400">{t('journal.totalDebit', 'Total debit')}</span><p className="mt-1 font-semibold">{formatCurrency(journal.totalDebit)}</p></div><div><span className="text-slate-500 dark:text-slate-400">{t('journal.totalCredit', 'Total credit')}</span><p className="mt-1 font-semibold">{formatCurrency(journal.totalCredit)}</p></div></div>
+            </div>
+            <TableContainer className="hidden xl:block">
               <Table size="small">
                 <TableHead>
                   <TableRow>

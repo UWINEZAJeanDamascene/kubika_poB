@@ -376,9 +376,9 @@ export default function PurchaseReturnDetailPage() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* Document Info */}
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="pb-2">
@@ -426,7 +426,10 @@ export default function PurchaseReturnDetailPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 xl:hidden">
+                    {purchaseReturn.lines?.map((line, index) => <article key={index} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{line.product.name}</h3><p className="text-xs text-slate-500 dark:text-slate-400">{line.product.sku}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">{t("purchaseReturns.qtyReturned", "Returned")}</dt><dd>{line.qtyReturned}</dd></div><div><dt className="text-slate-500">{t("purchaseReturns.unitCost", "Unit cost")}</dt><dd>{formatCurrency(line.unitCost)}</dd></div></dl><p className="mt-2 text-right text-sm font-semibold">{formatCurrency(line.qtyReturned * line.unitCost)}</p></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">

@@ -494,9 +494,9 @@ export default function GRNEditPage() {
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t('grn.edit', 'Edit GRN')}</h1>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="space-y-6 xl:col-span-2">
             {/* PO Selection */}
             <Card className="dark:bg-slate-800">
               <CardHeader>
@@ -525,6 +525,13 @@ export default function GRNEditPage() {
                   <CardTitle className="text-slate-900 dark:text-white">{t('grn.lineItems', 'Line Items')}</CardTitle>
                 </CardHeader>
                 <CardContent>
+                  <div className="space-y-3 xl:hidden">
+                    {lines.map((line, index) => {
+                      const remaining = line.qtyOrdered - line.qtyPreviouslyReceived;
+                      return <article key={index} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="text-sm font-semibold text-slate-900 dark:text-white">{line.productName}</h3><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{line.productSku}</p></div><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.qtyOrdered', 'Qty Ordered')}</dt><dd className="mt-0.5">{line.qtyOrdered}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.remaining', 'Remaining')}</dt><dd className="mt-0.5">{remaining}</dd></div><div><Label className="text-xs">{t('grn.qtyReceived', 'Qty Received')}</Label><Input type="number" min="0" max={remaining} inputMode="numeric" value={line.qtyReceived} onChange={(e) => handleLineChange(index, 'qtyReceived', e.target.value)} className="mt-1 w-full border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" disabled={remaining <= 0} /></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.unitCost', 'Unit Cost')}</dt><dd className="mt-0.5">{line.unitCost.toFixed(2)}</dd></div><div className="col-span-2"><dt className="text-slate-500 dark:text-slate-400">{t('grn.lineTotal', 'Total')}</dt><dd className="mt-0.5 font-semibold">{(line.qtyReceived * line.unitCost).toFixed(2)}</dd></div></dl>{line.trackingType === 'batch' && <div className="mt-3 grid gap-3 border-t border-slate-200 pt-3 dark:border-slate-700"><div><Label className="text-xs">{t('grn.batchNo', 'Batch No')}</Label><Input value={line.batchNo || ''} onChange={(e) => handleLineChange(index, 'batchNo', e.target.value)} className="mt-1 w-full border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" /></div><div><Label className="text-xs">{t('grn.manufactureDate', 'Mnf. Date')}</Label><Input type="date" value={line.manufactureDate || ''} onChange={(e) => handleLineChange(index, 'manufactureDate', e.target.value)} className="mt-1 w-full border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" /></div><div><Label className="text-xs">{t('grn.expiryDate', 'Exp. Date')}</Label><Input type="date" value={line.expiryDate || ''} onChange={(e) => handleLineChange(index, 'expiryDate', e.target.value)} className="mt-1 w-full border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" /></div></div>}{line.trackingType === 'serial' && <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-700"><Label className="text-xs">{t('grn.serialNumbers', 'Serial Numbers')}</Label><Input value={line.serialNumbers?.join(', ') || ''} onChange={(e) => handleLineChange(index, 'serialNumbers', e.target.value)} placeholder="SN001,SN002 or SN001-SN030" className="mt-1 w-full border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white" />{line.qtyReceived > 0 && <p className="mt-1 text-xs text-muted-foreground dark:text-slate-400">{line.serialNumbers?.length || 0} / {line.qtyReceived} entered</p>}</div>}</article>;
+                    })}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="dark:bg-slate-700">
@@ -619,6 +626,7 @@ export default function GRNEditPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </CardContent>
               </Card>
             )}

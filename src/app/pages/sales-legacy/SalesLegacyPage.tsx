@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { Layout } from '@/app/layout/Layout';
 import { Button } from '@/app/components/ui/button';
@@ -40,8 +40,6 @@ import {
   RefreshCw,
   Tag,
   ArrowUpRight,
-  TrendingDown,
-  Wallet,
   ScanLine,
   PauseCircle,
   RotateCcw,
@@ -151,7 +149,7 @@ export default function SalesLegacyPage() {
   const [notes, setNotes] = useState('');
   const [walkInName, setWalkInName] = useState('');
   const [sendEmail, setSendEmail] = useState(false);
-  const [showCart, setShowCart] = useState(false);
+  const [, setShowCart] = useState(false);
   const [bankAccountId, setBankAccountId] = useState<string>('');
   const [heldSales, setHeldSales] = useState<HeldSale[]>([]);
   const [tillLoading, setTillLoading] = useState(false);
@@ -694,8 +692,8 @@ export default function SalesLegacyPage() {
     onMutate: async ({ requestData }) => {
       await queryClient.cancelQueries({ queryKey: ['pos', 'products'] });
       const previousProducts = queryClient.getQueriesData({ queryKey: ['pos', 'products'] });
-      const quantities = new Map(
-        requestData.items.map((item: { productId: string; quantity: number }) => [item.productId, Number(item.quantity) || 0]),
+      const quantities = new Map<string, number>(
+        requestData.items.map((item: { productId: string; quantity: number }) => [item.productId, Number(item.quantity) || 0] as [string, number]),
       );
 
       queryClient.setQueriesData({ queryKey: ['pos', 'products'] }, (old: unknown) => {
@@ -991,9 +989,9 @@ export default function SalesLegacyPage() {
           </div>
 
           {/* Main Grid */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Left Column - Products */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* Warehouse Selection */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardContent className="p-5">
@@ -1106,7 +1104,7 @@ export default function SalesLegacyPage() {
                       <p>No products found. Select a warehouse and search.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                       {products.map((product) => (
                         <div
                           key={product._id}

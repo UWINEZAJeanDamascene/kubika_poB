@@ -1,27 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { deliveryNotesApi, invoicesApi, clientsApi, productsApi, warehousesApi, stockBatchApi } from '@/lib/api';
+import { deliveryNotesApi, invoicesApi, clientsApi, warehousesApi, stockBatchApi } from '@/lib/api';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Layout } from '../../layout/Layout';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import {
   ArrowLeft,
   Save,
-  Plus,
-  Trash2,
   CheckCircle,
   Truck,
   Package,
   ClipboardList,
-  Building,
   User,
   CalendarDays,
-  MapPin,
-  Hash,
   FileText,
-  TrendingUp,
   BarChart3,
-  Layers,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -84,14 +77,6 @@ interface Client {
   _id: string;
   name: string;
   code?: string;
-}
-
-interface Product {
-  _id: string;
-  name: string;
-  sku: string;
-  trackBatches?: boolean;
-  trackSerials?: boolean;
 }
 
 interface DeliveryNoteLine {
@@ -223,7 +208,6 @@ function DeliveryNoteCreatePageContent() {
   const [saving, setSaving] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [warehouse, setWarehouse] = useState<string>('');
 
@@ -307,20 +291,6 @@ function DeliveryNoteCreatePageContent() {
       }
     } catch (error) {
       console.error('Failed to fetch clients:', error);
-    }
-  }, []);
-
-  const fetchProducts = useCallback(async () => {
-    try {
-      const response = await productsApi.getAll({ limit: 500 });
-      if (response.success && response.data) {
-        const productData = Array.isArray(response.data)
-          ? response.data
-          : (response.data as any[]);
-        setProducts(productData as Product[]);
-      }
-    } catch (error) {
-      console.error('Failed to fetch products:', error);
     }
   }, []);
 
@@ -434,9 +404,8 @@ function DeliveryNoteCreatePageContent() {
   useEffect(() => {
     fetchInvoices();
     fetchClients();
-    fetchProducts();
     fetchWarehouses();
-  }, [fetchInvoices, fetchClients, fetchProducts, fetchWarehouses]);
+  }, [fetchInvoices, fetchClients, fetchWarehouses]);
 
   useEffect(() => {
     if (isEditMode && id) {
@@ -575,8 +544,8 @@ function DeliveryNoteCreatePageContent() {
         <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1600px] 2xl:max-w-[2200px] space-y-6">
             <Skeleton className="h-40 w-full rounded-xl" />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-              <Skeleton className="h-96 w-full rounded-xl lg:col-span-2" />
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+              <Skeleton className="h-96 w-full rounded-xl xl:col-span-2" />
               <Skeleton className="h-96 w-full rounded-xl" />
             </div>
           </div>
@@ -634,9 +603,9 @@ function DeliveryNoteCreatePageContent() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
-            <div className="space-y-6 lg:col-span-2">
+            <div className="space-y-6 xl:col-span-2">
               {/* Basic Information */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="border-b border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50">
@@ -782,7 +751,11 @@ function DeliveryNoteCreatePageContent() {
                       <p className="text-sm text-slate-500 dark:text-slate-400">{t('deliveryNote.selectQuotationFirst', 'Select an invoice first')}</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {formData.lines.map((line, index) => <article key={index} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productSku}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Ordered</dt><dd>{line.qtyOrdered}</dd></div><div><dt className="text-slate-500">Delivered</dt><dd>{line.qtyDelivered}</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to deliver<Input type="number" min="0" max={line.qtyOrdered - line.qtyDelivered} value={line.qtyToDeliver} onChange={(e) => handleLineChange(index, 'qtyToDeliver', e.target.value)} disabled={line.qtyOrdered - line.qtyDelivered === 0} /></label><p className="text-right text-xs text-slate-500">Maximum: {line.qtyOrdered - line.qtyDelivered}</p>{line.trackBatches && <div className="space-y-1 text-xs text-slate-500"><span>Batch</span><BatchAutocomplete productId={line.product} warehouseId={warehouse} value={line.batchId} onChange={(value) => handleLineChange(index, 'batchId', value)} disabled={!warehouse || !line.product || line.qtyToDeliver === 0} /></div>}<div className="flex justify-between border-t border-slate-200 pt-2 text-sm dark:border-slate-700"><span className="text-slate-500">Unit {formatCurrency(line.unitPrice)}</span><strong>{formatCurrency(line.lineTotal)}</strong></div></article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -837,6 +810,7 @@ function DeliveryNoteCreatePageContent() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

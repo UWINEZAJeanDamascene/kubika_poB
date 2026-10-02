@@ -21,7 +21,7 @@ export default function PurchaseDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const { data, isPending: loading, error: queryError, refetch: fetchDashboard } = useQuery({ queryKey: ['dashboard', 'purchase'], queryFn: ({ signal }) => dashboardApi.getPurchase(signal), staleTime: 60_000 });
   const error = queryError ? formatDashboardError(queryError.message || "Failed to load purchase dashboard") : null;
-  useLiveRefresh(fetchDashboard);
+  useLiveRefresh(() => { void fetchDashboard(); });
 
   const summary = data?.summary;
   const orders = data?.purchase_orders;

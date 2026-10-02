@@ -13,7 +13,6 @@ import {
   DollarSign,
   Barcode,
   Truck,
-  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
@@ -295,9 +294,9 @@ export default function PurchaseReturnCreatePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="space-y-6 xl:col-span-2">
               {/* GRN Selection */}
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="pb-2">
@@ -351,7 +350,27 @@ export default function PurchaseReturnCreatePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
+                    <div className="space-y-3 xl:hidden">
+                      {lines.map((line, index) => {
+                        const availableQty = line.qtyReceived - line.qtyPreviouslyReturned;
+                        return <article key={index} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900">
+                          <div className="font-medium text-slate-900 dark:text-white">{line.productName}</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">{line.productSku}</div>
+                          <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700">
+                            <div><dt className="text-slate-500">{t("purchaseReturn.qtyReceived", "Received")}</dt><dd>{line.qtyReceived}</dd></div>
+                            <div><dt className="text-slate-500">{t("purchaseReturn.alreadyReturned", "Already returned")}</dt><dd>{line.qtyPreviouslyReturned}</dd></div>
+                            <div><dt className="text-slate-500">{t("purchaseReturn.available", "Available")}</dt><dd>{availableQty}</dd></div>
+                            <div><dt className="text-slate-500">{t("purchaseReturn.unitCost", "Unit cost")}</dt><dd>{line.unitCost.toFixed(2)}</dd></div>
+                          </dl>
+                          <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">
+                            <label className="text-xs text-slate-500">{t("purchaseReturn.qtyToReturn", "Quantity to return")}</label>
+                            <Input type="number" min={0} max={availableQty} value={line.qtyToReturn} onChange={(e) => handleLineChange(index, parseFloat(e.target.value) || 0)} className="h-9 w-28 text-right" disabled={availableQty <= 0} />
+                          </div>
+                          <p className="mt-2 text-right text-sm font-semibold">{(line.qtyToReturn * line.unitCost).toFixed(2)}</p>
+                        </article>;
+                      })}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">

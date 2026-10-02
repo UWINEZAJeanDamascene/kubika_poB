@@ -375,7 +375,30 @@ export default function JournalEntriesPage() {
           ) : (
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="space-y-3 p-3 lg:hidden">
+                  {entries.map((entry) => (
+                    <div key={entry._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-mono text-xs font-semibold text-blue-700 dark:text-blue-300">{entry.entryNumber}</p>
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{format(new Date(entry.date), 'dd MMM yyyy')}</p>
+                        </div>
+                        {getStatusBadge(entry.status)}
+                      </div>
+                      <p className="mt-2 text-sm font-medium text-slate-900 dark:text-white">{entry.description}</p>
+                      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+                        <Badge variant="outline" className="capitalize">{(entry as any).sourceType || 'manual'}</Badge>
+                        <span className="text-right text-slate-500 dark:text-slate-400">Dr {formatAmount(entry.totalDebit)} <span className="px-1">·</span> Cr {formatAmount(entry.totalCredit)}</span>
+                      </div>
+                      <div className="mt-3 flex gap-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/journal/${entry._id}`)} className="min-h-10 flex-1"> <Eye className="mr-2 h-4 w-4" /> View</Button>
+                        {entry.status === 'draft' && <Button variant="outline" size="sm" onClick={() => navigate(`/journal/${entry._id}`)} className="min-h-10 flex-1 text-emerald-600"><CheckCircle className="mr-2 h-4 w-4" /> Post</Button>}
+                        {entry.status === 'posted' && <Button variant="outline" size="sm" onClick={() => { setVoidingEntry(entry); setVoidDialogOpen(true); }} className="min-h-10 flex-1 text-red-600"><XCircle className="mr-2 h-4 w-4" /> Void</Button>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto lg:block">
                   <Table className="min-w-[960px]">
                     <TableHeader>
                       <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
