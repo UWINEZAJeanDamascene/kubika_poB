@@ -341,7 +341,9 @@ export default function PrepaidExpensesTab() {
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
-                                    {prepaid.amortizations.map((amort: AmortizationEntry, idx: number) => (
+                                    {prepaid.amortizations.map((amort: AmortizationEntry, idx: number) => {
+                                      const isDue = new Date(amort.date).getTime() <= Date.now();
+                                      return (
                                       <TableRow key={amort._id} className="hover:bg-muted/30">
                                         <TableCell className="text-sm">{idx + 1}</TableCell>
                                         <TableCell className="text-sm">{new Date(amort.date).toLocaleDateString()}</TableCell>
@@ -352,14 +354,18 @@ export default function PrepaidExpensesTab() {
                                             <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-0 font-medium">
                                               <CheckCircle2 className="h-3 w-3 mr-1" /> Posted
                                             </Badge>
-                                          ) : (
+                                          ) : isDue ? (
                                             <Badge variant="outline" className="bg-amber-100 text-amber-700 border-0 font-medium">
-                                              <Clock className="h-3 w-3 mr-1" /> Pending
+                                              <Clock className="h-3 w-3 mr-1" /> Due
+                                            </Badge>
+                                          ) : (
+                                            <Badge variant="outline" className="bg-slate-100 text-slate-600 border-0 font-medium">
+                                              <Clock className="h-3 w-3 mr-1" /> Scheduled
                                             </Badge>
                                           )}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                          {amort.status === 'pending' && prepaid.status === 'active' && (
+                                          {amort.status === 'pending' && prepaid.status === 'active' && isDue && (
                                             <Button
                                               size="sm"
                                               variant="outline"
@@ -371,7 +377,8 @@ export default function PrepaidExpensesTab() {
                                           )}
                                         </TableCell>
                                       </TableRow>
-                                    ))}
+                                      );
+                                    })}
                                   </TableBody>
                                 </Table>
                               </div>
