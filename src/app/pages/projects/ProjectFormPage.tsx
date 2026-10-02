@@ -236,6 +236,18 @@ export default function ProjectFormPage() {
       return;
     }
 
+    const configuredRequiredFields = typeSettings.find((item) => item.category === formData.project_category)?.required_fields || [];
+    const requiredFields = new Set(configuredRequiredFields);
+    if (formData.project_category === "client_job" && !formData.is_template) requiredFields.add("client_id");
+    const missingLabels = REQUIRED_PROJECT_FIELDS
+      .filter(([field]) => requiredFields.has(field))
+      .filter(([field]) => !String(formData[field as keyof ProjectCreateRequest] ?? "").trim())
+      .map(([, label]) => label);
+    if (missingLabels.length) {
+      toast.error(`Complete required project fields: ${missingLabels.join(", ")}`);
+      return;
+    }
+
     setSaving(true);
     try {
       const dataToSubmit = {
@@ -552,7 +564,7 @@ export default function ProjectFormPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-5 dark:border-slate-800">
                 <div className="space-y-2">
-                  <Label>Client / Customer{formData.project_category === "client_job" && <span className="ml-1 text-red-500">*</span>}</Label>
+                  <Label>Client / Customer{(formData.project_category === "client_job" && !formData.is_template || typeSettings.find((item) => item.category === formData.project_category)?.required_fields.includes("client_id")) && <span className="ml-1 text-red-500">*</span>}</Label>
                   <Select value={formData.client_id || "__none__"} onValueChange={(value) => setFormData({ ...formData, client_id: value === "__none__" ? "" : value })}>
                     <SelectTrigger className="h-11"><SelectValue placeholder="Select client" /></SelectTrigger>
                     <SelectContent>
@@ -562,7 +574,7 @@ export default function ProjectFormPage() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Project Manager</Label>
+                  <Label>Project Manager{typeSettings.find((item) => item.category === formData.project_category)?.required_fields.includes("manager_id") && <span className="ml-1 text-red-500">*</span>}</Label>
                   <Select value={formData.manager_id || "__none__"} onValueChange={(value) => setFormData({ ...formData, manager_id: value === "__none__" ? "" : value })}>
                     <SelectTrigger className="h-11"><SelectValue placeholder="Assign a manager" /></SelectTrigger>
                     <SelectContent><SelectItem value="__none__">Unassigned</SelectItem>{(setupOptions?.users || []).map((user) => <SelectItem key={user._id} value={user._id}>{user.name} · {user.email}</SelectItem>)}</SelectContent>
