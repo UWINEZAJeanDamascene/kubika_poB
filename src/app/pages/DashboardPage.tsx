@@ -219,8 +219,8 @@ export default function DashboardPage() {
 
   return (
     <Layout>
-      <div className="industrial-dashboard px-3 py-4 sm:px-5 lg:px-7">
-        <div className="mx-auto max-w-[1700px] space-y-5">
+      <div className="industrial-dashboard flex min-h-full w-full flex-col px-2 py-3 sm:px-3 sm:py-4 md:px-4 lg:px-7">
+        <div className="mx-auto w-full max-w-[1700px] flex-1 space-y-5">
           <IndustrialDashboardHeader
             title="Executive overview"
             subtitle="Cash, profit, collections, and operating priorities."

@@ -1744,7 +1744,12 @@
 
 .app-page-scroll {
   -webkit-overflow-scrolling: touch;
-  scrollbar-gutter: stable;
+  scrollbar-gutter: auto;
+  min-width: 0;
+}
+
+.app-page-scroll--dashboard {
+  background: var(--dashboard-paper, var(--background));
 }
 
 .app-bottom-navigation {

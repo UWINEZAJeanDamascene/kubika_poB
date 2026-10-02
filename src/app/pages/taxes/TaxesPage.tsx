@@ -822,7 +822,7 @@ export default function TaxesPage() {
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Period Selection */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <div className="space-y-2">
                     <Label htmlFor="liability_start">Period Start</Label>
                     <Input
@@ -882,7 +882,7 @@ export default function TaxesPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="mt-3 grid grid-cols-3 gap-4 text-sm text-slate-500">
+                      <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-500 sm:grid-cols-3">
                         <div>Output reversed: {liabilityReport.vat.output_vat_reversed.toLocaleString()}</div>
                         <div>Input reversed: {liabilityReport.vat.input_vat_reversed.toLocaleString()}</div>
                         <div>Net output: {liabilityReport.vat.net_output_vat.toLocaleString()}</div>
@@ -903,7 +903,7 @@ export default function TaxesPage() {
                         <Users className="h-5 w-5 text-purple-500" />
                         PAYE
                       </h3>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="p-3 bg-purple-50 rounded-lg">
                           <p className="text-xs text-slate-500">Total Withheld</p>
                           <p className="text-lg font-semibold text-purple-700">{liabilityReport.paye.total_withheld.toLocaleString()}</p>
@@ -933,7 +933,7 @@ export default function TaxesPage() {
                         <Briefcase className="h-5 w-5 text-teal-500" />
                         RSSB
                       </h3>
-                      <div className="grid grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <div className="p-3 bg-teal-50 rounded-lg">
                           <p className="text-xs text-slate-500">Total Contributions</p>
                           <p className="text-lg font-semibold text-teal-700">{liabilityReport.rssb.total_contributions.toLocaleString()}</p>
@@ -983,7 +983,7 @@ export default function TaxesPage() {
 
         {/* ========== TAX RATE FORM DIALOG ========== */}
         <Dialog open={isRateFormOpen} onOpenChange={setIsRateFormOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-2xl overflow-y-auto p-4 sm:max-h-[90vh] sm:w-full sm:p-6">
             <DialogHeader>
               <DialogTitle>{editingRate ? 'Edit Tax Rate' : 'Create Tax Rate'}</DialogTitle>
               <DialogDescription>
@@ -991,7 +991,7 @@ export default function TaxesPage() {
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmitRateForm)} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="code">Tax Code *</Label>
                   <Input
@@ -1016,7 +1016,7 @@ export default function TaxesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="type">Tax Type *</Label>
                   <Select value={watchType} onValueChange={(value: any) => setValue('type', value)}>
@@ -1046,7 +1046,7 @@ export default function TaxesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="input_account">Input Account (VAT Receivable) *</Label>
                   <Select 
@@ -1087,7 +1087,7 @@ export default function TaxesPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="effective_from">Effective From *</Label>
                   <Input

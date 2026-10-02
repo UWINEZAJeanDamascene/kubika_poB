@@ -283,7 +283,7 @@ export function Layout({ children }: LayoutProps) {
             immediately when the sidebar currency selector changes. */}
         <div
           key={`${displayCurrency}:${rates ? 'r' : 'n'}`}
-          className="app-page-scroll flex-1 min-h-0 overflow-auto overscroll-y-contain px-3 py-3 pb-[calc(5.5rem+env(safe-area-inset-bottom))] sm:px-4 md:px-5 md:py-5 md:pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-8 xl:px-6"
+          className={`app-page-scroll min-w-0 flex-1 min-h-0 overflow-auto overscroll-y-contain ${isDashboardRoute ? 'app-page-scroll--dashboard p-0' : 'px-3 py-3 pb-4 sm:px-4 md:px-5 md:py-5 md:pb-5 lg:pb-8 xl:px-6'}`}
         >
           {children}
         </div>

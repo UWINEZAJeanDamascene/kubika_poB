@@ -400,7 +400,7 @@ export default function CategoriesPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <div>
@@ -455,7 +455,7 @@ export default function CategoriesPage() {
         onOpenChange={setDrawerOpen}
         direction="right"
       >
-        <DrawerContent className="max-w-md w-full bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700">
+        <DrawerContent className="w-[min(100vw,28rem)] max-w-none overflow-y-auto border-l border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800">
           <DrawerHeader>
             <DrawerTitle className="text-slate-900 dark:text-white">
               {editingCategory 
