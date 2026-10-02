@@ -498,8 +498,8 @@ export default function CreditNotesListPage() {
 
           {/* Filter Bar */}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-            <div className="flex flex-wrap items-center gap-3 p-4">
-              <div className="relative flex-1 min-w-[200px]">
+            <div className="grid grid-cols-1 items-center gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-6">
+              <div className="relative min-w-0 sm:col-span-2 xl:col-span-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                 <Input
                   placeholder={t('creditNotes.search', 'Search credit notes...')}
@@ -509,7 +509,7 @@ export default function CreditNotesListPage() {
                 />
               </div>
               <Select value={statusFilter} onValueChange={handleStatusFilter}>
-                <SelectTrigger className="w-[150px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+                <SelectTrigger className="w-full bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
                   <SelectValue placeholder={t('creditNotes.filterStatus', 'Status')} />
                 </SelectTrigger>
                 <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
@@ -519,7 +519,7 @@ export default function CreditNotesListPage() {
                 </SelectContent>
               </Select>
               <Select value={typeFilter} onValueChange={handleTypeFilter}>
-                <SelectTrigger className="w-[160px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+                <SelectTrigger className="w-full bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
                   <SelectValue placeholder={t('creditNotes.filterType', 'Type')} />
                 </SelectTrigger>
                 <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
@@ -529,7 +529,7 @@ export default function CreditNotesListPage() {
                 </SelectContent>
               </Select>
               <Select value={clientFilter} onValueChange={handleClientFilter}>
-                <SelectTrigger className="w-[180px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
+                <SelectTrigger className="w-full bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
                   <SelectValue placeholder={t('creditNotes.filterClient', 'Client')} />
                 </SelectTrigger>
                 <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
@@ -539,8 +539,8 @@ export default function CreditNotesListPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Input type="date" value={dateFrom} onChange={(e) => handleDateFromChange(e.target.value)} className="w-[140px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white" />
-              <Input type="date" value={dateTo} onChange={(e) => handleDateToChange(e.target.value)} className="w-[140px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white" />
+              <Input type="date" value={dateFrom} onChange={(e) => handleDateFromChange(e.target.value)} className="w-full bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white" />
+              <Input type="date" value={dateTo} onChange={(e) => handleDateToChange(e.target.value)} className="w-full bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white" />
               {(search || statusFilter !== 'all' || clientFilter !== 'all' || typeFilter !== 'all' || dateFrom || dateTo) && (
                 <Button variant="ghost" size="sm" onClick={clearFilters} className="gap-1.5 text-slate-500 dark:text-slate-400">
                   <RotateCcw className="h-3.5 w-3.5" />

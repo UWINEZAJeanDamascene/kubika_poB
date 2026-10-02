@@ -824,7 +824,7 @@ export default function InvoiceDetailPage() {
 
           {/* Tabs */}
           <Tabs defaultValue="details" className="w-full">
-            <TabsList className="h-auto w-full gap-1 border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950">
+            <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950 [&>[data-slot=tabs-trigger]]:flex-none">
               <TabsTrigger value="details" className="gap-1.5 text-xs data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 dark:data-[state=active]:bg-blue-950/40 dark:data-[state=active]:text-blue-300 dark:text-slate-400">
                 <List className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Details</span>

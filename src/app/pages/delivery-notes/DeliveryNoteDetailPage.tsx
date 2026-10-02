@@ -427,8 +427,20 @@ export default function DeliveryNoteDetailPage() {
           </div>
 
           {/* Status Workflow Timeline */}
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-            <div className="flex min-w-[600px] items-center justify-between">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70 sm:p-5">
+            <div className="grid grid-cols-2 gap-2 xl:hidden">
+              {[
+                { key: 'draft', label: 'Draft', icon: FileText },
+                { key: 'confirmed', label: 'Confirmed', icon: CheckCircle },
+                { key: 'dispatched', label: 'Dispatched', icon: Truck },
+                { key: 'delivered', label: 'Delivered', icon: Package },
+              ].map((step, i) => {
+                const isActive = ['draft', 'confirmed', 'dispatched', 'delivered'].indexOf(deliveryNote.status) >= i;
+                const isCancelled = deliveryNote.status === 'cancelled';
+                return <div key={step.key} className="flex items-center gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700"><span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 ${isCancelled ? 'bg-red-100 text-red-700 ring-red-200 dark:bg-red-950/40 dark:text-red-400 dark:ring-red-900' : isActive ? 'bg-indigo-600 text-white ring-indigo-200 dark:bg-indigo-500 dark:ring-indigo-900' : 'bg-slate-100 text-slate-500 ring-slate-200 dark:bg-slate-800 dark:text-slate-500 dark:ring-slate-700'}`}><step.icon className="h-4 w-4" /></span><span className="text-xs font-medium text-slate-700 dark:text-slate-200">{step.label}</span></div>;
+              })}
+            </div>
+            <div className="hidden min-w-[600px] items-center justify-between xl:flex">
               {[
                 { key: 'draft', label: 'Draft', icon: FileText },
                 { key: 'confirmed', label: 'Confirmed', icon: CheckCircle },

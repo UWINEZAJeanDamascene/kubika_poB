@@ -582,7 +582,15 @@ export default function ClientDetailPage() {
                     <CardTitle className="text-base text-slate-900 dark:text-white">Quotations</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="overflow-x-auto px-0 sm:px-6">
+                <div className="space-y-3 p-4 xl:hidden">
+                  {quotations.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">No quotations found</p> : quotations.map((quotation) => (
+                    <article key={quotation._id} onClick={() => navigate(`/client/quotations/${quotation._id}`)} className="cursor-pointer rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                      <div className="flex items-start justify-between gap-3"><span className="break-all font-medium text-slate-900 dark:text-white">{quotation.referenceNo || '-'}</span>{getStatusBadge(quotation.status)}</div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><div><dt className="text-xs text-slate-500">Date</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatDate(quotation.quotationDate)}</dd></div><div><dt className="text-xs text-slate-500">Expiry</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatDate(quotation.expiryDate)}</dd></div><div className="col-span-2"><dt className="text-xs text-slate-500">Total</dt><dd className="mt-0.5 font-medium text-slate-900 dark:text-white">{formatCurrency(quotation.totalAmount)}</dd></div></dl>
+                    </article>
+                  ))}
+                </div>
+                <CardContent className="hidden overflow-x-auto px-0 sm:px-6 xl:block">
                   <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
@@ -631,7 +639,15 @@ export default function ClientDetailPage() {
                     <CardTitle className="text-base text-slate-900 dark:text-white">Invoices</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="overflow-x-auto px-0 sm:px-6">
+                <div className="space-y-3 p-4 xl:hidden">
+                  {invoices.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">No invoices found</p> : invoices.map((invoice) => (
+                    <article key={invoice._id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                      <div className="flex items-start justify-between gap-3"><span className="break-all font-medium text-slate-900 dark:text-white">{invoice.referenceNo || '-'}</span>{getStatusBadge(invoice.status)}</div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><div><dt className="text-xs text-slate-500">Invoice date</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatDate(invoice.invoiceDate)}</dd></div><div><dt className="text-xs text-slate-500">Due</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatDate(invoice.dueDate)}</dd></div><div><dt className="text-xs text-slate-500">Total</dt><dd className="mt-0.5 font-medium text-slate-900 dark:text-white">{formatCurrency(invoice.grandTotal)}</dd></div><div><dt className="text-xs text-slate-500">Paid</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatCurrency(invoice.amountPaid)}</dd></div><div className="col-span-2"><dt className="text-xs text-slate-500">Balance</dt><dd className="mt-0.5 font-medium text-rose-600 dark:text-rose-400">{formatCurrency(invoice.balance)}</dd></div></dl>
+                    </article>
+                  ))}
+                </div>
+                <CardContent className="hidden overflow-x-auto px-0 sm:px-6 xl:block">
                   <Table className="min-w-[700px]">
                     <TableHeader>
                       <TableRow className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
@@ -684,7 +700,15 @@ export default function ClientDetailPage() {
                     <CardTitle className="text-base text-slate-900 dark:text-white">Receipts</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="overflow-x-auto px-0 sm:px-6">
+                <div className="space-y-3 p-4 xl:hidden">
+                  {receipts.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">No receipts found</p> : receipts.map((receipt) => (
+                    <article key={receipt._id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                      <div className="flex items-start justify-between gap-3"><span className="break-all font-medium text-slate-900 dark:text-white">{receipt.referenceNo || '-'}</span>{getStatusBadge(receipt.status)}</div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><div><dt className="text-xs text-slate-500">Date</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatDate(receipt.receiptDate)}</dd></div><div><dt className="text-xs text-slate-500">Method</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{receipt.paymentMethod || '-'}</dd></div><div className="col-span-2"><dt className="text-xs text-slate-500">Amount</dt><dd className="mt-0.5 font-medium text-slate-900 dark:text-white">{formatCurrency(receipt.amount)}</dd></div></dl>
+                    </article>
+                  ))}
+                </div>
+                <CardContent className="hidden overflow-x-auto px-0 sm:px-6 xl:block">
                   <Table className="min-w-[500px]">
                     <TableHeader>
                       <TableRow className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">
@@ -733,7 +757,15 @@ export default function ClientDetailPage() {
                     <CardTitle className="text-base text-slate-900 dark:text-white">Credit Notes</CardTitle>
                   </div>
                 </CardHeader>
-                <CardContent className="overflow-x-auto px-0 sm:px-6">
+                <div className="space-y-3 p-4 xl:hidden">
+                  {creditNotes.length === 0 ? <p className="py-8 text-center text-sm text-slate-500">No credit notes found</p> : creditNotes.map((cn) => (
+                    <article key={cn._id} className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+                      <div className="flex items-start justify-between gap-3"><span className="break-all font-medium text-slate-900 dark:text-white">{cn.referenceNo || '-'}</span>{getStatusBadge(cn.status)}</div>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><div><dt className="text-xs text-slate-500">Date</dt><dd className="mt-0.5 text-slate-700 dark:text-slate-200">{formatDate(cn.creditNoteDate)}</dd></div><div><dt className="text-xs text-slate-500">Amount</dt><dd className="mt-0.5 font-medium text-slate-900 dark:text-white">{formatCurrency(cn.grandTotal)}</dd></div></dl>
+                    </article>
+                  ))}
+                </div>
+                <CardContent className="hidden overflow-x-auto px-0 sm:px-6 xl:block">
                   <Table className="min-w-[450px]">
                     <TableHeader>
                       <TableRow className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">

@@ -326,8 +326,14 @@ export default function QuotationsListPage() {
           </div>
 
           {/* Status Pipeline */}
-          <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-            <div className="flex min-w-[500px] items-center justify-between gap-2">
+          <div className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70 sm:p-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:hidden">
+              {['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted'].map((s) => {
+                const count = quotations.filter((q) => q.status === s).length;
+                return <div key={s} className="flex items-center justify-between gap-2 rounded-lg border border-slate-200 p-3 dark:border-slate-700"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{s}</span><span className={`flex h-8 min-w-8 items-center justify-center rounded-full px-2 text-xs font-bold ring-1 ${count > 0 ? 'bg-indigo-50 text-indigo-700 ring-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-800' : 'bg-slate-50 text-slate-400 ring-slate-200 dark:bg-slate-900 dark:text-slate-500 dark:ring-slate-700'}`}>{count}</span></div>;
+              })}
+            </div>
+            <div className="hidden min-w-[500px] items-center justify-between gap-2 xl:flex">
               {['draft', 'sent', 'accepted', 'rejected', 'expired', 'converted'].map((s, i, arr) => {
                 const count = quotations.filter((q) => q.status === s).length;
                 const isLast = i === arr.length - 1;

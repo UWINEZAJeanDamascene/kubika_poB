@@ -511,7 +511,7 @@ export default function SalesOrderDetailPage() {
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             <div className="space-y-6 xl:col-span-2">
               <Tabs defaultValue="lines">
-                <TabsList className="dark:border-slate-700 dark:bg-slate-900">
+                <TabsList className="flex h-auto w-full justify-start overflow-x-auto dark:border-slate-700 dark:bg-slate-900 [&>[data-slot=tabs-trigger]]:flex-none sm:w-auto">
                   <TabsTrigger value="lines" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
                     <Layers className="mr-2 h-4 w-4" />
                     Line Items

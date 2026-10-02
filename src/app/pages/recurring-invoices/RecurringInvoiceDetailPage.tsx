@@ -446,7 +446,7 @@ export default function RecurringInvoiceDetailPage() {
           </div>
 
           <Tabs defaultValue="details" className="space-y-6">
-            <TabsList className="w-full overflow-x-auto border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/50">
+            <TabsList className="flex h-auto w-full justify-start overflow-x-auto border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/50 [&>[data-slot=tabs-trigger]]:flex-none">
               <TabsTrigger value="details" className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-800">
                 <ClipboardList className="h-4 w-4" />
                 <span className="text-sm">{t('recurringInvoices.details', 'Details')}</span>
