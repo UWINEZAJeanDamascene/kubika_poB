@@ -316,6 +316,8 @@ export default function PayrollListPage() {
     bonuses: 0,
     commissions: 0,
     benefitsInKind: 0,
+    vehicleProvided: false,
+    accommodationProvided: false,
     healthInsurance: 0,
     loanDeductions: 0,
     otherDeductions: 0,
@@ -328,6 +330,7 @@ export default function PayrollListPage() {
   // Live calculations
   const [calculations, setCalculations] = useState({
     grossSalary: 0,
+    taxableBase: 0,
     paye: 0,
     rssbEmployeePension: 0,
     rssbEmployeeMaternity: 0,
@@ -340,64 +343,61 @@ export default function PayrollListPage() {
     totalEmployerCost: 0,
   });
 
-  // Recalculate whenever salary fields change
+  // Use the server calculation preview so the UI follows the same effective
+  // dated rules and contribution bases as payroll generation.
   useEffect(() => {
-    const basic = createForm.basicSalary || 0;
-    const transport = createForm.transportAllowance || 0;
-    const housing = createForm.housingAllowance || 0;
-    const other = createForm.otherAllowances || 0;
-    const overtime = createForm.overtime || 0;
-    const bonuses = createForm.bonuses || 0;
-    const commissions = createForm.commissions || 0;
-    const benefitsInKind = createForm.benefitsInKind || 0;
-    const healthInsurance = createForm.healthInsurance || 0;
-    const loanDeductions = createForm.loanDeductions || 0;
-    const otherDeductions = createForm.otherDeductions || 0;
-    const gross = basic + transport + housing + other + overtime + bonuses + commissions + benefitsInKind;
-
-    // Rwanda PAYE 2025 brackets
-    let paye = 0;
-    if (gross <= 60000) paye = 0;
-    else if (gross <= 100000) paye = (gross - 60000) * 0.10;
-    else if (gross <= 200000) paye = 4000 + (gross - 100000) * 0.20;
-    else paye = 4000 + 20000 + (gross - 200000) * 0.30;
-    paye = Math.round(paye * 100) / 100;
-
-    // Pension contribution base: Basic + Transport only (Rwanda 2025)
-    const pensionBase = basic + transport;
-
-    // RSSB Employee contributions
-    const rssbEmployeePension = Math.round(pensionBase * 0.06 * 100) / 100;
-    const rssbEmployeeMaternity = Math.round(pensionBase * 0.003 * 100) / 100;
-    const rssbPensionTotal = rssbEmployeePension + rssbEmployeeMaternity;
-
-    // Total deductions
-    const totalDeductions = paye + rssbPensionTotal + healthInsurance + loanDeductions + otherDeductions;
-    const netPay = Math.round((gross - totalDeductions) * 100) / 100;
-
-    // RSSB Employer contributions
-    const rssbEmployerPension = Math.round(pensionBase * 0.06 * 100) / 100;
-    const rssbEmployerMaternity = Math.round(pensionBase * 0.003 * 100) / 100;
-    const hazardRate = createForm.occupationalHazardRate || 2.0;
-    const occupationalHazard = Math.round(gross * (hazardRate / 100) * 100) / 100;
-
-    const totalEmployerCost = Math.round(
-      (gross + rssbEmployerPension + rssbEmployerMaternity + occupationalHazard) * 100
-    ) / 100;
-
-    setCalculations({
-      grossSalary: gross,
-      paye,
-      rssbEmployeePension,
-      rssbEmployeeMaternity,
-      rssbEmployerPension,
-      rssbEmployerMaternity,
-      occupationalHazard,
-      occupationalHazardRate: hazardRate,
-      totalDeductions,
-      netPay,
-      totalEmployerCost,
-    });
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await payrollApi.calculate({
+          salary: {
+            basicSalary: createForm.basicSalary,
+            transportAllowance: createForm.transportAllowance,
+            housingAllowance: createForm.housingAllowance,
+            otherAllowances: createForm.otherAllowances,
+            overtime: createForm.overtime,
+            bonuses: createForm.bonuses,
+            commissions: createForm.commissions,
+            benefitsInKind: createForm.benefitsInKind,
+            vehicleProvided: createForm.vehicleProvided,
+            accommodationProvided: createForm.accommodationProvided,
+          },
+          deductions: {
+            healthInsurance: createForm.healthInsurance,
+            loanDeductions: createForm.loanDeductions,
+            otherDeductions: createForm.otherDeductions,
+          },
+          employee: {
+            isPrimaryEmployer: employees?.find((e) => e._id === selectedEmployeeId)?.isPrimaryEmployer ?? true,
+            employmentType: employees?.find((e) => e._id === selectedEmployeeId)?.employmentType,
+          },
+          additionalIncome: { vehicleProvided: createForm.vehicleProvided, accommodationProvided: createForm.accommodationProvided },
+          period: { month: createForm.month, year: createForm.year },
+        });
+        if (active && response.success) {
+          setCalculations({
+            grossSalary: response.data.cashGrossSalary,
+            taxableBase: response.data.taxableBase,
+            paye: response.data.deductions.paye,
+            rssbEmployeePension: response.data.deductions.rssbEmployeePension,
+            rssbEmployeeMaternity: response.data.deductions.rssbEmployeeMaternity,
+            rssbEmployerPension: response.data.contributions.rssbEmployerPension,
+            rssbEmployerMaternity: response.data.contributions.rssbEmployerMaternity,
+            occupationalHazard: response.data.contributions.occupationalHazard,
+            occupationalHazardRate: response.data.contributions.occupationalHazardRate,
+            totalDeductions: response.data.deductions.totalDeductions,
+            netPay: response.data.netPay,
+            totalEmployerCost: response.data.employerCost,
+          });
+        }
+      } catch {
+        // Keep the last valid preview while the user edits or corrects inputs.
+      }
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
   }, [
     createForm.basicSalary,
     createForm.transportAllowance,
@@ -411,6 +411,10 @@ export default function PayrollListPage() {
     createForm.loanDeductions,
     createForm.otherDeductions,
     createForm.occupationalHazardRate,
+    createForm.month,
+    createForm.year,
+    selectedEmployeeId,
+    employees,
   ]);
 
   const fetchRecords = useCallback(async () => {
@@ -483,6 +487,8 @@ export default function PayrollListPage() {
           bonuses: createForm.bonuses || 0,
           commissions: createForm.commissions || 0,
           benefitsInKind: createForm.benefitsInKind || 0,
+          vehicleProvided: createForm.vehicleProvided,
+          accommodationProvided: createForm.accommodationProvided,
           healthInsurance: createForm.healthInsurance || 0,
           loanDeductions: createForm.loanDeductions || 0,
           otherDeductions: createForm.otherDeductions || 0,
@@ -555,6 +561,8 @@ export default function PayrollListPage() {
           bonuses: createForm.bonuses,
           commissions: createForm.commissions,
           benefitsInKind: createForm.benefitsInKind,
+          vehicleProvided: createForm.vehicleProvided,
+          accommodationProvided: createForm.accommodationProvided,
         },
         deductions: {
           healthInsurance: createForm.healthInsurance,
@@ -729,6 +737,8 @@ export default function PayrollListPage() {
       bonuses: 0,
       commissions: 0,
       benefitsInKind: 0,
+      vehicleProvided: false,
+      accommodationProvided: false,
       healthInsurance: 0,
       loanDeductions: 0,
       otherDeductions: 0,
@@ -768,6 +778,8 @@ export default function PayrollListPage() {
       bonuses: 0,
       commissions: 0,
       benefitsInKind: 0,
+      vehicleProvided: false,
+      accommodationProvided: false,
       healthInsurance: 0,
       loanDeductions: 0,
       otherDeductions: 0,
@@ -1913,6 +1925,14 @@ export default function PayrollListPage() {
                       className="dark:bg-slate-700 dark:text-white dark:border-slate-600"
                     />
                   </div>
+                  <label className="flex items-center gap-2 text-sm dark:text-slate-200">
+                    <input type="checkbox" checked={createForm.vehicleProvided} onChange={(e) => setCreateForm({ ...createForm, vehicleProvided: e.target.checked })} />
+                    Employer vehicle benefit (10% valuation)
+                  </label>
+                  <label className="flex items-center gap-2 text-sm dark:text-slate-200">
+                    <input type="checkbox" checked={createForm.accommodationProvided} onChange={(e) => setCreateForm({ ...createForm, accommodationProvided: e.target.checked })} />
+                    Employer accommodation (20% valuation)
+                  </label>
                 </div>
               </div>
 
@@ -1952,17 +1972,9 @@ export default function PayrollListPage() {
                       className="dark:bg-slate-700 dark:text-white dark:border-slate-600"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label className="dark:text-slate-200">Occ. Hazard Rate (%)</Label>
-                    <Input
-                      type="number"
-                      min="0.2"
-                      max="2.0"
-                      step="0.1"
-                      value={createForm.occupationalHazardRate || 2.0}
-                      onChange={(e) => setCreateForm({ ...createForm, occupationalHazardRate: parseFloat(e.target.value) || 2.0 })}
-                      className="dark:bg-slate-700 dark:text-white dark:border-slate-600"
-                    />
+                  <div className="space-y-1 text-sm dark:text-slate-200">
+                    <Label>Occupational hazard rate</Label>
+                    <p className="pt-2">Statutory rate: {calculations.occupationalHazardRate}%</p>
                   </div>
                 </div>
               </div>
@@ -1989,6 +2001,10 @@ export default function PayrollListPage() {
                     <p className="text-lg font-bold text-red-600 dark:text-red-400">
                       {formatCurrency(calculations.paye)}
                     </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-muted-foreground dark:text-slate-400">Taxable employment income</p>
+                    <p className="text-lg font-bold dark:text-white">{formatCurrency(calculations.taxableBase)}</p>
                   </div>
                   <div className="space-y-0.5">
                     <p className="text-xs text-muted-foreground dark:text-slate-400">
@@ -2042,22 +2058,8 @@ export default function PayrollListPage() {
                 {/* Tax brackets reference */}
                 <div className="mt-3 pt-3 border-t dark:border-slate-600">
                   <p className="text-xs font-medium text-muted-foreground dark:text-slate-400 mb-1">
-                    {t("payroll.form.taxBrackets")} (Rwanda 2025):
+                    PAYE preview uses Rwanda rules effective for the selected pay period. PAYE is rounded up to whole RWF.
                   </p>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-muted-foreground dark:text-slate-400">
-                    <span>
-                      0 - 60,000: <strong>0%</strong>
-                    </span>
-                    <span>
-                      60,001 - 100,000: <strong>10%</strong>
-                    </span>
-                    <span>
-                      100,001 - 200,000: <strong>20%</strong>
-                    </span>
-                    <span>
-                      Above 200,000: <strong>30%</strong>
-                    </span>
-                  </div>
                 </div>
               </div>
 

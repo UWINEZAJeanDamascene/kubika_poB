@@ -41,7 +41,7 @@ const KNOWLEDGE_CHUNKS: KnowledgeChunk[] = [
     id: 'tax-paye',
     category: 'tax',
     title: 'PAYE (Pay As You Earn)',
-    content: 'PAYE is deducted from employee salaries monthly (Income Tax Law 2018, Art. 46). Progressive monthly brackets: 0% on first RWF 60,000; 10% on RWF 60,001–100,000; 20% on RWF 100,001–200,000; 30% on amount above RWF 200,000. The 0% threshold was raised from RWF 30,000 to RWF 60,000 in recent reforms. Employers must remit PAYE to RRA by the 15th of the following month.',
+    content: 'PAYE is calculated on taxable employment income, including salary, taxable allowances, bonuses, commissions and benefits in kind. The progressive monthly bands currently are 0% on the first RWF 60,000; 10% on the next RWF 40,000; 20% on the next RWF 100,000; and 30% above RWF 200,000. Other employment income is generally withheld at 30%; qualifying casual labour engaged for fewer than 30 days in a tax year is subject to 15%. PAYE is rounded up to a whole RWF. Employers must remit PAYE to RRA by the 15th of the following month.',
     keywords: ['paye', 'withholding tax', 'employee tax', 'salary tax', 'income tax'],
   },
   {
@@ -122,7 +122,7 @@ const KNOWLEDGE_CHUNKS: KnowledgeChunk[] = [
     id: 'rssb-rates',
     category: 'rssb',
     title: 'RSSB Contribution Rates',
-    content: 'RSSB (Rwanda Social Security Board) contributions effective January 2025: Pension 6% employer + 6% employee = 12% total (doubled from previous 6% total). The increase will continue by 2% annually reaching 20% by 2030. Maternity Leave Fund 0.3% employer (calculated on gross salary minus transport allowance). Occupational Hazards 0%–2% employer (depends on risk class). CBHI (Mutuelle) contributions vary by category (employer may contribute portion). Total employer payroll burden: ~12–15%.',
+    content: 'RSSB pension contributions apply to total gross salary, including transport allowance. Employee and employer pension rates are each 6% in 2025–2026, then each rise to 7% in 2027, 8% in 2028, 9% in 2029 and 10% in 2030. Maternity leave contributions are 0.3% each for employee and employer. Occupational hazards are an employer contribution; apply the registered scheme rate. Use the rate effective for the payroll period.',
     keywords: ['rssb', 'social security', 'pension', 'mutuelle', 'cbhi', 'payroll deduction'],
   },
   {

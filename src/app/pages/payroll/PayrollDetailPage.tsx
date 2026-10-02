@@ -59,6 +59,10 @@ export default function PayrollDetailPage() {
   const [editing, setEditing] = useState(isEditRoute);
   const [submitting, setSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const pensionRateLabels = {
+    employee: ((record?.contributions?.rates?.pensionEmployeeRate ?? (record && record.period.year < 2025 ? 0.03 : record && record.period.year < 2027 ? 0.06 : record && record.period.year < 2028 ? 0.07 : record && record.period.year < 2029 ? 0.08 : record && record.period.year < 2030 ? 0.09 : 0.1)) * 100).toFixed(0),
+    employer: ((record?.contributions?.rates?.pensionEmployerRate ?? (record && record.period.year < 2025 ? 0.03 : record && record.period.year < 2027 ? 0.06 : record && record.period.year < 2028 ? 0.07 : record && record.period.year < 2029 ? 0.08 : record && record.period.year < 2030 ? 0.09 : 0.1)) * 100).toFixed(0),
+  };
 
   // Edit form
   const [editForm, setEditForm] = useState({
@@ -109,59 +113,52 @@ export default function PayrollDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    const basic = editForm.basicSalary || 0;
-    const transport = editForm.transportAllowance || 0;
-    const housing = editForm.housingAllowance || 0;
-    const other = editForm.otherAllowances || 0;
-    const overtime = editForm.overtime || 0;
-    const bonuses = editForm.bonuses || 0;
-    const commissions = editForm.commissions || 0;
-    const benefitsInKind = editForm.benefitsInKind || 0;
-    const healthInsurance = editForm.healthInsurance || 0;
-    const loanDeductions = editForm.loanDeductions || 0;
-    const otherDeductions = editForm.otherDeductions || 0;
-    const gross = basic + transport + housing + other + overtime + bonuses + commissions + benefitsInKind;
-
-    let paye = 0;
-    if (gross > 200000) {
-      paye = 4000 + 20000 + (gross - 200000) * 0.30;
-    } else if (gross > 100000) {
-      paye = 4000 + (gross - 100000) * 0.20;
-    } else if (gross > 60000) {
-      paye = (gross - 60000) * 0.10;
-    }
-    paye = Math.round(paye * 100) / 100;
-
-    // Pension contribution base: Basic + Transport only (Rwanda 2025)
-    const pensionBase = basic + transport;
-
-    const rssbEmployeePension = Math.round(pensionBase * 0.06 * 100) / 100;
-    const rssbEmployeeMaternity = Math.round(pensionBase * 0.003 * 100) / 100;
-    const rssbEmployerPension = Math.round(pensionBase * 0.06 * 100) / 100;
-    const rssbEmployerMaternity = Math.round(pensionBase * 0.003 * 100) / 100;
-    const hazardRate = editForm.occupationalHazardRate || 2.0;
-    const occupationalHazard = Math.round(gross * (hazardRate / 100) * 100) / 100;
-
-    const totalDeductions = paye + rssbEmployeePension + rssbEmployeeMaternity + healthInsurance + loanDeductions + otherDeductions;
-    const netPay = Math.round((gross - totalDeductions) * 100) / 100;
-    const totalEmployerCost = Math.round(
-      (gross + rssbEmployerPension + rssbEmployerMaternity + occupationalHazard) * 100
-    ) / 100;
-
-    setCalculations({
-      grossSalary: gross,
-      paye,
-      rssbEmployeePension,
-      rssbEmployeeMaternity,
-      rssbEmployerPension,
-      rssbEmployerMaternity,
-      occupationalHazard,
-      occupationalHazardRate: hazardRate,
-      totalDeductions,
-      netPay,
-      totalEmployerCost,
-    });
-  }, [editForm.basicSalary, editForm.transportAllowance, editForm.housingAllowance, editForm.otherAllowances, editForm.overtime, editForm.bonuses, editForm.commissions, editForm.benefitsInKind, editForm.healthInsurance, editForm.loanDeductions, editForm.otherDeductions, editForm.occupationalHazardRate]);
+    if (!editing || !record) return;
+    let active = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await payrollApi.calculate({
+          salary: {
+            basicSalary: editForm.basicSalary,
+            transportAllowance: editForm.transportAllowance,
+            housingAllowance: editForm.housingAllowance,
+            otherAllowances: editForm.otherAllowances,
+          },
+          additionalIncome: {
+            overtime: editForm.overtime,
+            bonuses: editForm.bonuses,
+            commissions: editForm.commissions,
+            benefitsInKind: editForm.benefitsInKind,
+          },
+          deductions: {
+            healthInsurance: editForm.healthInsurance,
+            loanDeductions: editForm.loanDeductions,
+            otherDeductions: editForm.otherDeductions,
+          },
+          employee: { isPrimaryEmployer: record.employee.isPrimaryEmployer ?? true, employmentType: record.employee.employmentType },
+          period: { month: editForm.month, year: editForm.year },
+        });
+        if (!active || !response.success) return;
+        const result = response.data;
+        setCalculations({
+          grossSalary: result.cashGrossSalary,
+          paye: result.deductions.paye,
+          rssbEmployeePension: result.deductions.rssbEmployeePension,
+          rssbEmployeeMaternity: result.deductions.rssbEmployeeMaternity,
+          rssbEmployerPension: result.contributions.rssbEmployerPension,
+          rssbEmployerMaternity: result.contributions.rssbEmployerMaternity,
+          occupationalHazard: result.contributions.occupationalHazard,
+          occupationalHazardRate: result.contributions.occupationalHazardRate,
+          totalDeductions: result.deductions.totalDeductions,
+          netPay: result.netPay,
+          totalEmployerCost: result.employerCost,
+        });
+      } catch (error) {
+        console.error('[PayrollDetailPage] Payroll preview failed:', error);
+      }
+    }, 250);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [editing, record, editForm]);
 
   const fetchRecord = async () => {
     if (!id) return;
@@ -671,10 +668,6 @@ export default function PayrollDetailPage() {
                     <Label>Other Deductions</Label>
                     <Input type="number" min="0" value={editForm.otherDeductions || ''} onChange={(e) => setEditForm({ ...editForm, otherDeductions: parseFloat(e.target.value) || 0 })} />
                   </div>
-                  <div className="space-y-1">
-                    <Label>Occ. Hazard Rate (%)</Label>
-                    <Input type="number" min="0.2" max="2.0" step="0.1" value={editForm.occupationalHazardRate || 2.0} onChange={(e) => setEditForm({ ...editForm, occupationalHazardRate: parseFloat(e.target.value) || 2.0 })} />
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -910,11 +903,11 @@ export default function PayrollDetailPage() {
                     <p className="font-medium text-red-600 dark:text-red-400">{formatCurrency(record.deductions.paye)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground dark:text-slate-400">RSSB Employee Pension (6%)</p>
+                    <p className="text-xs text-muted-foreground dark:text-slate-400">RSSB Employee Pension ({pensionRateLabels.employee}%)</p>
                     <p className="font-medium text-orange-600 dark:text-orange-400">{formatCurrency(record.deductions.rssbEmployeePension)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground dark:text-slate-400">RSSB Employee Maternity (0.3%)</p>
+                    <p className="text-xs text-muted-foreground dark:text-slate-400">RSSB Employee Maternity ({((record.contributions?.rates?.maternityEmployeeRate ?? 0.003) * 100).toFixed(1)}%)</p>
                     <p className="font-medium text-orange-600 dark:text-orange-400">{formatCurrency(record.deductions.rssbEmployeeMaternity)}</p>
                   </div>
                   <div>
@@ -922,12 +915,12 @@ export default function PayrollDetailPage() {
                     <p className="font-bold text-red-700 dark:text-red-400">{formatCurrency(record.deductions.totalDeductions)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground dark:text-slate-400">RSSB Employer Pension (6%)</p>
+                    <p className="text-xs text-muted-foreground dark:text-slate-400">RSSB Employer Pension ({pensionRateLabels.employer}%)</p>
                     <p className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(record.contributions?.rssbEmployerPension || 0)}</p>
                     <Badge variant="outline" className="mt-1 text-[10px] border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400">6150 RSSB Employer Cost</Badge>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground dark:text-slate-400">RSSB Employer Maternity (0.3%)</p>
+                    <p className="text-xs text-muted-foreground dark:text-slate-400">RSSB Employer Maternity ({((record.contributions?.rates?.maternityEmployerRate ?? 0.003) * 100).toFixed(1)}%)</p>
                     <p className="font-medium text-blue-600 dark:text-blue-400">{formatCurrency(record.contributions?.rssbEmployerMaternity || 0)}</p>
                     <Badge variant="outline" className="mt-1 text-[10px] border-blue-200 text-blue-700 dark:border-blue-800 dark:text-blue-400">6150 RSSB Employer Cost</Badge>
                   </div>

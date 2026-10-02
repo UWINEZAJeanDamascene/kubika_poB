@@ -7749,7 +7749,8 @@ export interface PayrollRecord {
     nationalId?: string;
     bankName?: string;
     bankAccount?: string;
-    employmentType: "full-time" | "part-time" | "contract" | "intern";
+    employmentType: "full-time" | "part-time" | "contract" | "intern" | "casual" | "casual-worker";
+    isPrimaryEmployer?: boolean;
     startDate?: string;
     isActive: boolean;
   };
@@ -7780,6 +7781,13 @@ export interface PayrollRecord {
     rssbEmployerMaternity: number;
     occupationalHazard: number;
     occupationalHazardRate?: number;
+    rates?: {
+      pensionEmployeeRate?: number;
+      pensionEmployerRate?: number;
+      maternityEmployeeRate?: number;
+      maternityEmployerRate?: number;
+      occupationalHazardEmployerRate?: number;
+    };
   };
   additionalIncome?: {
     overtime: number;
@@ -7931,18 +7939,31 @@ export const payrollApi = {
       transportAllowance?: number;
       housingAllowance?: number;
       otherAllowances?: number;
+      overtime?: number;
+      bonuses?: number;
+      commissions?: number;
+      benefitsInKind?: number;
     };
+    additionalIncome?: Record<string, number | boolean>;
+    deductions?: Record<string, number>;
+    employee?: { isPrimaryEmployer?: boolean };
+    period?: { month: number; year: number };
   }) =>
     request<{
       success: boolean;
       data: {
         grossSalary: number;
+        cashGrossSalary: number;
+        grossRemuneration: number;
+        taxableBase: number;
+        employerCost: number;
         deductions: {
           paye: number;
-          rssbEmployee: number;
+          rssbEmployeePension: number;
+          rssbEmployeeMaternity: number;
           totalDeductions: number;
         };
-        contributions: { rssbEmployer: number; maternity: number };
+        contributions: { rssbEmployerPension: number; rssbEmployerMaternity: number; occupationalHazard: number; occupationalHazardRate: number };
         netPay: number;
         taxBrackets: Array<{ range: string; rate: string; tax: number }>;
       };

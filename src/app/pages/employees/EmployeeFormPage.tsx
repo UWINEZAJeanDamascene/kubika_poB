@@ -46,6 +46,7 @@ const EMPLOYMENT_TYPES = [
   { value: "part-time", label: "Part-time" },
   { value: "contract", label: "Contract" },
   { value: "intern", label: "Intern" },
+  { value: "casual", label: "Casual worker (<30 days in tax year)" },
 ];
 
 const TAX_STATUS_OPTIONS = [
@@ -63,7 +64,7 @@ interface FormData {
   gender: "male" | "female" | "other" | "";
   nationalId: string;
   hireDate: string;
-  employmentType: "full-time" | "part-time" | "contract" | "intern" | "";
+  employmentType: "full-time" | "part-time" | "contract" | "intern" | "casual" | "";
   department: string;
   position: string;
   location: string;
@@ -72,6 +73,7 @@ interface FormData {
   bankBranch: string;
   mobileMoneyNumber: string;
   taxStatus: string;
+  isPrimaryEmployer: string;
   rssbRegistrationNumber: string;
   tinNumber: string;
   laborType: "direct" | "indirect" | "mixed" | "";
@@ -106,6 +108,7 @@ function emptyForm(): FormData {
     bankBranch: "",
     mobileMoneyNumber: "",
     taxStatus: "resident",
+    isPrimaryEmployer: "true",
     rssbRegistrationNumber: "",
     tinNumber: "",
     laborType: "",
@@ -140,6 +143,7 @@ function populateFromEmployee(emp: any): FormData {
     bankBranch: emp.bankBranch || "",
     mobileMoneyNumber: emp.mobileMoneyNumber || "",
     taxStatus: emp.taxStatus || "resident",
+    isPrimaryEmployer: emp.isPrimaryEmployer === false ? "false" : "true",
     rssbRegistrationNumber: emp.rssbRegistrationNumber || "",
     tinNumber: emp.tinNumber || "",
     laborType: emp.laborType || "",
@@ -290,7 +294,7 @@ export default function EmployeeFormPage() {
       gender: (form.gender || undefined) as "male" | "female" | "other" | undefined,
       nationalId: form.nationalId.trim() || undefined,
       hireDate: form.hireDate || undefined,
-      employmentType: (form.employmentType || undefined) as "full-time" | "part-time" | "contract" | "intern" | undefined,
+      employmentType: (form.employmentType || undefined) as "full-time" | "part-time" | "contract" | "intern" | "casual" | undefined,
       department: form.department.trim() || undefined,
       position: form.position.trim() || undefined,
       location: form.location.trim() || undefined,
@@ -299,6 +303,7 @@ export default function EmployeeFormPage() {
       bankBranch: form.bankBranch.trim() || undefined,
       mobileMoneyNumber: form.mobileMoneyNumber.trim() || undefined,
       taxStatus: form.taxStatus as "resident" | "non-resident",
+      isPrimaryEmployer: form.isPrimaryEmployer === "true",
       rssbRegistrationNumber: form.rssbRegistrationNumber.trim() || undefined,
       tinNumber: form.tinNumber.trim() || undefined,
       laborType: (form.laborType || undefined) as "direct" | "indirect" | "mixed" | undefined,
@@ -625,6 +630,15 @@ export default function EmployeeFormPage() {
                           {o.label}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Primary Employer for PAYE">
+                  <Select value={form.isPrimaryEmployer} onValueChange={(v) => updateField("isPrimaryEmployer", v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="true">Yes — progressive PAYE bands</SelectItem>
+                      <SelectItem value="false">No — withhold at 30%</SelectItem>
                     </SelectContent>
                   </Select>
                 </Field>

@@ -33,7 +33,7 @@ export interface Employee {
   nationalId?: string;
   hireDate?: string;
   terminationDate?: string;
-  employmentType: "full-time" | "part-time" | "contract" | "intern";
+  employmentType: "full-time" | "part-time" | "contract" | "intern" | "casual";
   department?: string;
   position?: string;
   location?: string;
@@ -44,6 +44,7 @@ export interface Employee {
   bankBranch?: string;
   mobileMoneyNumber?: string;
   taxStatus: "resident" | "non-resident";
+  isPrimaryEmployer: boolean;
   rssbRegistrationNumber?: string;
   tinNumber?: string;
   laborType?: "direct" | "indirect" | "mixed" | null;
@@ -97,7 +98,7 @@ export interface CreateEmployeePayload {
   gender?: "male" | "female" | "other";
   nationalId?: string;
   hireDate?: string;
-  employmentType?: "full-time" | "part-time" | "contract" | "intern";
+  employmentType?: "full-time" | "part-time" | "contract" | "intern" | "casual";
   department?: string;
   position?: string;
   location?: string;
@@ -107,6 +108,7 @@ export interface CreateEmployeePayload {
   bankBranch?: string;
   mobileMoneyNumber?: string;
   taxStatus?: "resident" | "non-resident";
+  isPrimaryEmployer?: boolean;
   rssbRegistrationNumber?: string;
   tinNumber?: string;
   laborType?: "direct" | "indirect" | "mixed" | null;
@@ -132,7 +134,7 @@ export interface UpdateEmployeePayload {
   gender?: "male" | "female" | "other";
   nationalId?: string;
   hireDate?: string;
-  employmentType?: "full-time" | "part-time" | "contract" | "intern";
+  employmentType?: "full-time" | "part-time" | "contract" | "intern" | "casual";
   department?: string;
   position?: string;
   location?: string;
@@ -142,6 +144,7 @@ export interface UpdateEmployeePayload {
   bankBranch?: string;
   mobileMoneyNumber?: string;
   taxStatus?: "resident" | "non-resident";
+  isPrimaryEmployer?: boolean;
   rssbRegistrationNumber?: string;
   tinNumber?: string;
   laborType?: "direct" | "indirect" | "mixed" | null;
