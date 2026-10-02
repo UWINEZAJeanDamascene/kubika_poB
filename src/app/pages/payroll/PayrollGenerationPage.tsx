@@ -3,10 +3,9 @@ import { useNavigate } from "react-router";
 import { Layout } from "../../layout/Layout";
 import { useEmployees } from "@/lib/hooks/useEmployees";
 import { useGeneratePayroll } from "@/lib/hooks/useEmployees";
-import type { Employee } from "@/lib/api";
+import { payrollApi } from "@/lib/api";
 import {
   ArrowLeft,
-  Users,
   Calendar,
   Calculator,
   Play,
@@ -64,6 +63,23 @@ const MONTHS = [
   { value: 12, label: "December" },
 ];
 
+type PayrollInputDraft = {
+  scheduledDays: number; workedDays: number; paidLeaveDays: number; unpaidLeaveDays: number;
+  overtime: number; bonuses: number; commissions: number; benefitsInKind: number;
+  healthInsurance: number; loanDeductions: number; otherDeductions: number;
+  id?: string; status?: "draft" | "approved" | "applied";
+};
+
+function defaultPayrollInput(month: number, year: number): PayrollInputDraft {
+  let workDays = 0;
+  const days = new Date(year, month, 0).getDate();
+  for (let day = 1; day <= days; day += 1) {
+    const weekday = new Date(year, month - 1, day).getDay();
+    if (weekday !== 0 && weekday !== 6) workDays += 1;
+  }
+  return { scheduledDays: workDays, workedDays: workDays, paidLeaveDays: 0, unpaidLeaveDays: 0, overtime: 0, bonuses: 0, commissions: 0, benefitsInKind: 0, healthInsurance: 0, loanDeductions: 0, otherDeductions: 0 };
+}
+
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 0,
@@ -118,6 +134,8 @@ export default function PayrollGenerationPage() {
   const [selectAll, setSelectAll] = useState(false);
 
   const [results, setResults] = useState<any>(null);
+  const [payrollInputs, setPayrollInputs] = useState<Record<string, PayrollInputDraft>>({});
+  const [inputBusyEmployeeId, setInputBusyEmployeeId] = useState<string | null>(null);
 
   const currentYear = new Date().getFullYear();
   const yearOptions = Array.from({ length: 5 }, (_, i) => currentYear - 2 + i);
@@ -163,6 +181,7 @@ export default function PayrollGenerationPage() {
   }, [filteredEmployees]);
 
   const selectedCount = selectedIds.size;
+  const selectedEmployeeRows = (employees || []).filter((employee) => selectedIds.has(employee._id) && employee.currentSalary && employee.currentSalary.basicSalary > 0);
   const estimatedGross = useMemo(() => {
     if (!employees) return 0;
     let total = 0;
@@ -183,6 +202,14 @@ export default function PayrollGenerationPage() {
       toast.error("Select at least one employee");
       return;
     }
+    const needsApproval = Array.from(selectedIds).find((employeeId) => {
+      const input = payrollInputs[employeeId];
+      return input && input.status !== "approved" && input.status !== "applied";
+    });
+    if (needsApproval) {
+      toast.error("Approve each saved attendance and leave input before generating payroll");
+      return;
+    }
     generateMutation.mutate(
       {
         period: { month, year },
@@ -199,7 +226,62 @@ export default function PayrollGenerationPage() {
         },
       }
     );
-  }, [selectedCount, month, year, selectedIds, generateMutation]);
+  }, [selectedCount, month, year, selectedIds, generateMutation, payrollInputs]);
+
+  const loadPeriodInputs = async () => {
+    try {
+      const response = await payrollApi.getPeriodInputs(month, year);
+      const next: Record<string, PayrollInputDraft> = {};
+      for (const input of response.data || []) {
+        next[input.employeeId] = {
+          ...defaultPayrollInput(month, year),
+          scheduledDays: Number(input.scheduledDays), workedDays: Number(input.workedDays),
+          paidLeaveDays: Number(input.paidLeaveDays), unpaidLeaveDays: Number(input.unpaidLeaveDays),
+          overtime: Number(input.additionalIncome?.overtime || 0), bonuses: Number(input.additionalIncome?.bonuses || 0),
+          commissions: Number(input.additionalIncome?.commissions || 0), benefitsInKind: Number(input.additionalIncome?.benefitsInKind || 0),
+          healthInsurance: Number(input.deductions?.healthInsurance || 0), loanDeductions: Number(input.deductions?.loanDeductions || 0), otherDeductions: Number(input.deductions?.otherDeductions || 0),
+          id: input.id, status: input.status,
+        };
+      }
+      setPayrollInputs(next);
+    } catch (error: any) { toast.error(error?.message || "Could not load period attendance inputs"); }
+    setStep(2);
+  };
+
+  const updatePayrollInput = (employeeId: string, key: keyof PayrollInputDraft, value: number) => {
+    setPayrollInputs((all) => ({ ...all, [employeeId]: { ...(all[employeeId] || defaultPayrollInput(month, year)), [key]: value } }));
+  };
+
+  const savePeriodInput = async (employeeId: string) => {
+    const input = payrollInputs[employeeId] || defaultPayrollInput(month, year);
+    if (input.status === "approved" || input.status === "applied") return input.id;
+    setInputBusyEmployeeId(employeeId);
+    try {
+      const response = await payrollApi.savePeriodInput({
+        employeeId, periodMonth: month, periodYear: year,
+        scheduledDays: input.scheduledDays, workedDays: input.workedDays, paidLeaveDays: input.paidLeaveDays, unpaidLeaveDays: input.unpaidLeaveDays,
+        additionalIncome: { overtime: input.overtime, bonuses: input.bonuses, commissions: input.commissions, benefitsInKind: input.benefitsInKind },
+        deductions: { healthInsurance: input.healthInsurance, loanDeductions: input.loanDeductions, otherDeductions: input.otherDeductions },
+      });
+      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...input, id: response.data.id, status: response.data.status as PayrollInputDraft["status"] } }));
+      return response.data.id;
+    } catch (error: any) { toast.error(error?.message || "Could not save payroll inputs"); return undefined; }
+    finally { setInputBusyEmployeeId(null); }
+  };
+
+  const approvePeriodInput = async (employeeId: string) => {
+    const input = payrollInputs[employeeId] || defaultPayrollInput(month, year);
+    if (input.status === "approved" || input.status === "applied") return;
+    const id = input.id || await savePeriodInput(employeeId);
+    if (!id) return;
+    setInputBusyEmployeeId(employeeId);
+    try {
+      const response = await payrollApi.approvePeriodInput(id);
+      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...(all[employeeId] || input), id, status: response.data.status as PayrollInputDraft["status"] } }));
+      toast.success("Attendance and leave inputs approved");
+    } catch (error: any) { toast.error(error?.message || "Could not approve payroll inputs"); }
+    finally { setInputBusyEmployeeId(null); }
+  };
 
   return (
     <Layout>
@@ -284,7 +366,7 @@ export default function PayrollGenerationPage() {
 
               <div className="flex justify-end">
                 <Button
-                  onClick={() => setStep(2)}
+                  onClick={() => void loadPeriodInputs()}
                   className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
                 >
                   Next: Choose Employees
@@ -452,6 +534,35 @@ export default function PayrollGenerationPage() {
                 </div>
               </CardContent>
             </Card>
+
+            {selectedEmployeeRows.length > 0 && (
+              <Card className="border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950">
+                <CardHeader>
+                  <CardTitle className="text-base font-semibold text-slate-950 dark:text-white">Approved attendance, leave, and pay adjustments</CardTitle>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Enter scheduled, worked, paid leave, and unpaid leave days. Save and approve each employee’s inputs before generation; only approved inputs affect prorated pay.</p>
+                </CardHeader>
+                <CardContent className="overflow-x-auto p-0">
+                  <Table>
+                    <TableHeader><TableRow>
+                      <TableHead>Employee</TableHead><TableHead>Scheduled</TableHead><TableHead>Worked</TableHead><TableHead>Paid leave</TableHead><TableHead>Unpaid leave</TableHead>
+                      <TableHead>Overtime</TableHead><TableHead>Bonus</TableHead><TableHead>Commission</TableHead><TableHead>Benefits</TableHead><TableHead>Health deduction</TableHead><TableHead>Loan</TableHead><TableHead>Other deduction</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead>
+                    </TableRow></TableHeader>
+                    <TableBody>{selectedEmployeeRows.map((employee) => {
+                      const input = payrollInputs[employee._id] || defaultPayrollInput(month, year);
+                      const locked = input.status === "approved" || input.status === "applied";
+                      const numberField = (key: keyof PayrollInputDraft, label: string) => <Input aria-label={`${employee.firstName} ${label}`} type="number" min="0" step="0.5" className="w-24" disabled={locked || inputBusyEmployeeId === employee._id} value={input[key] as number} onChange={(event) => updatePayrollInput(employee._id, key, Number(event.target.value) || 0)} />;
+                      return <TableRow key={employee._id}>
+                        <TableCell className="whitespace-nowrap font-medium">{employee.firstName} {employee.lastName}</TableCell>
+                        <TableCell>{numberField("scheduledDays", "scheduled days")}</TableCell><TableCell>{numberField("workedDays", "worked days")}</TableCell><TableCell>{numberField("paidLeaveDays", "paid leave days")}</TableCell><TableCell>{numberField("unpaidLeaveDays", "unpaid leave days")}</TableCell>
+                        <TableCell>{numberField("overtime", "overtime")}</TableCell><TableCell>{numberField("bonuses", "bonus")}</TableCell><TableCell>{numberField("commissions", "commission")}</TableCell><TableCell>{numberField("benefitsInKind", "benefits in kind")}</TableCell><TableCell>{numberField("healthInsurance", "health insurance deduction")}</TableCell><TableCell>{numberField("loanDeductions", "loan deduction")}</TableCell><TableCell>{numberField("otherDeductions", "other deduction")}</TableCell>
+                        <TableCell className="capitalize">{input.status || "not saved"}</TableCell>
+                        <TableCell><div className="flex gap-2"><Button size="sm" variant="outline" disabled={locked || inputBusyEmployeeId === employee._id} onClick={() => void savePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save</Button><Button size="sm" disabled={locked || inputBusyEmployeeId === employee._id} onClick={() => void approvePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{input.status === "approved" || input.status === "applied" ? "Approved" : "Approve"}</Button></div></TableCell>
+                      </TableRow>;
+                    })}</TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Ineligible table */}
             {ineligibleEmployees.length > 0 && (

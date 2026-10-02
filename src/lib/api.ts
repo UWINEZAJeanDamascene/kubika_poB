@@ -7818,6 +7818,27 @@ export interface PayrollRecord {
   updatedAt: string;
 }
 
+export interface PayrollPeriodInput {
+  id: string;
+  companyId: string;
+  employeeId: string;
+  periodMonth: number;
+  periodYear: number;
+  scheduledDays: number | string;
+  workedDays: number | string;
+  paidLeaveDays: number | string;
+  unpaidLeaveDays: number | string;
+  additionalIncome: Record<string, number | boolean>;
+  deductions: Record<string, number>;
+  status: "draft" | "approved" | "applied";
+  approvedById?: string | null;
+  approvedAt?: string | null;
+  appliedPayrollId?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const payrollApi = {
   getAll: (params?: {
     month?: number;
@@ -7849,6 +7870,12 @@ export const payrollApi = {
   },
   getById: (id: string) =>
     request<{ success: boolean; data: PayrollRecord }>(`/payroll/${id}`),
+  getPeriodInputs: (month: number, year: number) =>
+    request<{ success: boolean; data: PayrollPeriodInput[] }>(`/payroll/period-inputs?month=${month}&year=${year}`),
+  savePeriodInput: (data: Omit<PayrollPeriodInput, "id" | "companyId" | "status" | "approvedById" | "approvedAt" | "appliedPayrollId" | "createdAt" | "updatedAt">) =>
+    request<{ success: boolean; data: PayrollPeriodInput }>("/payroll/period-inputs", { method: "POST", body: data }),
+  approvePeriodInput: (id: string) =>
+    request<{ success: boolean; data: PayrollPeriodInput }>(`/payroll/period-inputs/${id}/approve`, { method: "POST" }),
   create: (data: {
     employee_id?: string;
     employee?: {
