@@ -495,7 +495,20 @@ export default function ChartOfAccountsPage() {
         </div>
 
         {isExpanded && (
-          <div className="overflow-x-auto rounded-b-lg border border-t-0 border-slate-200 dark:border-slate-800">
+          <div className="rounded-b-lg border border-t-0 border-slate-200 dark:border-slate-800">
+            <div className="space-y-2 p-3 xl:hidden">
+              {sectionAccounts.map((account) => (
+                <div key={account._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0"><p className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-300">{account.code}</p><p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{account.name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{account.subtype || account.type}</p></div>
+                    <Badge variant="outline" className={account.isActive ? "shrink-0 border-emerald-200 text-emerald-700 dark:border-emerald-900 dark:text-emerald-400" : "shrink-0 text-slate-500"}>{account.isActive ? "Active" : "Inactive"}</Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2 text-xs"><Badge variant="outline" className={account.normal_balance === "debit" ? "border-blue-200 text-blue-700 dark:border-blue-900 dark:text-blue-400" : "border-emerald-200 text-emerald-700 dark:border-emerald-900 dark:text-emerald-400"}>{account.normal_balance} balance</Badge><Badge variant="outline">{account.allow_direct_posting ? "Direct posting" : "Parent account"}</Badge></div>
+                  <div className="mt-3 flex gap-2 border-t border-slate-100 pt-2 dark:border-slate-800"><Button variant="outline" size="sm" onClick={() => openEditDialog(account)} className="min-h-10 flex-1"><Edit className="mr-2 h-4 w-4"/>Edit</Button>{account.isActive ? <Button variant="outline" size="sm" onClick={() => openDeleteDialog(account)} className="min-h-10 flex-1 text-red-600"><Trash2 className="mr-2 h-4 w-4"/>Deactivate</Button> : <Button variant="outline" size="sm" onClick={() => handleReactivate(account)} className="min-h-10 flex-1 text-emerald-600"><RefreshCw className="mr-2 h-4 w-4"/>Reactivate</Button>}</div>
+                </div>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto xl:block">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -511,6 +524,7 @@ export default function ChartOfAccountsPage() {
               </TableHeader>
               <TableBody>{sectionAccounts.map(renderAccountRow)}</TableBody>
             </Table>
+            </div>
           </div>
         )}
       </div>

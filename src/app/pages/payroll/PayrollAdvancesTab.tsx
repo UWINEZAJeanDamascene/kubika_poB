@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { employeeAdvanceApi } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -18,7 +18,7 @@ import {
 } from '../../components/ui/select';
 import {
   Plus, Eye, RefreshCcw, Wallet, ArrowRight, Loader2,
-  CheckCircle2, AlertCircle, Clock, User, FileCheck,
+  CheckCircle2, Clock, User, FileCheck,
   Receipt, Banknote, XCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -229,7 +229,9 @@ export default function PayrollAdvancesTab() {
               <p className="text-sm font-medium">No advances found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-3 p-3 xl:hidden">{filteredAdvances.map((advance) => <article key={advance._id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all font-mono text-sm font-semibold">{advance.referenceNo}</p><p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><User className="h-3.5 w-3.5 shrink-0"/>{advance.employee?.firstName} {advance.employee?.lastName}</p></div>{getStatusBadge(advance.status)}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><div className="text-muted-foreground">Original amount<p className="mt-1 text-sm text-foreground">{advance.amount.toLocaleString()}</p></div><div className="text-muted-foreground">Outstanding balance<p className="mt-1 text-sm font-semibold text-amber-600">{advance.balance.toLocaleString()}</p></div></div><div className="mt-3 flex flex-wrap gap-2 border-t pt-3"><Button variant="outline" size="sm" onClick={() => navigate(`/employee-advances/${advance._id}`)}><Eye className="mr-1.5 h-4 w-4"/>View</Button>{(advance.status === 'issued' || advance.status === 'partially_repaid') && <><Button variant="outline" size="sm" onClick={() => navigate(`/employee-advances/${advance._id}/repayment`)}><ArrowRight className="mr-1.5 h-4 w-4"/>Repay</Button><Button variant="outline" size="sm" onClick={() => openSettleDialog(advance)}><FileCheck className="mr-1.5 h-4 w-4"/>Settle</Button></>}</div></article>)}</div>
+            <div className="hidden overflow-x-auto xl:block">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/40">
@@ -291,6 +293,7 @@ export default function PayrollAdvancesTab() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

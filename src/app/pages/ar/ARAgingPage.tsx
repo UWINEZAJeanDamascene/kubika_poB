@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router';
 import { arReceiptsApi, clientsApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import {
@@ -60,7 +59,6 @@ interface Client {
 
 export default function ARAgingPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<Client[]>([]);
   const [clientFilter, setClientFilter] = useState<string>('');
@@ -282,7 +280,8 @@ export default function ARAgingPage() {
                     <p>{t('arAging.noInvoices', 'No invoices found')}</p>
                   </div>
                 ) : (
-                  <Table>
+                  <><div className="space-y-3 p-3 xl:hidden">{clientInvoices.map((invoice) => <article key={invoice._id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words font-semibold">{invoice.invoiceNumber}</p><p className="break-words text-sm text-muted-foreground">{invoice.referenceNo || '-'}</p></div>{getStatusBadge(invoice.status)}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-sm"><div><span className="text-muted-foreground">{t('arAging.invoiceDate', 'Invoice Date')}</span><p>{formatDate(invoice.invoiceDate)}</p></div><div><span className="text-muted-foreground">{t('arAging.dueDate', 'Due Date')}</span><p>{formatDate(invoice.dueDate)}</p></div><div className="col-span-2"><span className="text-muted-foreground">{t('arAging.balance', 'Balance')}</span><p className="font-semibold">{formatCurrency(parseFloat(invoice.balance || invoice.amountOutstanding || '0'))}</p></div></div></article>)}</div>
+                  <div className="hidden overflow-x-auto xl:block"><Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('arAging.invoiceNumber', 'Invoice #')}</TableHead>
@@ -307,7 +306,7 @@ export default function ARAgingPage() {
                         </TableRow>
                       ))}
                     </TableBody>
-                  </Table>
+                  </Table></div></>
                 )}
               </CardContent>
             </Card>
@@ -316,7 +315,7 @@ export default function ARAgingPage() {
           /* Main aging table */
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-6 gap-4 mb-6">
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6 xl:gap-4">
               <Card>
                 <CardHeader className="py-3">
                   <CardTitle className="text-sm">{t('arAging.current', 'Current')}</CardTitle>
@@ -379,7 +378,8 @@ export default function ARAgingPage() {
                     <p>{t('arAging.noData', 'No aging data found')}</p>
                   </div>
                 ) : (
-                  <Table>
+                  <><div className="space-y-3 p-3 xl:hidden">{agingData.map((item) => <button key={item.client._id} type="button" className="w-full rounded-xl border p-3 text-left transition-colors hover:bg-muted/50" onClick={() => handleClientClick(item)}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words font-semibold">{item.client.name}</p><p className="text-sm text-muted-foreground">{item.client.code}</p></div><ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" /></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs sm:grid-cols-3"><span className="text-muted-foreground">{t('arAging.current', 'Current')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(item.current)}</b></span><span className="text-muted-foreground">1-30 {t('arAging.days', 'Days')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(item['1-30'])}</b></span><span className="text-muted-foreground">31-60 {t('arAging.days', 'Days')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(item['31-60'])}</b></span><span className="text-muted-foreground">61-90 {t('arAging.days', 'Days')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(item['61-90'])}</b></span><span className="text-muted-foreground">90+ {t('arAging.days', 'Days')}<b className="mt-1 block text-sm text-red-600">{formatCurrency(item['90+'])}</b></span><span className="text-muted-foreground">{t('arAging.total', 'Total')}<b className="mt-1 block text-sm font-semibold text-foreground">{formatCurrency(item.totalBalance)}</b></span></div></button>)}</div>
+                  <div className="hidden overflow-x-auto xl:block"><Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('arAging.client', 'Client')}</TableHead>
@@ -415,7 +415,7 @@ export default function ARAgingPage() {
                         </TableRow>
                       ))}
                     </TableBody>
-                  </Table>
+                  </Table></div></>
                 )}
               </CardContent>
             </Card>

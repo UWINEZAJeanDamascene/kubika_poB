@@ -41,12 +41,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/app/components/ui/select';
-import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 export default function ExpenseDetailPage() {
-  const { t } = useTranslation();
   const { formatCurrency: formatDisplayCurrency, displayCurrency } = useCurrency();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -56,6 +54,7 @@ export default function ExpenseDetailPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reverseDialogOpen, setReverseDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
   // Edit form state
@@ -271,6 +270,7 @@ export default function ExpenseDetailPage() {
       const response = await expensesApi.reject(id!, reason);
       if (response.success) {
         toast.success('Expense rejected successfully');
+        setRejectDialogOpen(false);
         fetchExpense();
       } else {
         toast.error('Failed to reject expense');
@@ -400,7 +400,7 @@ export default function ExpenseDetailPage() {
                       <CheckCircle className="mr-2 h-4 w-4" />
                       Approve
                     </Button>
-                    <Button onClick={() => setReverseDialogOpen(true)} disabled={submitting} variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white">
+                    <Button onClick={() => setRejectDialogOpen(true)} disabled={submitting} variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white">
                       <XCircle className="mr-2 h-4 w-4" />
                       Reject
                     </Button>
@@ -1029,7 +1029,17 @@ export default function ExpenseDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Reverse Dialog */}
+      {/* Reject and reverse dialogs */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-slate-900 dark:text-white"><XCircle className="h-5 w-5 text-red-600" />Reject Expense</DialogTitle>
+            <DialogDescription className="text-slate-500 dark:text-slate-400">Provide a reason for rejecting this pending expense. It will remain unposted.</DialogDescription>
+          </DialogHeader>
+          <ReasonForm submitLabel="Reject Expense" loading={submitting} onClose={() => setRejectDialogOpen(false)} onSubmit={handleReject} />
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={reverseDialogOpen} onOpenChange={setReverseDialogOpen}>
         <DialogContent className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
           <DialogHeader>
@@ -1046,6 +1056,16 @@ export default function ExpenseDetailPage() {
       </Dialog>
     </div>
     </Layout>
+  );
+}
+
+function ReasonForm({ onSubmit, loading, onClose, submitLabel }: { onSubmit: (reason: string) => void; loading: boolean; onClose: () => void; submitLabel: string }) {
+  const [reason, setReason] = useState('');
+  return (
+    <form onSubmit={(event) => { event.preventDefault(); if (reason.trim()) onSubmit(reason.trim()); }} className="space-y-4">
+      <div className="space-y-2"><Label htmlFor="expense-rejection-reason" className="dark:text-slate-200">Reason *</Label><Input id="expense-rejection-reason" autoFocus required value={reason} onChange={(event) => setReason(event.target.value)} className="min-h-11 dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="Explain why this expense is being rejected" /></div>
+      <DialogFooter className="gap-2"><Button type="button" variant="outline" onClick={onClose} disabled={loading} className="min-h-10">Keep Pending</Button><Button type="submit" variant="destructive" disabled={loading || !reason.trim()} className="min-h-10">{loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{submitLabel}</Button></DialogFooter>
+    </form>
   );
 }
 

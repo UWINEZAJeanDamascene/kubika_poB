@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
-import { useTranslation } from "react-i18next";
 import { Layout } from "../../layout/Layout";
 import { useEmployees, useDeleteEmployee } from "@/lib/hooks/useEmployees";
 import type { Employee } from "@/lib/api";
@@ -9,8 +8,6 @@ import {
   RefreshCw,
   Search,
   Users,
-  Briefcase,
-  TrendingUp,
   UserX,
   Eye,
   Edit,
@@ -29,8 +26,6 @@ import { Badge } from "@/app/components/ui/badge";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/app/components/ui/card";
 import {
   Dialog,
@@ -139,7 +134,6 @@ function SummaryCard({ title, value, icon, tone, subtext }: SummaryCardProps) {
 }
 
 export default function EmployeesListPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
 
   const [statusFilter, setStatusFilter] = useState("all");
@@ -374,7 +368,8 @@ export default function EmployeesListPage() {
         {/* Table */}
         <Card className="border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950">
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="space-y-3 p-3 xl:hidden">{isLoading ? <div className="py-10 text-center text-sm text-muted-foreground">Loading employees…</div> : filteredEmployees.length === 0 ? <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{hasFilters ? "No employees match these filters." : "Add your first employee to get started."}</div> : filteredEmployees.map((emp) => { const gross = (emp.currentSalary?.basicSalary || 0) + (emp.currentSalary?.transportAllowance || 0) + (emp.currentSalary?.housingAllowance || 0) + (emp.currentSalary?.otherAllowances || 0); return <article key={emp._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start gap-3"><div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">{emp.firstName?.[0]}{emp.lastName?.[0]}</div><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{emp.firstName} {emp.lastName}</p><p className="mt-0.5 break-all font-mono text-xs text-muted-foreground">{emp.employeeId}</p>{emp.email && <p className="mt-0.5 break-all text-xs text-muted-foreground">{emp.email}</p>}</div><StatusBadge status={emp.status}/></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-800"><div className="text-muted-foreground">Department<p className="mt-1 text-sm text-foreground">{emp.department || "—"}</p></div><div className="text-muted-foreground">Position<p className="mt-1 text-sm text-foreground">{emp.position || "—"}</p></div><div className="text-muted-foreground">Employment type<p className="mt-1"><Badge variant="secondary" className="capitalize">{emp.employmentType}</Badge></p></div><div className="text-muted-foreground">Gross salary<p className="mt-1 text-sm font-semibold text-foreground">{gross > 0 ? `RWF ${formatCurrency(gross)}` : "—"}</p></div></div><div className="mt-3 flex gap-2 border-t pt-3 dark:border-slate-800"><Button size="sm" variant="outline" className="min-h-10 flex-1" onClick={() => navigate(`/employees/${emp._id}`)}><Eye className="mr-1.5 h-4 w-4"/>View</Button><Button size="sm" variant="outline" className="min-h-10 flex-1" onClick={() => navigate(`/employees/${emp._id}/edit`)}><Edit className="mr-1.5 h-4 w-4"/>Edit</Button><Button size="icon" variant="outline" className="min-h-10 min-w-10 text-red-600" onClick={() => { setEmployeeToDelete(emp); setShowDeleteDialog(true); }} aria-label={`Delete ${emp.firstName} ${emp.lastName}`}><Trash2 className="h-4 w-4"/></Button></div></article>; })}</div>
+            <div className="hidden overflow-x-auto xl:block">
               <Table className="min-w-[940px]">
                 <TableHeader>
                   <TableRow className="bg-slate-50/50 dark:bg-slate-900/50">
@@ -520,7 +515,7 @@ export default function EmployeesListPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 dark:border-slate-800">
+            <div className="flex flex-col gap-3 border-t border-slate-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
               <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
                 <span>
                   Showing {filteredEmployees.length} record

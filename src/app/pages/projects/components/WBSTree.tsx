@@ -49,7 +49,7 @@ function WBSTreeItem({
             ? "bg-primary/10 text-primary"
             : "hover:bg-muted",
         )}
-        style={{ paddingLeft: `${level * 20 + 8}px` }}
+        style={{ paddingLeft: `${Math.min(level, 4) * 12 + 8}px` }}
         onClick={() => {
           if (hasChildren) setIsOpen(!isOpen);
           onSelect?.(node);
@@ -69,13 +69,13 @@ function WBSTreeItem({
         {getNodeIcon(node, isOpen)}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground">{node.wbs_code}</span>
-            <span className="text-sm font-medium truncate">{node.name}</span>
+            <span className="shrink-0 font-mono text-[10px] text-muted-foreground sm:text-xs">{node.wbs_code}</span>
+            <span className="min-w-0 truncate text-sm font-medium">{node.name}</span>
           </div>
         </div>
         <span
           className={cn(
-            "text-xs px-1.5 py-0.5 rounded-full border",
+          "shrink-0 text-[10px] px-1.5 py-0.5 rounded-full border sm:text-xs",
             node.status === "active" && "bg-green-500/10 text-green-500 border-green-500/20",
             node.status === "planning" && "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
             node.status === "on_hold" && "bg-orange-500/10 text-orange-500 border-orange-500/20",

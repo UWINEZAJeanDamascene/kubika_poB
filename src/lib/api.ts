@@ -11750,6 +11750,8 @@ export const expensesApi = {
       notes: string;
       paid: boolean;
       // Rwanda-specific fields
+      currencyCode?: CurrencyCode;
+      exchangeRate?: number;
       rraTaxCategory?: RRATaxCategory;
       isVATRecoverable?: boolean;
       department_id?: string;

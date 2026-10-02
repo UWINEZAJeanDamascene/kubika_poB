@@ -10,14 +10,7 @@ import {
   RefreshCw,
   Loader2,
   Receipt,
-  TrendingUp,
-  TrendingDown,
-  AlertCircle,
   Search,
-  Filter,
-  Calendar,
-  DollarSign,
-  FileText,
   Edit,
   Trash2,
   Download,
@@ -25,20 +18,14 @@ import {
   ChevronRight,
   Repeat,
   CheckCircle,
-  XCircle,
   TriangleAlert,
-  CreditCard,
-  Landmark,
-  Wallet,
-  Building,
-  ArrowLeft,
   Coins,
   Clock,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
 import { Badge } from '@/app/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Card, CardContent } from '@/app/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -63,7 +50,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/app/components/ui/table';
-import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import PrepaidExpensesTab from './PrepaidExpensesTab';
 import { saveAs } from 'file-saver';
@@ -121,7 +107,6 @@ interface Expense {
 }
 
 export default function ExpensesListPage() {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   // Formats a base-currency (RWF) amount in the display currency picked in the sidebar.
   const { formatCurrency: formatDisplayCurrency, displayCurrency } = useCurrency();
@@ -470,21 +455,6 @@ export default function ExpensesListPage() {
     return <Badge variant={variant as any} className={className}>{status}</Badge>;
   };
 
-  const getPaymentMethodBadge = (method: string) => {
-    const config: Record<string, { variant: string; className: string }> = {
-      bank: { variant: 'default', className: 'bg-blue-500 dark:bg-blue-600' },
-      cash: { variant: 'secondary', className: 'bg-green-500 dark:bg-green-600' },
-      bank_transfer: { variant: 'outline', className: 'bg-blue-600 dark:bg-blue-700' },
-      cheque: { variant: 'outline', className: 'bg-purple-500 dark:bg-purple-600' },
-      mobile_money: { variant: 'outline', className: 'bg-yellow-500 dark:bg-yellow-600' },
-      credit_card: { variant: 'outline', className: 'bg-pink-500 dark:bg-pink-600' },
-      petty_cash: { variant: 'outline', className: 'bg-orange-500 dark:bg-orange-600' },
-      payable: { variant: 'outline', className: 'bg-gray-500 dark:bg-gray-600' },
-    };
-    const { variant, className } = config[method] || { variant: 'outline', className: '' };
-    return <Badge variant={variant as any} className={className}>{method}</Badge>;
-  };
-
   // Calculate summary metrics
   const totalExpenses = expenses.reduce(
     (sum, expense) => sum + (expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1)),
@@ -706,7 +676,17 @@ export default function ExpensesListPage() {
                 </div>
               ) : (
                 <>
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {expenses.map((expense) => (
+                      <div key={expense._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="flex items-start justify-between gap-3"><div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-300">{expense.reference}</p>{expense.isRecurring && <Repeat className="h-3.5 w-3.5 shrink-0 text-purple-500"/>}</div><p className="mt-1 text-xs text-slate-500">{formatDate(expense.date)}</p></div>{getStatusBadge(expense.status)}</div>
+                        <p className="mt-2 text-sm font-medium text-slate-900 dark:text-white">{expense.description}</p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400"><span>{expense.account ? `${expense.account.code} · ${expense.account.name}` : 'No account'}</span>{expense.department && <Badge variant="outline">{expense.department.code}</Badge>}</div>
+                        <div className="mt-3 flex items-end justify-between gap-3 border-t border-slate-100 pt-3 dark:border-slate-800"><div><p className="text-xs text-slate-500">Total ({displayCurrency})</p><p className="text-base font-semibold dark:text-white">{formatDisplayCurrency(expense.totalAmountInRWF ?? expense.totalAmount * (expense.exchangeRate || 1))}</p><p className="mt-1 text-xs text-slate-500">{expense.currencyCode || 'RWF'}{expense.rraTaxCategory ? ` · ${expense.rraTaxCategory.replace(/_/g, ' ').toUpperCase()}` : ''}</p></div><div className="flex gap-2"><Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate(`/expenses/${expense._id}`)} title="View"><Eye className="h-4 w-4"/></Button>{expense.status === 'pending' && <><Button variant="outline" size="icon" className="h-10 w-10" onClick={() => navigate(`/expenses/${expense._id}/edit`)} title="Edit"><Edit className="h-4 w-4"/></Button><Button variant="outline" size="icon" className="h-10 w-10 text-red-600" onClick={() => {setSelectedExpense(expense);setShowDeleteDialog(true);}} title="Delete"><Trash2 className="h-4 w-4"/></Button></>}</div></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table className="min-w-[1120px]">
                       <TableHeader>
                         <TableRow className="border-b border-slate-200 bg-slate-50/50 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

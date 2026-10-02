@@ -581,7 +581,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="space-y-1">
                     <Label>{t('payroll.form.firstName')} *</Label>
                     <Input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} />
@@ -669,7 +669,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <Label>{t('payroll.form.basicSalary')} *</Label>
                     <Input type="number" min="0" value={editForm.basicSalary || ''} onChange={(e) => setEditForm({ ...editForm, basicSalary: parseFloat(e.target.value) || 0 })} />
@@ -726,7 +726,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <div className="space-y-0.5">
                     <p className="text-xs text-muted-foreground">{t('payroll.form.grossSalaryCalc')}</p>
                     <p className="text-lg font-bold">{formatCurrency(calculations.grossSalary)}</p>
@@ -829,7 +829,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground dark:text-slate-400">Full Name</p>
                     <p className="font-medium dark:text-white">{record.employee.firstName} {record.employee.lastName}</p>
@@ -886,7 +886,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground dark:text-slate-400">Basic Salary</p>
                     <p className="font-medium dark:text-white">{formatCurrency(record.salary.basicSalary)}</p>
@@ -943,7 +943,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground dark:text-slate-400">PAYE</p>
                     <p className="font-medium text-red-600 dark:text-red-400">{formatCurrency(record.deductions.paye)}</p>

@@ -253,7 +253,19 @@ export default function LiabilitiesListPage() {
           {/* Table */}
           <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="space-y-3 p-3 xl:hidden">
+                {loading ? Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-36 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />) : liabilities.length === 0 ? <div className="rounded-xl border border-dashed border-slate-300 px-5 py-10 text-center dark:border-slate-700"><Scale className="mx-auto h-8 w-8 text-slate-400"/><p className="mt-2 text-sm font-medium dark:text-white">{t('liabilities.noLiabilities')}</p><Button variant="outline" size="sm" className="mt-4 min-h-10" onClick={() => navigate('/liabilities/new')}><Plus className="mr-2 h-4 w-4"/>Add Liability</Button></div> : liabilities.map((liability) => {
+                  const progress = getRepaymentProgress(liability);
+                  return <div key={liability._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-300">{liability.loanNumber}</p><p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{liability.name}</p><p className="mt-0.5 text-xs text-slate-500">{liability.lenderName}</p></div>{getStatusBadge(liability.status)}</div>
+                    <p className="mt-2 text-xs text-slate-500">{(liability as any).loanType ? t(`liabilities.types.${liability.loanType}`) : t(`liabilities.types.${liability.type || 'other'}`)}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800"><div><p className="text-xs text-slate-500">Principal</p><p className="mt-1 text-sm font-medium dark:text-slate-200">{formatCurrency(liability.originalAmount)}</p></div><div><p className="text-xs text-slate-500">Outstanding</p><p className="mt-1 text-sm font-semibold text-rose-600 dark:text-rose-400">{formatCurrency(liability.outstandingBalance)}</p></div></div>
+                    <div className="mt-3"><div className="flex justify-between text-xs text-slate-500"><span>Repayment progress</span><span>{progress.toFixed(0)}%</span></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${getProgressColor(progress)}`} style={{width: `${progress}%`}} /></div></div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-2 dark:border-slate-800"><Button variant="outline" size="sm" className="min-h-10" onClick={() => navigate(`/liabilities/${liability._id}`)}><Eye className="mr-1.5 h-4 w-4"/>View</Button><Button variant="outline" size="sm" className="min-h-10 px-2" onClick={() => navigate(`/liabilities/${liability._id}?action=repayment`)}><RefreshCcw className="mr-1.5 h-4 w-4"/>Pay</Button><Button variant="outline" size="sm" className="min-h-10 px-2" onClick={() => navigate(`/liabilities/${liability._id}?action=interest`)}><TrendingUp className="mr-1.5 h-4 w-4"/>Interest</Button></div>
+                  </div>;
+                })}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="border-slate-100 bg-slate-50/50 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50">

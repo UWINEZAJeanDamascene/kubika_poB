@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
-import { apPaymentsApi, suppliersApi } from "@/lib/api";
+import { apPaymentsApi } from "@/lib/api";
 import { Layout } from "@/app/layout/Layout";
 import {
   ArrowLeft,
@@ -9,11 +9,9 @@ import {
   Calendar,
   Building2,
   FileText,
-  Send,
   XCircle,
   CheckCircle,
   Clock,
-  User,
   Receipt,
   AlertCircle,
   RefreshCw,
@@ -357,7 +355,7 @@ export default function APPaymentDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <label className="text-sm text-muted-foreground">
                       {t("apPayment.supplier", "Supplier")}
@@ -406,7 +404,7 @@ export default function APPaymentDetailPage() {
 
                 <Separator />
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <label className="text-sm text-muted-foreground">
                       {t("apPayment.amountPaid", "Amount Paid")}

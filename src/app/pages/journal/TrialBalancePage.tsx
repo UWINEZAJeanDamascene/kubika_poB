@@ -192,7 +192,16 @@ export default function TrialBalancePage() {
                 ) : null}
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="space-y-2 p-3 xl:hidden">
+                  {entries.map((entry) => (
+                    <div key={entry.accountCode} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="min-w-0"><p className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-300">{entry.accountCode}</p><p className="mt-1 text-sm font-medium dark:text-white">{entry.accountName}</p></div>
+                      <div className="shrink-0 text-right text-xs"><p className="text-slate-500">Debit</p><p className="font-mono font-semibold dark:text-white">{entry.debit > 0 ? entry.debit.toLocaleString() : '-'}</p><p className="mt-1 text-slate-500">Credit</p><p className="font-mono font-semibold dark:text-white">{entry.credit > 0 ? entry.credit.toLocaleString() : '-'}</p></div>
+                    </div>
+                  ))}
+                  <div className="flex justify-between rounded-lg bg-slate-50 p-3 text-sm font-semibold dark:bg-slate-900"><span>Total</span><span className="text-right">Dr {totalDebit.toLocaleString()}<br/>Cr {totalCredit.toLocaleString()}</span></div>
+                </div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

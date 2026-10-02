@@ -529,7 +529,7 @@ export default function ProjectDetailPage() {
             </Card>
           ) : (
           <Tabs defaultValue="wbs">
-            <TabsList className="dark:border-slate-700 dark:bg-slate-900">
+            <TabsList className="flex w-full max-w-full justify-start overflow-x-auto [&>*]:shrink-0 [&>*]:whitespace-nowrap dark:border-slate-700 dark:bg-slate-900">
               <TabsTrigger value="wbs" className="data-[state=active]:bg-white data-[state=active]:text-slate-950 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
                 <FolderTree className="mr-2 h-4 w-4" />
                 {t("projects.wbsTree", "WBS Tree")}
@@ -574,7 +574,21 @@ export default function ProjectDetailPage() {
                 </CardHeader>
                 <CardContent>
                   {budgetSummary && budgetSummary.budget_lines.length > 0 ? (
-                    <div className="overflow-x-auto">
+                    <>
+                    <div className="space-y-3 xl:hidden">
+                      {budgetSummary.budget_lines.map((line) => (
+                        <article key={line._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                          <p className="text-sm font-semibold text-slate-950 dark:text-white">{typeof line.account_id === "object" ? `${line.account_id.code} - ${line.account_id.name}` : line.account_id}</p>
+                          <p className="mt-1 text-xs text-slate-500">{line.project_id && typeof line.project_id === "object" ? `${line.project_id.wbs_code} · ${line.project_id.name}` : line.wbs_code || project.wbs_code} · {line.period_month}/{line.period_year}</p>
+                          <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-800">
+                            <div className="text-slate-500">Budgeted<p className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(line.budgeted_amount)}</p></div>
+                            <div className="text-slate-500">Actual<p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">{formatCurrency(line.actual_amount || 0)}</p></div>
+                            <div className="col-span-2 text-slate-500">Category<p className="mt-1 text-sm text-slate-900 dark:text-white">{line.category || "—"}</p></div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -610,6 +624,7 @@ export default function ProjectDetailPage() {
                         </TableBody>
                       </Table>
                     </div>
+                    </>
                   ) : (
                     <div className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-200 bg-slate-50/70 text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400">
                       {t("projects.noBudgetLines", "No budget lines linked to this project")}

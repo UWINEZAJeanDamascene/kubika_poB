@@ -29,7 +29,6 @@ import {
   Loader2,
   X,
   Check,
-  ArrowRight,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -214,7 +213,8 @@ export function BudgetScenarioComparison({
           </div>
 
           {/* Scenarios Table */}
-          <div className="border rounded-lg">
+          <div className="space-y-3 xl:hidden">{allScenarios.map((scenario) => <article key={scenario.scenario_id} className={`rounded-xl border p-3 ${scenario.is_primary ? "border-primary/40 bg-primary/5" : ""}`}><div className="flex items-start gap-3"><div className="mt-0.5 shrink-0">{getScenarioIcon(scenario.scenario_type, scenario.variance_amount || 0)}</div><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold">{scenario.scenario_name}</p><p className="mt-1 text-xs text-muted-foreground">{scenario.line_count} {t("budgets.scenarios.lines", "lines")}</p></div>{scenario.is_primary ? <Badge variant="default">{t("budgets.scenarios.primary", "Primary")}</Badge> : <Badge variant="outline">{t("budgets.scenarios.alternate", "Alternate")}</Badge>}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><div className="text-muted-foreground">Type<p className="mt-1 text-sm capitalize text-foreground">{scenario.scenario_type}</p></div><div className="text-muted-foreground">Total<p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(scenario.total_budgeted)}</p></div><div className="col-span-2 text-muted-foreground">Variance vs base<p className={`mt-1 text-sm font-medium ${scenario.variance_amount && scenario.variance_amount > 0 ? "text-green-600" : scenario.variance_amount && scenario.variance_amount < 0 ? "text-red-600" : "text-foreground"}`}>{scenario.variance_amount !== undefined && scenario.variance_amount !== 0 ? formatVariance(scenario.variance_amount, scenario.variance_percent) : "—"}</p></div></div>{!scenario.is_primary && <div className="mt-3 flex gap-2 border-t pt-3"><Button size="sm" variant="outline" className="min-h-10 flex-1" onClick={() => handleSetPrimary(scenario.scenario_id)}>{t("budgets.scenarios.setPrimary", "Set Primary")}</Button><Button size="icon" variant="ghost" className="min-h-10 min-w-10 text-destructive" onClick={() => handleDeleteScenario(scenario.scenario_id)} aria-label={`Delete ${scenario.scenario_name}`}><X className="h-4 w-4"/></Button></div>}</article>)}</div>
+          <div className="hidden border rounded-lg xl:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -311,7 +311,8 @@ export function BudgetScenarioComparison({
             </div>
             {expandedCategories && (
               <div className="p-4 pt-0">
-                <Table>
+                <div className="space-y-2 xl:hidden">{Object.keys(base_scenario.by_category).map((category) => <article key={category} className="rounded-lg border p-3"><p className="text-sm font-semibold">{category}</p><div className="mt-2 space-y-2 border-t pt-2">{allScenarios.map((scenario) => <div key={scenario.scenario_id} className="flex items-center justify-between gap-3 text-xs"><span className="min-w-0 truncate text-muted-foreground">{scenario.scenario_name}</span><span className="shrink-0 font-medium">{formatCurrency(scenario.by_category[category] || 0)}</span></div>)}</div></article>)}</div>
+                <div className="hidden overflow-x-auto xl:block"><Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>{t("budgets.scenarios.category", "Category")}</TableHead>
@@ -332,7 +333,7 @@ export function BudgetScenarioComparison({
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </Table></div>
               </div>
             )}
           </div>

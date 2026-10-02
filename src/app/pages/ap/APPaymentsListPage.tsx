@@ -473,7 +473,7 @@ export default function APPaymentsListPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 dark:bg-slate-800">
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto dark:bg-slate-800">
             <TabsTrigger value="payments" className="dark:text-slate-200 dark:data-[state=active]:bg-slate-700">
               <Wallet className="w-4 h-4 mr-2" />
               {t('apPayment.payments', 'Payments')}
@@ -501,7 +501,7 @@ export default function APPaymentsListPage() {
 
         {/* Filters */}
         <div className="bg-card rounded-lg border p-4 mb-6 dark:bg-slate-800 dark:border-slate-700">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <div>
               <label className="text-sm font-medium mb-1 block dark:text-slate-200">{t('apPayment.search', 'Search')}</label>
               <Input
@@ -569,7 +569,9 @@ export default function APPaymentsListPage() {
               <Loader2 className="h-8 w-8 animate-spin dark:text-slate-400" />
             </div>
           ) : (
-            <Table>
+            <>
+            <div className="space-y-3 p-3 xl:hidden">{paymentList.length === 0 ? <div className="py-6"><EmptyState compact icon={Wallet} title={t('apPayment.noPayments', 'No payments yet')} description={t('apPayment.noPaymentsHint', 'Supplier payment records will appear here once payments are made against purchase orders.')}/></div> : paymentList.map((payment) => <article key={payment._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all font-mono text-sm font-semibold">{payment.referenceNo || 'N/A'}</p><p className="mt-1 break-words text-sm">{payment.supplier?.name || '-'}</p></div>{getStatusBadge(payment.status)}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-700"><div className="text-muted-foreground">Date<p className="mt-1 text-sm text-foreground">{formatDate(payment.paymentDate)}</p></div><div className="text-muted-foreground">Method<p className="mt-1 text-sm text-foreground">{getPaymentMethodLabel(payment.paymentMethod)}</p></div><div className="col-span-2 text-muted-foreground">Amount<p className="mt-1 text-base font-semibold text-foreground">{formatCurrency(payment.amountPaid, payment.currencyCode)}</p></div></div><div className="mt-3 flex flex-wrap gap-2 border-t pt-3 dark:border-slate-700"><Button size="sm" variant="outline" onClick={() => navigate(`/ap-payments/${payment._id}`)}><Eye className="mr-1.5 h-4 w-4"/>View</Button>{payment.status === 'draft' && <><Button size="sm" variant="outline" onClick={() => navigate(`/ap-payments/${payment._id}/edit`)}><Send className="mr-1.5 h-4 w-4"/>Edit</Button><Button size="sm" onClick={() => handlePost(payment._id)}><Send className="mr-1.5 h-4 w-4"/>Post</Button></>}{payment.status === 'posted' && <Button size="sm" variant="outline" onClick={() => handleReverse(payment._id)}><Undo2 className="mr-1.5 h-4 w-4"/>Reverse</Button>}</div></article>)}</div>
+            <div className="hidden overflow-x-auto xl:block"><Table>
               <TableHeader>
                 <TableRow className="dark:bg-slate-700/50">
                   <TableHead className="dark:text-slate-200">{t('apPayment.reference', 'Reference')}</TableHead>
@@ -653,7 +655,8 @@ export default function APPaymentsListPage() {
                   ))
                 )}
               </TableBody>
-            </Table>
+            </Table></div>
+            </>
           )}
         </div>
 

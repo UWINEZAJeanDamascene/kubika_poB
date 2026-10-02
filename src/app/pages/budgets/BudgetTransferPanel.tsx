@@ -8,8 +8,6 @@ import { Skeleton } from "@/app/components/ui/skeleton";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/app/components/ui/card";
 import {
   Dialog,
@@ -355,7 +353,8 @@ export function BudgetTransferPanel({
       ) : (
         <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
           <CardContent className="p-0">
-            <Table>
+            <div className="space-y-3 p-3 xl:hidden">{transfers.map((transfer) => <article key={transfer._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold">{transfer.from_account_code} → {transfer.to_account_code}</p><p className="mt-1 text-xs text-muted-foreground">{typeof transfer.requested_by === "object" ? transfer.requested_by.name : "Unknown"} · {formatDate(transfer.transfer_date)}</p></div>{getStatusBadge(transfer.status)}</div><p className="mt-3 text-lg font-semibold">{formatCurrency(transfer.amount)}</p>{transfer.status === "rejected" && transfer.rejection_reason && <p className="mt-2 break-words text-xs text-red-600 dark:text-red-400">{transfer.rejection_reason}</p>}<div className="mt-3 flex flex-wrap gap-2 border-t pt-3 dark:border-slate-800">{transfer.status === "pending" && canApprove && <Button size="sm" variant="outline" onClick={() => handleApprove(transfer)} disabled={submitting}><CheckCircle className="mr-1.5 h-4 w-4"/>Approve</Button>}{transfer.status === "approved" && canApprove && <Button size="sm" variant="outline" onClick={() => handleExecute(transfer)} disabled={submitting}><Play className="mr-1.5 h-4 w-4"/>Execute</Button>}{["pending", "approved"].includes(transfer.status) && canApprove && <Button size="sm" variant="outline" onClick={() => { setSelectedTransfer(transfer); setShowRejectDialog(true); }} disabled={submitting}><XCircle className="mr-1.5 h-4 w-4"/>Reject</Button>}{transfer.status === "pending" && <Button size="sm" variant="ghost" onClick={() => handleCancel(transfer)} disabled={submitting}><Ban className="mr-1.5 h-4 w-4"/>Cancel</Button>}</div></article>)}</div>
+            <div className="hidden overflow-x-auto xl:block"><Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
                   <TableHead className="text-xs font-medium text-slate-500 dark:text-slate-400">From → To</TableHead>
@@ -474,7 +473,7 @@ export function BudgetTransferPanel({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           </CardContent>
         </Card>
       )}

@@ -191,7 +191,7 @@ export default function LiabilityFormPage() {
         const transactions = Array.isArray(liability.transactions) ? liability.transactions : [];
         setHasTransactions(transactions.length > 0);
         setHasRepaymentOrInterestActivity(
-          transactions.some((transaction) => transaction.type !== 'drawdown') ||
+          transactions.some((transaction: any) => transaction.type !== 'drawdown') ||
           (liability.payments?.length || 0) > 0 ||
           Number(liability.amountPaid || 0) > 0,
         );
@@ -1122,7 +1122,16 @@ export default function LiabilityFormPage() {
                   </div>
 
                   {/* Payment Schedule Table (first 6 months) */}
-                  <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
+                  <div className="mt-4 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div className="space-y-2 p-3 xl:hidden">
+                      {paymentSchedule.schedule.slice(0, 6).map((payment) => (
+                        <div key={payment.paymentNumber} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                          <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold dark:text-white">Payment {payment.paymentNumber}</p><p className="mt-1 text-xs text-slate-500">{payment.paymentDate}</p></div><div className="text-right"><p className="text-xs text-slate-500">Payment</p><p className="text-sm font-semibold dark:text-white">{formatCurrency(payment.totalPayment)}</p></div></div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-xs dark:border-slate-800"><div className="text-slate-500">Principal<p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(payment.principalPortion)}</p></div><div className="text-slate-500">Interest<p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(payment.interestPortion)}</p></div><div className="col-span-2 text-slate-500">Remaining balance<p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(payment.remainingBalance)}</p></div></div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -1147,6 +1156,7 @@ export default function LiabilityFormPage() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                     {paymentSchedule.schedule.length > 6 && (
                       <p className="border-t border-slate-100 bg-slate-50/30 px-4 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400">
                         ...and {paymentSchedule.schedule.length - 6} more payments

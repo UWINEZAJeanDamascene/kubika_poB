@@ -813,7 +813,7 @@ export default function LiabilityDetailPage() {
           </Card>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="p-5">
                 <div className="flex items-start justify-between">
@@ -958,7 +958,7 @@ export default function LiabilityDetailPage() {
                   <p className="text-sm font-medium text-slate-900 dark:text-white">Financial Instruments</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-lg bg-slate-50 p-3 dark:bg-slate-900/50">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Classification</p>
                   <Badge variant="outline" className="mt-1 border-slate-200 dark:border-slate-700">
@@ -1035,7 +1035,7 @@ export default function LiabilityDetailPage() {
           </Card>
 
           {/* Transaction History - Split into two tables */}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             {/* Repayment History Table */}
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardHeader className="border-b border-slate-100 bg-slate-50/50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/50">
@@ -1058,7 +1058,11 @@ export default function LiabilityDetailPage() {
                     <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t('liabilities.noRepayments')}</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-2 p-3 xl:hidden">
+                    {transactions.filter(tx => tx.type === 'repayment').map((tx) => <div key={tx._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold dark:text-white">{formatDate(tx.transactionDate)}</p><p className="mt-1 font-mono text-xs text-slate-500">{tx.reference || (tx as any).journalEntryNumber || '-'}</p></div><p className="text-right text-sm font-semibold dark:text-white">{formatCurrency(tx.amount)}</p></div><div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-xs dark:border-slate-800"><span className="text-slate-500">Principal <b className="font-medium text-slate-800 dark:text-slate-200">{formatCurrency(tx.principalPortion || 0)}</b></span><span className="text-slate-500">Interest <b className="font-medium text-slate-800 dark:text-slate-200">{formatCurrency(tx.interestPortion || 0)}</b></span></div></div>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -1084,6 +1088,7 @@ export default function LiabilityDetailPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -1110,7 +1115,11 @@ export default function LiabilityDetailPage() {
                     <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">{t('liabilities.noInterestCharges')}</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-2 p-3 xl:hidden">
+                    {transactions.filter(tx => tx.type === 'interest_charge' || tx.type === 'interest').map((tx) => <div key={tx._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold dark:text-white">{formatDate(tx.transactionDate)}</p><p className="mt-1 font-mono text-xs text-slate-500">{tx.reference || (tx as any).journalEntryNumber || '-'}</p></div><p className="text-sm font-semibold dark:text-white">{formatCurrency(tx.amount)}</p></div><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{tx.notes || '-'}</p></div>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -1134,6 +1143,7 @@ export default function LiabilityDetailPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -1154,7 +1164,10 @@ export default function LiabilityDetailPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="space-y-2 p-3 xl:hidden">
+                  {transactions.filter(tx => tx.type === 'drawdown').map((tx) => <div key={tx._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold dark:text-white">{formatDate(tx.transactionDate)}</p><p className="mt-1 font-mono text-xs text-slate-500">{tx.reference || (tx as any).journalEntryNumber || '-'}</p></div><p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(tx.amount)}</p></div><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{tx.notes || '-'}</p></div>)}
+                </div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/50 hover:bg-slate-50/50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

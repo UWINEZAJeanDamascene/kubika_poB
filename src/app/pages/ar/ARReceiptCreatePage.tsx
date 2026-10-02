@@ -13,15 +13,10 @@ import {
   Save,
   Send,
   Calculator,
-  Landmark,
   Banknote,
   Receipt,
-  ArrowUpRight,
   ArrowDownRight,
-  User,
-  Building2,
   Wallet,
-  RotateCcw,
 } from "lucide-react";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { toast } from "sonner";
@@ -76,13 +71,6 @@ interface Invoice {
 interface Allocation {
   invoice: string;
   amount: number;
-}
-
-interface BankAccount {
-  _id: string;
-  accountName: string;
-  accountCode: string;
-  accountNumber: string;
 }
 
 interface ARReceiptFormData {

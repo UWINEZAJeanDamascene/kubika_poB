@@ -627,7 +627,7 @@ export default function PayrollRunDetailPage() {
                 </div>
 
                 {/* Mini Stats */}
-                <div className="grid grid-cols-3 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+                <div className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40 sm:grid-cols-3">
                   <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                     <p className="text-xs text-slate-500 dark:text-slate-400">Periods</p>
                     <p className="mt-1 text-xl font-bold text-indigo-600 dark:text-indigo-400">
@@ -1239,7 +1239,7 @@ export default function PayrollRunDetailPage() {
               </div>
 
               {/* Mini Stats */}
-              <div className="grid grid-cols-3 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+              <div className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40 sm:grid-cols-3">
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Net pay rate</p>
                   <p className="mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400">
@@ -1737,7 +1737,8 @@ export default function PayrollRunDetailPage() {
                             {Math.abs(totalDebit - totalCredit) < 0.01 ? "Balanced" : "Not balanced"}
                           </Badge>
                         </div>
-                        <Table>
+                        <div className="space-y-2 p-3 xl:hidden">{entry.lines.map((line, i) => <article key={`${entry.step}-mobile-${i}`} className="rounded-lg border p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-xs text-muted-foreground">{line.accountCode}</p><p className="mt-1 break-words text-sm font-medium">{line.accountName}</p><p className="mt-1 break-words text-xs text-muted-foreground">{line.description}</p></div></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-700"><div className="text-muted-foreground">Debit<p className="mt-1 text-sm font-medium text-foreground">{line.debit > 0 ? formatCurrency(line.debit) : "—"}</p></div><div className="text-muted-foreground">Credit<p className="mt-1 text-sm font-medium text-foreground">{line.credit > 0 ? formatCurrency(line.credit) : "—"}</p></div></div></article>)}<div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-800"><div className="text-muted-foreground">Total debit<p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(totalDebit)}</p></div><div className="text-muted-foreground">Total credit<p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(totalCredit)}</p></div></div></div>
+                        <div className="hidden overflow-x-auto xl:block"><Table>
                           <TableHeader>
                             <TableRow className="dark:border-slate-700">
                               <TableHead className="dark:text-slate-200">{t("payroll.run.accountCode")}</TableHead>
@@ -1763,13 +1764,15 @@ export default function PayrollRunDetailPage() {
                               <TableCell className="text-right dark:text-white">{formatCurrency(totalCredit)}</TableCell>
                             </TableRow>
                           </TableBody>
-                        </Table>
+                        </Table></div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-              <Table>
+              <>
+              <div className="space-y-3 p-3 xl:hidden">{run.lines.map((line, index) => <article key={`employee-mobile-${index}`} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-semibold">{line.employee_name}</p><p className="mt-1 break-all font-mono text-xs text-muted-foreground">{line.employee_id}</p></div><span className="shrink-0 text-right text-xs text-muted-foreground">Net pay<p className="mt-1 text-sm font-semibold text-emerald-600">{formatCurrency(line.net_pay)}</p></span></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-700"><div className="text-muted-foreground">Gross<p className="mt-1 text-sm text-foreground">{formatCurrency(line.gross_salary)}</p></div><div className="text-muted-foreground">PAYE<p className="mt-1 text-sm text-red-600">{formatCurrency(line.tax_deduction)}</p></div><div className="text-muted-foreground">Employee RSSB<p className="mt-1 text-sm text-orange-600">{formatCurrency(line.rssb_employee_total)}</p></div><div className="text-muted-foreground">Employer RSSB<p className="mt-1 text-sm text-blue-600">{formatCurrency(line.rssb_employer_total)}</p></div></div></article>)}<div className="rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-800"><p className="font-semibold">Run totals</p><div className="mt-2 grid grid-cols-2 gap-3"><span className="text-muted-foreground">Gross<b className="mt-1 block text-sm text-foreground">{formatCurrency(run.total_gross)}</b></span><span className="text-muted-foreground">PAYE<b className="mt-1 block text-sm text-red-600">{formatCurrency(run.total_tax)}</b></span><span className="text-muted-foreground">Employee RSSB<b className="mt-1 block text-sm text-orange-600">{formatCurrency(run.total_other_deductions)}</b></span><span className="text-muted-foreground">Employer RSSB<b className="mt-1 block text-sm text-blue-600">{formatCurrency(rssbEmployerTotal)}</b></span><span className="col-span-2 text-muted-foreground">Net pay<b className="mt-1 block text-sm text-emerald-600">{formatCurrency(run.total_net)}</b></span></div></div></div>
+              <div className="hidden overflow-x-auto xl:block"><Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/70 dark:hover:bg-slate-900/70">
                     <TableHead className="dark:text-slate-200">{t("payroll.employeeName")}</TableHead>
@@ -1849,7 +1852,8 @@ export default function PayrollRunDetailPage() {
                     </TableCell>
                   </TableRow>
                 </TableBody>
-              </Table>
+              </Table></div>
+              </>
               )}
             </CardContent>
           </Card>
@@ -1897,7 +1901,8 @@ export default function PayrollRunDetailPage() {
                     : t("payroll.run.notBalanced")}
                 </Badge>
               </div>
-              <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+              <div className="space-y-2 xl:hidden">{preview.lines.map((line, i) => <article key={`journal-mobile-${i}`} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><p className="font-mono text-xs text-muted-foreground">{line.accountCode}</p><p className="mt-1 break-words text-sm font-medium">{line.accountName}</p><p className="mt-1 break-words text-xs text-muted-foreground">{line.description}</p><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-700"><div className="text-muted-foreground">Debit<p className="mt-1 text-sm font-medium text-foreground">{line.debit > 0 ? formatCurrency(line.debit) : "—"}</p></div><div className="text-muted-foreground">Credit<p className="mt-1 text-sm font-medium text-foreground">{line.credit > 0 ? formatCurrency(line.credit) : "—"}</p></div></div></article>)}<div className="grid grid-cols-2 gap-3 rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-800"><div className="text-muted-foreground">Total debit<p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(preview.lines.reduce((s, l) => s + l.debit, 0))}</p></div><div className="text-muted-foreground">Total credit<p className="mt-1 text-sm font-semibold text-foreground">{formatCurrency(preview.lines.reduce((s, l) => s + l.credit, 0))}</p></div></div></div>
+              <div className="hidden overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 xl:block">
                 <Table className="min-w-[920px]">
                   <TableHeader>
                     <TableRow className="dark:border-slate-700">

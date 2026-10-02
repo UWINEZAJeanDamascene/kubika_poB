@@ -400,7 +400,9 @@ export default function APAgingReportPage() {
                 </p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="space-y-3 p-3 xl:hidden">{agingData.map((row) => <article key={row.supplier_id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-2"><Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"/><span className="break-words text-sm font-semibold">{row.supplier_name}</span></div><Button variant="outline" size="sm" className="min-h-10 shrink-0" onClick={() => navigate(`/ap-reconciliation/suppliers/${row.supplier_id}/statement`)}>Statement<ChevronRight className="ml-1 h-4 w-4"/></Button></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs sm:grid-cols-3"><span className="text-muted-foreground">Not yet due<b className="mt-1 block text-sm text-foreground">{formatCurrency(parseFloat(row.not_yet_due))}</b></span><span className="text-muted-foreground">1–30 days<b className="mt-1 block text-sm text-foreground">{formatCurrency(parseFloat(row.days_1_30))}</b></span><span className="text-muted-foreground">31–60 days<b className="mt-1 block text-sm text-foreground">{formatCurrency(parseFloat(row.days_31_60))}</b></span><span className="text-muted-foreground">61–90 days<b className="mt-1 block text-sm text-foreground">{formatCurrency(parseFloat(row.days_61_90))}</b></span><span className="text-muted-foreground">90+ days<b className="mt-1 block text-sm text-red-600">{formatCurrency(parseFloat(row.days_90_plus))}</b></span><span className="text-muted-foreground">Total outstanding<b className="mt-1 block text-sm font-semibold text-foreground">{formatCurrency(row.total_outstanding)}</b></span></div></article>)}<article className="rounded-xl bg-muted/40 p-3"><p className="text-sm font-semibold">{t("apAging.total", "Total")}</p><div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3"><span>Not yet due<b className="mt-1 block">{formatCurrency(totals.notYetDue)}</b></span><span>1–30 days<b className="mt-1 block">{formatCurrency(totals.days1_30)}</b></span><span>31–60 days<b className="mt-1 block">{formatCurrency(totals.days31_60)}</b></span><span>61–90 days<b className="mt-1 block">{formatCurrency(totals.days61_90)}</b></span><span>90+ days<b className="mt-1 block">{formatCurrency(totals.days90Plus)}</b></span><span>Total<b className="mt-1 block">{formatCurrency(totals.total)}</b></span></div></article></div>
+              <div className="hidden overflow-x-auto xl:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -495,6 +497,7 @@ export default function APAgingReportPage() {
                   </TableBody>
                 </Table>
               </div>
+              </>
             )}
           </CardContent>
         </Card>

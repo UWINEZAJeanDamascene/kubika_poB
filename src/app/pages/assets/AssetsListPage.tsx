@@ -8,7 +8,6 @@ import {
   Pencil,
   Trash2,
   Eye,
-  Loader2,
   Package,
   Layers,
   Banknote,
@@ -371,7 +370,17 @@ export default function AssetsListPage() {
                   <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">Add your first asset to get started</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div>
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {assets.map((asset) => (
+                      <div key={asset._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-300">{asset.referenceNo || asset.reference || '-'}</p><p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{asset.name}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{getCategoryName(asset.categoryId)} · {formatDate(asset.purchaseDate)}</p></div>{getStatusBadge(asset.status)}</div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-3 dark:border-slate-800"><div><p className="text-xs text-slate-500">Cost</p><p className="text-sm font-medium dark:text-slate-200">{getAssetAmount(asset, ['purchaseCost','purchase_cost','cost','totalValue','total_value'])}</p></div><div><p className="text-xs text-slate-500">Net book value</p><p className="text-sm font-semibold dark:text-white">{getAssetAmount(asset, ['netBookValue','net_book_value','netValue','net_book'])}</p></div><div className="col-span-2"><p className="text-xs text-slate-500">Accumulated depreciation</p><p className="text-sm dark:text-slate-200">{getAssetAmount(asset, ['accumulatedDepreciation','accumulated_depreciation','accumDepreciation','accum_depr'])}</p></div></div>
+                        <div className="mt-3 flex gap-2 border-t border-slate-100 pt-2 dark:border-slate-800"><Button variant="outline" size="sm" className="min-h-10 flex-1" onClick={() => navigate(`/assets/${asset._id}`)}><Eye className="mr-2 h-4 w-4"/>{t('common.view')}</Button><Button variant="outline" size="sm" className="min-h-10 flex-1" onClick={() => navigate(`/assets/${asset._id}/edit`)}><Pencil className="mr-2 h-4 w-4"/>{t('common.edit')}</Button><Button variant="outline" size="icon" className="min-h-10 min-w-10 text-red-600" onClick={() => handleDelete(asset._id)} title={t('common.delete')}><Trash2 className="h-4 w-4"/></Button></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50 dark:bg-slate-900/60">
@@ -414,6 +423,7 @@ export default function AssetsListPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
                 </div>
               )}
             </CardContent>

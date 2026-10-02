@@ -706,12 +706,23 @@ export default function AccountingPeriodsPage() {
                           </div>
                         </div>
                         {expandedPeriodId === period._id && (
-                          <div className="mt-3 overflow-x-auto rounded-md border border-slate-200 dark:border-slate-800">
+                          <div className="mt-3 rounded-md border border-slate-200 dark:border-slate-800">
                             {(periodEntries[period._id] || []).length === 0 ? (
                               <p className="p-4 text-sm text-slate-500 dark:text-slate-400">
                                 No journal entries recorded in this period.
                               </p>
                             ) : (
+                              <>
+                              <div className="space-y-2 p-3 xl:hidden">
+                                {periodEntries[period._id].map((entry) => (
+                                  <div key={entry._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                                    <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs text-slate-500">{format(new Date(entry.date), "dd MMM yyyy")}</p><p className="mt-1 truncate font-mono text-xs font-semibold text-blue-700 dark:text-blue-300">{entry.entryNumber}</p></div><span className="rounded-full bg-slate-100 px-2 py-1 text-xs capitalize dark:bg-slate-800">{entry.status}</span></div>
+                                    <p className="mt-2 text-sm font-medium">{entry.description}</p>
+                                    <div className="mt-2 flex justify-between border-t border-slate-100 pt-2 text-xs dark:border-slate-800"><span className="text-slate-500">Debit <b className="font-mono text-slate-800 dark:text-slate-200">{formatCurrency(Number(entry.totalDebit) || 0)}</b></span><span className="text-slate-500">Credit <b className="font-mono text-slate-800 dark:text-slate-200">{formatCurrency(Number(entry.totalCredit) || 0)}</b></span></div>
+                                  </div>
+                                ))}
+                              </div>
+                              <div className="hidden overflow-x-auto xl:block">
                               <table className="w-full min-w-[640px] text-left text-sm">
                                 <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                                   <tr>
@@ -736,6 +747,8 @@ export default function AccountingPeriodsPage() {
                                   ))}
                                 </tbody>
                               </table>
+                              </div>
+                              </>
                             )}
                           </div>
                         )}

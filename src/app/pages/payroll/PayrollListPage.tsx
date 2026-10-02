@@ -930,7 +930,7 @@ export default function PayrollListPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
+              <div className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40 sm:grid-cols-3">
                 <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Net pay rate</p>
                   <p className="mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400">
@@ -1359,7 +1359,8 @@ export default function PayrollListPage() {
               </div>
             ) : (
               <>
-                <Table className="min-w-[1180px]">
+                <div className="space-y-3 p-3 xl:hidden">{records.map((record) => <article key={record._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start gap-3"><div className="min-w-0 flex-1"><div className="flex items-center gap-2">{canFinalise(record) && <input type="checkbox" checked={selectedIds.has(record._id)} onChange={() => toggleSelect(record._id)} aria-label={`Select ${record.employee.firstName} ${record.employee.lastName}`} className="h-4 w-4 rounded border-gray-300 dark:border-slate-500"/>}<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-sm font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{record.employee.firstName?.charAt(0) || ""}{record.employee.lastName?.charAt(0) || ""}</div><div className="min-w-0"><button type="button" className="block max-w-full truncate text-left text-sm font-semibold text-blue-700 dark:text-blue-300" onClick={() => navigate(`/payroll/${record._id}`)}>{record.employee.firstName} {record.employee.lastName}</button><p className="truncate text-xs text-slate-500 dark:text-slate-400">{record.employee.employeeId} · {record.employee.department || record.employee.position || "Payroll employee"}</p></div></div></div>{getStatusBadge(record)}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-800"><div className="text-muted-foreground">Gross<p className="mt-1 text-sm font-medium text-foreground">{formatCurrency(record.salary.grossSalary)}</p></div><div className="text-muted-foreground">PAYE<p className="mt-1 text-sm text-red-600 dark:text-red-400">{formatCurrency(record.deductions.paye)}</p></div><div className="text-muted-foreground">Employee RSSB<p className="mt-1 text-sm text-orange-600 dark:text-orange-400">{formatCurrency(record.deductions.rssbEmployeePension + record.deductions.rssbEmployeeMaternity)}</p></div><div className="text-muted-foreground">Employer RSSB<p className="mt-1 text-sm text-blue-600 dark:text-blue-400">{formatCurrency((record.contributions?.rssbEmployerPension || 0) + (record.contributions?.rssbEmployerMaternity || 0))}</p></div><div className="col-span-2 text-muted-foreground">Net pay<p className="mt-1 text-base font-semibold text-green-600 dark:text-green-400">{formatCurrency(record.netPay)}</p></div></div><div className="mt-3 flex flex-wrap gap-2 border-t pt-3 dark:border-slate-800"><Button size="sm" variant="outline" onClick={() => navigate(`/payroll/${record._id}`)}><Eye className="mr-1.5 h-4 w-4"/>View</Button>{canEdit(record) && hasPermission("payroll:update") && <Button size="sm" variant="outline" onClick={() => navigate(`/payroll/${record._id}/edit`)}><Edit className="mr-1.5 h-4 w-4"/>Edit</Button>}{canDelete(record) && hasPermission("payroll:delete") && <Button size="sm" variant="outline" onClick={() => { setSelectedRecord(record); setShowDeleteDialog(true); }}><Trash2 className="mr-1.5 h-4 w-4"/>Delete</Button>}</div></article>)}</div>
+                <div className="hidden overflow-x-auto xl:block"><Table className="min-w-[1180px]">
                   <TableHeader>
                     <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/70 dark:hover:bg-slate-900/70">
                       <TableHead className="w-10 dark:text-slate-200">
@@ -1494,7 +1495,7 @@ export default function PayrollListPage() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
+                </Table></div>
 
                 {/* Pagination */}
                 <div className="flex flex-col gap-3 border-t px-4 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">

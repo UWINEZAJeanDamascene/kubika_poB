@@ -10,6 +10,7 @@ import {
 import { Layout } from "../../layout/Layout";
 import {
   ArrowLeft,
+  ArrowRight,
   Loader2,
   Package,
   Calculator,
@@ -529,7 +530,7 @@ export default function AssetDetailPage() {
 
           {/* Details Tab */}
           <TabsContent value="details" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
               {/* Asset Info */}
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm lg:col-span-2 dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader>
@@ -703,7 +704,16 @@ export default function AssetDetailPage() {
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t("assets.noSchedule")}</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-2 xl:hidden">
+                    {schedule.map((item) => (
+                      <div key={item.period} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                        <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold dark:text-white">{item.label}</p><p className="mt-1 text-xs text-slate-500">{formatDate(item.date)}</p></div><p className="text-right text-xs text-slate-500">Closing NBV<br/><span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(item.closingNBV)}</span></p></div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-xs dark:border-slate-800"><div className="text-slate-500">Opening NBV <p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(item.openingNBV)}</p></div><div className="text-slate-500">Depreciation <p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(item.depreciation)}</p></div></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 dark:bg-slate-900/60">
@@ -727,6 +737,7 @@ export default function AssetDetailPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -748,7 +759,16 @@ export default function AssetDetailPage() {
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t("assets.noEntries")}</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-2 xl:hidden">
+                    {depreciationEntries.map((entry) => (
+                      <div key={entry._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                        <div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold dark:text-white">{formatDate(entry.periodDate)}</p><p className="mt-1 text-xs text-slate-500">Posted {formatDate(entry.createdAt)}</p></div><p className="text-right text-xs text-slate-500">Depreciation<br/><span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(entry.depreciationAmount)}</span></p></div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-xs dark:border-slate-800"><div className="text-slate-500">Accumulated after <p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(entry.accumulatedAfter)}</p></div><div className="text-slate-500">NBV after <p className="mt-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(entry.netBookValueAfter)}</p></div></div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 dark:bg-slate-900/60">
@@ -772,6 +792,7 @@ export default function AssetDetailPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -796,7 +817,17 @@ export default function AssetDetailPage() {
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No status history recorded yet</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-2 xl:hidden">
+                    {statusHistory.map((entry) => (
+                      <div key={entry._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                        <div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold dark:text-white">{formatDate(entry.changedAt)}</p><span className="text-xs text-slate-500">{entry.changedBy?.name || "System"}</span></div>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">{getStatusBadge(entry.fromStatus)}<ArrowRight className="h-3.5 w-3.5 text-slate-400"/>{getStatusBadge(entry.toStatus)}</div>
+                        <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{entry.reason || "No reason provided"}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 dark:bg-slate-900/60">
@@ -820,6 +851,7 @@ export default function AssetDetailPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>

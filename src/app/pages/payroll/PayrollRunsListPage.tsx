@@ -202,16 +202,16 @@ export default function PayrollRunsListPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40">
-                <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900 min-h-[64px] flex flex-col justify-center min-w-[320px] flex-1">
+              <div className="grid grid-cols-1 gap-3 rounded-lg border border-slate-200 bg-slate-50/70 p-3 dark:border-slate-800 dark:bg-slate-950/40 sm:grid-cols-3">
+                <div className="min-w-0 rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900 min-h-[64px] flex flex-col justify-center">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Employees</p>
                   <p className="mt-1 text-2xl font-bold text-slate-950 dark:text-white leading-tight">{runs.reduce((acc, r) => acc + (r.employee_count || 0), 0)}</p>
                 </div>
-                <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900 min-h-[64px] flex flex-col justify-center min-w-[320px] flex-1">
+                <div className="min-w-0 rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900 min-h-[64px] flex flex-col justify-center">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Total Gross</p>
                   <p className="mt-1 text-2xl font-bold text-slate-950 dark:text-white leading-tight break-words">{formatCurrency(runs.reduce((acc, r) => acc + (r.total_gross || 0), 0))}</p>
                 </div>
-                <div className="rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900 min-h-[64px] flex flex-col justify-center min-w-[320px] flex-1">
+                <div className="min-w-0 rounded-lg bg-white p-3 shadow-sm dark:bg-slate-900 min-h-[64px] flex flex-col justify-center">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Total Net</p>
                   <p className="mt-1 text-2xl font-bold text-emerald-600 dark:text-emerald-400 leading-tight break-words">{formatCurrency(runs.reduce((acc, r) => acc + (r.total_net || 0), 0))}</p>
                 </div>
@@ -236,9 +236,9 @@ export default function PayrollRunsListPage() {
 
           <Card className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
             <CardContent className="p-4">
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
                 <Select value={filterStatus || 'all'} onValueChange={(v) => { setFilterStatus(v === 'all' ? '' : v); setCurrentPage(1); }}>
-                  <SelectTrigger className="w-[180px] bg-white dark:bg-slate-700 text-slate-900 dark:text-white border-slate-200 dark:border-slate-600"><SelectValue placeholder={t('payroll.filterByStatus')} /></SelectTrigger>
+                  <SelectTrigger className="w-full bg-white text-slate-900 dark:border-slate-600 dark:bg-slate-700 dark:text-white sm:w-[180px]"><SelectValue placeholder={t('payroll.filterByStatus')} /></SelectTrigger>
                   <SelectContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
                     <SelectItem value="all" className="dark:text-slate-200">{t('payroll.allStatuses')}</SelectItem>
                     <SelectItem value="draft" className="dark:text-slate-200">{t('payroll.statuses.draft')}</SelectItem>
@@ -266,7 +266,9 @@ export default function PayrollRunsListPage() {
                   <p className="text-muted-foreground dark:text-slate-400">No payroll runs found</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-3 p-3 xl:hidden">{runs.map((run) => <article key={run._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all font-mono text-sm font-semibold text-slate-900 dark:text-white">{run.reference_no}</p><p className="mt-1 text-xs text-muted-foreground">{formatPeriod(run.pay_period_start, run.pay_period_end)}</p></div>{getStatusBadge(run.status)}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-700"><div className="text-muted-foreground">Payment date<p className="mt-1 text-sm text-foreground">{formatDate(run.payment_date)}</p></div><div className="text-muted-foreground">Employees<p className="mt-1 text-sm text-foreground">{run.employee_count}</p></div><div className="text-muted-foreground">Gross<p className="mt-1 text-sm font-medium text-foreground">{formatCurrency(run.total_gross)}</p></div><div className="text-muted-foreground">RSSB<p className="mt-1 text-sm text-orange-600 dark:text-orange-400">{formatCurrency(run.total_other_deductions)}</p></div><div className="col-span-2 text-muted-foreground">Net pay<p className="mt-1 text-base font-semibold text-green-600 dark:text-green-400">{formatCurrency(run.total_net)}</p></div></div><div className="mt-3 flex flex-wrap gap-2 border-t pt-3 dark:border-slate-700"><Button size="sm" variant="outline" onClick={() => navigate(`/payroll-runs/${run._id}`)}><Eye className="mr-1.5 h-4 w-4"/>Details</Button>{run.status === 'draft' && hasPermission('payroll:post') && <Button size="sm" variant="outline" onClick={() => handlePost(run)} disabled={submitting || String(run.created_by || '') === String(user?._id || '')}><CheckCircle className="mr-1.5 h-4 w-4"/>Post</Button>}{run.status === 'draft' && hasPermission('payroll:delete') && <Button size="sm" variant="outline" onClick={() => { setSelectedRun(run); setShowDeleteDialog(true); }}><Trash2 className="mr-1.5 h-4 w-4"/>Delete</Button>}{run.status === 'posted' && hasPermission('payroll:admin') && <Button size="sm" variant="outline" onClick={() => { setSelectedRun(run); setShowReverseDialog(true); }}><RotateCcw className="mr-1.5 h-4 w-4"/>Reverse</Button>}</div></article>)}</div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table className="min-w-full">
                     <TableHeader>
                       <TableRow className="bg-slate-50 dark:bg-slate-700/50 dark:border-slate-600">
@@ -336,6 +338,7 @@ export default function PayrollRunsListPage() {
                     </div>
                   </div>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>

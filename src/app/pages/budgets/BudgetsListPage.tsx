@@ -746,6 +746,27 @@ export default function BudgetsListPage() {
                 </div>
               ) : (
                 <>
+                  <div className="space-y-3 p-3 xl:hidden">
+                    {budgets.map((budget) => (
+                      <div key={budget._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                        <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold text-slate-900 dark:text-white">{budget.name}</p>{budget.code && <p className="mt-0.5 font-mono text-xs text-indigo-600 dark:text-indigo-300">{budget.code}</p>}{budget.description && <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{budget.description}</p>}</div>{getStatusBadge(budget.status)}</div>
+                        <div className="mt-3 flex flex-wrap items-center gap-2">{getTypeBadge(budget.type)}<Badge variant="outline">FY {budget.fiscal_year || "—"}</Badge><Badge variant="outline" className="capitalize">{budget.periodType}</Badge></div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800"><div><p className="text-xs text-slate-500">Period</p><p className="mt-1 text-xs dark:text-slate-300">{budget.periodStart || budget.periodEnd ? `${formatDate(budget.periodStart)} – ${formatDate(budget.periodEnd)}` : "—"}</p></div><div><p className="text-xs text-slate-500">Budget amount</p><p className="mt-1 text-sm font-semibold dark:text-white">{formatCurrency((budget as any).totalBudgeted ?? budget.amount)}</p></div></div>
+                        <div className="mt-3 flex flex-wrap gap-1 border-t border-slate-100 pt-2 dark:border-slate-800">
+                          <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => navigate(`/budgets/${budget._id}`)} title={t("common.view", "View")}><Eye className="h-4 w-4"/></Button>
+                          {canEdit(budget) && <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => navigate(`/budgets/${budget._id}/edit`)} title={t("common.edit", "Edit")}><Pencil className="h-4 w-4"/></Button>}
+                          {canApprove(budget) && <Button variant="ghost" size="icon" className="h-10 w-10 text-emerald-600" onClick={() => {setSelectedBudget(budget);setShowApproveDialog(true);}} title={t("budgets.approve", "Approve")}><CheckCircle className="h-4 w-4"/></Button>}
+                          {canReject(budget) && <Button variant="ghost" size="icon" className="h-10 w-10 text-red-600" onClick={() => {setSelectedBudget(budget);setShowRejectDialog(true);}} title={t("budgets.reject", "Reject")}><XCircle className="h-4 w-4"/></Button>}
+                          {canLock(budget) && <Button variant="ghost" size="icon" className="h-10 w-10 text-amber-600" onClick={() => {setSelectedBudget(budget);setShowLockDialog(true);}} title={t("budgets.lock", "Lock")}><Lock className="h-4 w-4"/></Button>}
+                          {canUnlock(budget) && <Button variant="ghost" size="icon" className="h-10 w-10 text-emerald-600" onClick={() => {setSelectedBudget(budget);setShowUnlockDialog(true);}} title={t("budgets.unlock", "Unlock")}><Unlock className="h-4 w-4"/></Button>}
+                          {canClose(budget) && <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => {setSelectedBudget(budget);setShowCloseDialog(true);}} title={t("budgets.close", "Close")}><Power className="h-4 w-4"/></Button>}
+                          {canClone() && <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => {setSelectedBudget(budget);setCloneForm({newName: `${budget.name} (Copy)`,newPeriodStart: "",newPeriodEnd: ""});setShowCloneDialog(true);}} title={t("budgets.clone", "Clone")}><Copy className="h-4 w-4"/></Button>}
+                          {canDelete(budget) && <Button variant="ghost" size="icon" className="h-10 w-10 text-red-600" onClick={() => {setSelectedBudget(budget);setShowDeleteDialog(true);}} title={t("common.delete", "Delete")}><Trash2 className="h-4 w-4"/></Button>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden xl:block">
                   <Table className="min-w-[920px]">
                     <TableHeader>
                       <TableRow className="border-b border-slate-100 bg-slate-50/50 hover:bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -939,6 +960,7 @@ export default function BudgetsListPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  </div>
 
                   {/* Pagination */}
                   <div className="flex items-center justify-between border-t border-slate-100 px-4 py-4 dark:border-slate-800">

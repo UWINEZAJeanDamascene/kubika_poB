@@ -74,7 +74,7 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
   };
 
   return <div className="space-y-5">
-    <div className="flex items-center justify-between"><div><h3 className="font-semibold">Material planning & requisitions</h3><p className="text-sm text-muted-foreground">Plan materials by task, reserve stock, and record warehouse issues and returns.</p></div><Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading || !!busyAction}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Refresh</Button></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="font-semibold">Material planning & requisitions</h3><p className="text-sm text-muted-foreground">Plan materials by task, reserve stock, and record warehouse issues and returns.</p></div><Button className="min-h-10 shrink-0" variant="outline" size="sm" onClick={() => void refresh()} disabled={loading || !!busyAction}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Refresh</Button></div>
     <div className="space-y-3 rounded-lg border p-4">
       {draft.map((line, index) => <div key={index} className="grid gap-3 md:grid-cols-4">
         <div><Label>Material</Label><Select value={line.product_id} onValueChange={(value) => setDraft((all) => all.map((item, i) => i === index ? { ...item, product_id: value } : item))}><SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger><SelectContent>{products.map((item) => <SelectItem key={item._id || item.id} value={item._id || item.id}>{item.name} {item.sku ? `(${item.sku})` : ""}</SelectItem>)}</SelectContent></Select></div>
@@ -83,7 +83,7 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
         <div><Label>Planned quantity</Label><Input type="number" min="0.0001" step="0.0001" value={line.planned_quantity} onChange={(event) => setDraft((all) => all.map((item, i) => i === index ? { ...item, planned_quantity: event.target.value } : item))} /></div>
       </div>)}
       <div className="grid gap-3 md:grid-cols-3"><div><Label>Required date</Label><Input type="date" value={requiredDate} onChange={(event) => setRequiredDate(event.target.value)} /></div><div className="md:col-span-2"><Label>Notes</Label><Input value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Purpose or delivery notes" /></div></div>
-      <div className="flex gap-2"><Button variant="outline" disabled={!!busyAction} onClick={() => setDraft((all) => [...all, newLine()])}><Plus className="mr-2 h-4 w-4" />Add material</Button><Button onClick={() => void create()} disabled={!!busyAction}>{busyAction === "create" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === "create" ? "Creating plan..." : "Create material plan"}</Button></div>
+      <div className="grid gap-2 sm:flex"><Button className="min-h-11 w-full sm:w-auto" variant="outline" disabled={!!busyAction} onClick={() => setDraft((all) => [...all, newLine()])}><Plus className="mr-2 h-4 w-4" />Add material</Button><Button className="min-h-11 w-full sm:w-auto" onClick={() => void create()} disabled={!!busyAction}>{busyAction === "create" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === "create" ? "Creating plan..." : "Create material plan"}</Button></div>
     </div>
     <div className="space-y-3">{rows.map((requisition) => {
       const approveKey = `approve:${requisition.id}`;

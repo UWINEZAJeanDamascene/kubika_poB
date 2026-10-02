@@ -18,7 +18,6 @@ import {
   BadgeCheck,
   AlertTriangle,
   Pencil,
-  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -99,11 +98,6 @@ export default function JournalEntriesPage() {
   const [voidDialogOpen, setVoidDialogOpen] = useState(false);
   const [voidingEntry, setVoidingEntry] = useState<JournalEntry | null>(null);
   const [voiding, setVoiding] = useState(false);
-
-  // Backfill dialog
-  const [backfillDialogOpen, setBackfillDialogOpen] = useState(false);
-  const [backfillLoading, setBackfillLoading] = useState(false);
-  const [backfillResult, setBackfillResult] = useState<any>(null);
 
   const fetchEntries = useCallback(async () => {
     setLoading(true);
@@ -375,7 +369,7 @@ export default function JournalEntriesPage() {
           ) : (
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="p-0">
-                <div className="space-y-3 p-3 lg:hidden">
+                <div className="space-y-3 p-3 xl:hidden">
                   {entries.map((entry) => (
                     <div key={entry._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
                       <div className="flex items-start justify-between gap-3">
@@ -398,7 +392,7 @@ export default function JournalEntriesPage() {
                     </div>
                   ))}
                 </div>
-                <div className="hidden overflow-x-auto lg:block">
+                <div className="hidden overflow-x-auto xl:block">
                   <Table className="min-w-[960px]">
                     <TableHeader>
                       <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

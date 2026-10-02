@@ -1173,7 +1173,12 @@ export default function BudgetDetailPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {lines.map((line) => { const util = getLineUtilization(line); const status = getLineStatus(line); const StatusIcon = status.icon; const projectMeta = getProjectMeta(line.project_id, line.wbs_code); return <article key={line._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold dark:text-white">{getAccountName(line.account_id)}</p><p className="mt-1 text-xs text-slate-500">{MONTHS.find((m) => m.value === line.period_month)?.label || line.period_month} {line.period_year}</p>{line.project_id && <button type="button" className="mt-1 block truncate text-left font-mono text-xs text-indigo-600 dark:text-indigo-300" onClick={() => projectMeta.id && navigate(`/projects/${projectMeta.id}`)}>{projectMeta.code}</button>}</div><Badge variant="outline" className={`shrink-0 gap-1 text-xs ${status.className}`}><StatusIcon className="h-3 w-3"/>{status.label}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-xs dark:border-slate-800"><div className="text-slate-500">Budgeted<p className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(line.budgeted_amount)}</p></div><div className="text-slate-500">Available<p className={`mt-1 text-sm font-semibold ${getLineAvailable(line) < 0 ? "text-red-600" : "text-emerald-600"}`}>{formatCurrency(getLineAvailable(line))}</p></div><div className="text-slate-500">Committed<p className="mt-1 text-sm text-slate-800 dark:text-slate-200">{formatCurrency(line.encumbered_amount || 0)}</p></div><div className="text-slate-500">Actual<p className="mt-1 text-sm text-slate-800 dark:text-slate-200">{formatCurrency(line.actual_amount || 0)}</p></div></div><div className="mt-3"><div className="flex justify-between text-xs text-slate-500"><span>Utilization</span><span>{util.toFixed(1)}%</span></div><div className="mt-1.5 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full rounded-full ${util >= 85 ? "bg-red-500" : util >= 50 ? "bg-amber-500" : "bg-emerald-500"}`} style={{width: `${Math.min(util, 100)}%`}}/></div></div>{line.category && <p className="mt-2 text-xs text-slate-500">Category: {line.category}</p>}<Button variant="outline" size="sm" className="mt-3 min-h-10 w-full" onClick={() => openLineConsumption(line)}><Eye className="mr-2 h-4 w-4"/>View consumption</Button></article>; })}
+                    <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900"><p className="text-sm font-semibold">Totals</p><div className="mt-2 grid grid-cols-2 gap-2 text-xs"><span>Budgeted <b>{formatCurrency(totalBudgeted)}</b></span><span>Committed <b>{formatCurrency(totalCommitted)}</b></span><span>Actual <b>{formatCurrency(totalActualConsumed)}</b></span><span>Available <b>{formatCurrency(totalAvailable)}</b></span></div></div>
+                  </div>
+                  <div className="hidden overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -1269,6 +1274,7 @@ export default function BudgetDetailPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -1325,7 +1331,11 @@ export default function BudgetDetailPage() {
 
                     {/* Item Comparison Table */}
                     {comparisonItems.length > 0 && (
-                      <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                      <>
+                      <div className="space-y-2 xl:hidden">
+                        {comparisonItems.map((item: any, idx: number) => <article key={idx} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><p className="min-w-0 text-sm font-medium">{item.category || item.description || `Item ${idx + 1}`}</p><span className={`shrink-0 text-sm font-semibold ${(item.variance || 0) >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatCurrency(item.variance || 0)}</span></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs dark:border-slate-800"><span className="text-slate-500">Budgeted<b className="mt-1 block text-sm text-slate-900 dark:text-white">{formatCurrency(item.budgetedAmount || 0)}</b></span><span className="text-slate-500">Actual<b className="mt-1 block text-sm text-slate-900 dark:text-white">{formatCurrency(item.actualAmount || 0)}</b></span></div><div className="mt-3"><div className="flex justify-between text-xs text-slate-500"><span>Utilization</span><span>{item.utilizationPercent !== undefined ? `${Number(item.utilizationPercent).toFixed(1)}%` : "—"}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className={`h-full ${Number(item.utilizationPercent || 0) >= 85 ? "bg-red-500" : Number(item.utilizationPercent || 0) >= 50 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(Number(item.utilizationPercent || 0), 100)}%` }} /></div></div></article>)}
+                      </div>
+                      <div className="hidden overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 xl:block">
                         <Table>
                           <TableHeader>
                             <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
@@ -1361,6 +1371,7 @@ export default function BudgetDetailPage() {
                           </TableBody>
                         </Table>
                       </div>
+                      </>
                     )}
                   </div>
                 ) : (
@@ -1842,7 +1853,9 @@ export default function BudgetDetailPage() {
                     ) : lineEncumbrances.length === 0 ? (
                       <div className="py-8 text-sm text-muted-foreground">No encumbrances have been posted to this line.</div>
                     ) : (
-                      <Table>
+                      <>
+                      <div className="space-y-2 xl:hidden">{lineEncumbrances.map((encumbrance) => <article key={encumbrance._id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-medium">{encumbrance.source_number}</p><p className="mt-1 text-xs text-muted-foreground">{encumbrance.source_type.replaceAll("_", " ")} · {encumbrance.description}</p></div><Badge variant="outline" className="shrink-0">{encumbrance.status.replaceAll("_", " ")}</Badge></div><div className="mt-2 grid grid-cols-2 gap-2 border-t pt-2 text-xs dark:border-slate-800"><span className="text-muted-foreground">Encumbered<b className="mt-1 block text-sm text-foreground">{formatCurrency(encumbrance.encumbered_amount)}</b></span><span className="text-muted-foreground">Remaining<b className="mt-1 block text-sm text-foreground">{formatCurrency(encumbrance.remaining_amount)}</b></span></div></article>)}</div>
+                      <div className="hidden overflow-x-auto xl:block"><Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Source</TableHead>
@@ -1868,7 +1881,8 @@ export default function BudgetDetailPage() {
                             </TableRow>
                           ))}
                         </TableBody>
-                      </Table>
+                      </Table></div>
+                      </>
                     )}
                   </CardContent>
                 </Card>
@@ -1891,7 +1905,9 @@ export default function BudgetDetailPage() {
                         No actual consumption documents are linked to this line yet.
                       </div>
                     ) : (
-                      <Table>
+                      <>
+                      <div className="space-y-2 xl:hidden">{lineActualConsumptions.map((consumption) => <article key={consumption._id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-medium">{consumption.document_number}</p><p className="mt-1 text-xs text-muted-foreground">{consumption.document_type.replaceAll("_", " ")}{consumption.source_number ? ` · from ${consumption.source_number}` : ""}</p>{consumption.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{consumption.notes}</p>}</div><p className="shrink-0 text-sm font-semibold">{formatCurrency(consumption.amount)}</p></div><div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs dark:border-slate-800"><span className="text-muted-foreground">{formatDate(consumption.document_date)}</span><Badge variant="outline">{consumption.origin_type === "direct_actual" ? "Direct actual" : "Encumbrance liquidation"}</Badge></div></article>)}</div>
+                      <div className="hidden overflow-x-auto xl:block"><Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Document</TableHead>
@@ -1923,7 +1939,8 @@ export default function BudgetDetailPage() {
                             </TableRow>
                           ))}
                         </TableBody>
-                      </Table>
+                      </Table></div>
+                      </>
                     )}
                   </CardContent>
                 </Card>

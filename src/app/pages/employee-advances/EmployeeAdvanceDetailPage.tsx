@@ -247,7 +247,9 @@ export default function EmployeeAdvanceDetailPage() {
                   <p className="text-sm font-medium">No repayments yet</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <>
+                <div className="space-y-2 xl:hidden">{advance.repayments.map((rep, i) => <article key={`repayment-${i}`} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{new Date(rep.date).toLocaleDateString()}</p><p className="mt-1 text-xs capitalize text-muted-foreground">{rep.paymentMethod?.replace("_", " ") || "Payment"}</p></div><p className="shrink-0 text-sm font-semibold text-emerald-600">{rep.amount.toLocaleString()}</p></div>{rep.notes && <p className="mt-2 break-words border-t pt-2 text-xs text-muted-foreground">{rep.notes}</p>}</article>)}</div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/40">
@@ -269,6 +271,7 @@ export default function EmployeeAdvanceDetailPage() {
                     </TableBody>
                   </Table>
                 </div>
+                </>
               )}
             </CardContent>
           </Card>

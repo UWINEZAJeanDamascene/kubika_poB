@@ -8,9 +8,6 @@ import { Skeleton } from "@/app/components/ui/skeleton";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
 } from "@/app/components/ui/card";
 import {
   Dialog,
@@ -389,7 +386,8 @@ export function BudgetEncumbrancePanel({
       ) : (
         <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
           <CardContent className="p-0">
-            <Table>
+            <div className="space-y-3 p-3 xl:hidden">{encumbrances.map((enc) => <article key={enc._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="flex items-center gap-1.5 text-sm font-semibold"><FileText className="h-3.5 w-3.5 shrink-0 text-slate-400"/><span className="truncate">{enc.source_number}</span></p><p className="mt-1 text-xs text-muted-foreground">{enc.source_type.replace("_", " ")} · {formatDate(enc.encumbrance_date)}</p><p className="mt-1 break-words text-xs text-muted-foreground">{enc.description}</p></div>{getStatusBadge(enc.status)}</div><p className="mt-2 text-xs text-muted-foreground">{typeof enc.account_id === "object" ? `${enc.account_id.code} · ${enc.account_id.name}` : enc.account_id}</p><div className="mt-3 grid grid-cols-3 gap-2 border-t pt-3 text-xs dark:border-slate-800"><span className="text-muted-foreground">Original<b className="mt-1 block text-sm text-foreground">{formatCurrency(enc.encumbered_amount)}</b></span><span className="text-muted-foreground">Liquidated<b className="mt-1 block text-sm text-foreground">{formatCurrency(enc.liquidated_amount)}</b></span><span className="text-muted-foreground">Open<b className="mt-1 block text-sm text-foreground">{formatCurrency(enc.remaining_amount)}</b></span></div>{["active", "partially_liquidated"].includes(enc.status) && canUpdate && <Button className="mt-3 min-h-10 w-full" variant="outline" onClick={() => { setSelectedEncumbrance(enc); setShowReleaseDialog(true); }} disabled={submitting}><Unlock className="mr-2 h-4 w-4"/>Release commitment</Button>}</article>)}</div>
+            <div className="hidden overflow-x-auto xl:block"><Table>
               <TableHeader>
                 <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">
                   <TableHead className="text-xs font-medium text-slate-500 dark:text-slate-400">Source</TableHead>
@@ -468,7 +466,7 @@ export function BudgetEncumbrancePanel({
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           </CardContent>
         </Card>
       )}

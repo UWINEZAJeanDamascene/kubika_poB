@@ -411,7 +411,7 @@ export default function EmployeeDetailPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="salary" className="w-full">
-          <TabsList className="bg-slate-100 dark:bg-slate-900">
+          <TabsList className="flex max-w-full justify-start overflow-x-auto [&>*]:shrink-0 bg-slate-100 dark:bg-slate-900">
             <TabsTrigger value="salary">Salary History</TabsTrigger>
             <TabsTrigger value="payroll">Payroll History</TabsTrigger>
           </TabsList>
@@ -424,7 +424,8 @@ export default function EmployeeDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="space-y-3 p-3 xl:hidden">{salLoading ? <div className="py-8 text-center text-sm text-muted-foreground">Loading salary history…</div> : !salaryHistory || salaryHistory.length === 0 ? <div className="py-8 text-center text-sm text-muted-foreground">No salary history records found</div> : salaryHistory.map((row: SalaryHistoryRecord) => { const gross = (row.basicSalary || 0) + (row.transportAllowance || 0) + (row.housingAllowance || 0) + (row.otherAllowances || 0); return <article key={row._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">Effective {formatDate(row.effectiveDate)}</p><p className="mt-1 text-xs text-muted-foreground">End {row.endDate ? formatDate(row.endDate) : "Current"}</p></div>{!row.endDate && <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Current</Badge>}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-800"><div className="text-muted-foreground">Basic salary<p className="mt-1 text-sm text-foreground">RWF {formatCurrency(row.basicSalary)}</p></div><div className="text-muted-foreground">Gross salary<p className="mt-1 text-sm font-semibold text-foreground">RWF {formatCurrency(gross)}</p></div><div className="col-span-2 text-muted-foreground">Reason<p className="mt-1 break-words text-sm text-foreground">{row.reason || "—"}</p></div></div></article>; })}</div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/50 dark:bg-slate-900/50">
@@ -519,7 +520,8 @@ export default function EmployeeDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="space-y-3 p-3 xl:hidden">{!employee.payrollHistory || employee.payrollHistory.length === 0 ? <div className="py-8 text-center text-sm text-muted-foreground">No payroll records found for this employee</div> : employee.payrollHistory.map((p: any) => <button type="button" key={p._id} onClick={() => navigate(`/payroll/${p._id}`)} className="block w-full rounded-xl border border-slate-200 p-3 text-left dark:border-slate-800"><div className="flex items-start justify-between gap-3"><p className="text-sm font-semibold">{p.period?.monthName} {p.period?.year}</p><Badge variant="secondary" className="capitalize">{p.record_status}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-800"><div className="text-muted-foreground">Gross<p className="mt-1 text-sm text-foreground">RWF {formatCurrency(p.salary?.grossSalary || 0)}</p></div><div className="text-muted-foreground">PAYE<p className="mt-1 text-sm text-red-600">RWF {formatCurrency(p.deductions?.paye || 0)}</p></div><div className="text-muted-foreground">RSSB<p className="mt-1 text-sm text-foreground">RWF {formatCurrency((p.deductions?.rssbEmployeePension || 0) + (p.deductions?.rssbEmployeeMaternity || 0))}</p></div><div className="text-muted-foreground">Net pay<p className="mt-1 text-sm font-semibold text-green-600">RWF {formatCurrency(p.netPay || 0)}</p></div></div><span className="mt-3 block text-right text-xs font-medium text-primary">View payslip →</span></button>)}</div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/50 dark:bg-slate-900/50">

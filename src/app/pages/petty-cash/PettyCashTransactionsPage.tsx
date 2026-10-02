@@ -11,11 +11,9 @@ import {
   Download,
   Filter,
   ExternalLink,
-  ScrollText,
   BadgeCheck,
   AlertTriangle,
   Layers,
-  CalendarDays,
   Banknote,
   ChevronLeft,
   ChevronRight,
@@ -361,7 +359,17 @@ export default function PettyCashTransactionsPage() {
           ) : (
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="space-y-2 p-3 xl:hidden">
+                  {transactions.map((tx) => (
+                    <div key={tx._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                      <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs text-slate-500 dark:text-slate-400">{formatDate(tx.transactionDate)}</p><p className="mt-1 truncate font-mono text-xs font-semibold text-blue-700 dark:text-blue-300">{tx.referenceNo || tx.voucherNumber || "No reference"}</p></div><Badge variant="outline" className={`shrink-0 text-xs ${tx.type === "top_up" || tx.type === "opening" || tx.type === "replenishment" ? "border-emerald-200 text-emerald-700 dark:border-emerald-900 dark:text-emerald-400" : "border-red-200 text-red-700 dark:border-red-900 dark:text-red-400"}`}>{tx.typeLabel}</Badge></div>
+                      <p className="mt-2 text-sm font-medium text-slate-900 dark:text-white">{tx.description}</p>
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400"><span>Account: {tx.expenseAccountName || tx.expenseAccountId || "—"}</span><span>{tx.receiptRef ? `Receipt ${tx.receiptRef}` : "No receipt"}</span></div>
+                      <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-2 dark:border-slate-800"><div><p className={`text-sm font-semibold ${tx.type === "expense" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>{tx.type === "expense" ? "−" : "+"}{formatCurrency(tx.amount)}</p><p className="mt-1 text-xs text-slate-500">Balance {formatCurrency(tx.runningBalance)}</p></div>{tx.journalEntryId && <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/journal?sourceId=${tx.journalEntryId}`)} className="min-h-10"><ExternalLink className="mr-2 h-4 w-4"/>View GL</Button>}</div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

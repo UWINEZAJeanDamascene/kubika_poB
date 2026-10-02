@@ -8,8 +8,6 @@ import {
   BookOpen,
   ChevronDown,
   ChevronRight,
-  ScrollText,
-  CalendarDays,
   Layers,
   Landmark,
 } from 'lucide-react';
@@ -167,8 +165,8 @@ export default function GeneralLedgerPage() {
                   className="cursor-pointer pb-3 hover:bg-slate-50 dark:hover:bg-slate-900/50"
                   onClick={() => toggleAccount(account.code)}
                 >
-                  <CardTitle className="flex items-center justify-between text-base font-semibold dark:text-white">
-                    <div className="flex items-center gap-2">
+                  <CardTitle className="flex flex-col items-start justify-between gap-2 text-base font-semibold dark:text-white sm:flex-row sm:items-center">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                       {expandedAccounts.has(account.code) ? (
                         <ChevronDown className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                       ) : (
@@ -182,7 +180,7 @@ export default function GeneralLedgerPage() {
                       <span className="text-sm text-slate-700 dark:text-slate-300">{account.name}</span>
                       <Badge variant="outline" className="h-5 text-xs dark:border-slate-700 dark:text-slate-400">{account.type}</Badge>
                     </div>
-                    <span className={`font-mono text-sm font-bold ${account.closingBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <span className={`shrink-0 font-mono text-sm font-bold ${account.closingBalance >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                       {account.closingBalance.toLocaleString()}
                     </span>
                   </CardTitle>
@@ -192,7 +190,17 @@ export default function GeneralLedgerPage() {
                 </CardHeader>
                 {expandedAccounts.has(account.code) && (
                   <CardContent className="p-0">
-                    <div className="overflow-x-auto border-t border-slate-100 dark:border-slate-800">
+                    <div className="space-y-2 border-t border-slate-100 p-3 dark:border-slate-800 xl:hidden">
+                      {(account.transactions || []).map((t, idx) => (
+                        <div key={idx} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700">
+                          <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-xs text-slate-500">{format(new Date(t.date), 'dd MMM yyyy')}</p><p className="mt-1 truncate font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-300">{t.entryNumber}</p></div><span className="shrink-0 text-xs text-slate-500">Balance {t.balance?.toLocaleString() ?? "—"}</span></div>
+                          <p className="mt-2 text-sm dark:text-slate-200">{t.description}</p>
+                          <div className="mt-2 flex justify-between border-t border-slate-100 pt-2 text-xs dark:border-slate-800"><span className="text-slate-500">Debit <b className="font-mono text-slate-800 dark:text-slate-200">{t.debit > 0 ? t.debit.toLocaleString() : "—"}</b></span><span className="text-slate-500">Credit <b className="font-mono text-slate-800 dark:text-slate-200">{t.credit > 0 ? t.credit.toLocaleString() : "—"}</b></span></div>
+                        </div>
+                      ))}
+                      {!(account.transactions || []).length && <p className="py-6 text-center text-sm text-slate-500">No transactions in this account for the selected period.</p>}
+                    </div>
+                    <div className="hidden overflow-x-auto border-t border-slate-100 dark:border-slate-800 xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

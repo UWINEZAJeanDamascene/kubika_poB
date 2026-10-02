@@ -452,7 +452,8 @@ export default function PayrollGenerationPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="space-y-3 p-3 xl:hidden">{isLoading ? <div className="py-8 text-center text-sm text-muted-foreground">Loading eligible employees…</div> : eligibleEmployees.map((emp) => { const gross = (emp.currentSalary?.basicSalary || 0) + (emp.currentSalary?.transportAllowance || 0) + (emp.currentSalary?.housingAllowance || 0) + (emp.currentSalary?.otherAllowances || 0); const selected = selectedIds.has(emp._id); return <button key={emp._id} type="button" onClick={() => toggleEmployee(emp._id)} className={`flex min-h-14 w-full items-start gap-3 rounded-xl border p-3 text-left ${selected ? "border-primary bg-primary/5" : "border-slate-200 dark:border-slate-800"}`}><Checkbox checked={selected} onCheckedChange={() => toggleEmployee(emp._id)} onClick={(event) => event.stopPropagation()} aria-label={`Select ${emp.firstName} ${emp.lastName}`}/><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-300">{emp.firstName?.[0]}{emp.lastName?.[0]}</span><span className="min-w-0 flex-1"><span className="block break-words text-sm font-medium text-slate-900 dark:text-white">{emp.firstName} {emp.lastName}</span><span className="mt-0.5 block break-all text-xs text-muted-foreground">{emp.employeeId} · {emp.department || emp.position || "No department"}</span></span><span className="shrink-0 text-right text-xs text-muted-foreground">Gross<span className="mt-1 block text-sm font-semibold text-foreground">RWF {formatCurrency(gross)}</span></span></button>; })}{!isLoading && eligibleEmployees.length === 0 && <p className="py-8 text-center text-sm text-muted-foreground">No eligible employees found.</p>}</div>
+                <div className="hidden overflow-x-auto xl:block">
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50/50 dark:bg-slate-900/50">
@@ -546,8 +547,9 @@ export default function PayrollGenerationPage() {
                   <CardTitle className="text-base font-semibold text-slate-950 dark:text-white">Approved attendance, leave, and pay adjustments</CardTitle>
                   <p className="text-sm text-slate-500 dark:text-slate-400">Enter scheduled, worked, paid leave, and unpaid leave days. Save and approve each employee’s inputs before generation; only approved inputs affect prorated pay.</p>
                 </CardHeader>
-                <CardContent className="overflow-x-auto p-0">
-                  <Table>
+                <CardContent className="p-0">
+                  <div className="space-y-3 p-3 xl:hidden">{selectedEmployeeRows.map((employee) => { const input = payrollInputs[employee._id] || defaultPayrollInput(month, year); const locked = input.status === "approved" || input.status === "applied"; const numberField = (key: keyof PayrollInputDraft, label: string) => <Input aria-label={`${employee.firstName} ${label}`} type="number" min="0" step="0.5" className="mt-1 min-h-11 w-full" disabled={locked || inputBusyEmployeeId === employee._id} value={input[key] as number} onChange={(event) => updatePayrollInput(employee._id, key, Number(event.target.value) || 0)} />; return <article key={employee._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{employee.firstName} {employee.lastName}</p><p className="mt-0.5 text-xs text-muted-foreground">{employee.employeeId}</p></div><Badge variant="outline" className="capitalize">{input.status || "not saved"}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3">{([["scheduledDays", "Scheduled days"], ["workedDays", "Worked days"], ["paidLeaveDays", "Paid leave days"], ["unpaidLeaveDays", "Unpaid leave days"], ["overtime", "Overtime"], ["bonuses", "Bonus"], ["commissions", "Commission"], ["benefitsInKind", "Benefits in kind"], ["healthInsurance", "Health deduction"], ["loanDeductions", "Loan deduction"], ["otherDeductions", "Other deduction"]] as Array<[keyof PayrollInputDraft, string]>).map(([key, label]) => <label key={key} className="min-w-0 text-xs text-muted-foreground">{label}{numberField(key, label)}</label>)}</div>{input.enteredById && <p className="mt-2 text-xs text-muted-foreground">Prepared by {input.enteredById}{input.approvedById ? ` · Approved by ${input.approvedById}` : ""}</p>}<div className="mt-3 flex flex-wrap gap-2 border-t pt-3 dark:border-slate-800">{input.id && <Button size="sm" variant="outline" onClick={() => setAuditInputId(input.id!)}><History className="mr-1.5 h-4 w-4"/>Audit</Button>}<Button size="sm" variant="outline" className="min-h-10 flex-1" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:update")} onClick={() => void savePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin"/>}Save</Button><Button size="sm" className="min-h-10 flex-1" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:approve") || (!!input.enteredById && input.enteredById === user?._id)} onClick={() => void approvePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin"/>}{input.status === "approved" || input.status === "applied" ? "Approved" : input.enteredById === user?._id ? "Waiting for another approver" : "Approve"}</Button></div></article>; })}</div>
+                  <div className="hidden overflow-x-auto xl:block"><Table>
                     <TableHeader><TableRow>
                       <TableHead>Employee</TableHead><TableHead>Scheduled</TableHead><TableHead>Worked</TableHead><TableHead>Paid leave</TableHead><TableHead>Unpaid leave</TableHead>
                       <TableHead>Overtime</TableHead><TableHead>Bonus</TableHead><TableHead>Commission</TableHead><TableHead>Benefits</TableHead><TableHead>Health deduction</TableHead><TableHead>Loan</TableHead><TableHead>Other deduction</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead>
@@ -564,7 +566,7 @@ export default function PayrollGenerationPage() {
                         <TableCell><div className="flex gap-2">{input.id && <Button size="sm" variant="ghost" title="View immutable audit history" onClick={() => setAuditInputId(input.id!)}><History className="h-4 w-4" />Audit</Button>}<Button size="sm" variant="outline" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:update")} onClick={() => void savePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save</Button><Button size="sm" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:approve") || (!!input.enteredById && input.enteredById === user?._id)} title={input.enteredById === user?._id ? "A different user must approve inputs you prepared" : undefined} onClick={() => void approvePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{input.status === "approved" || input.status === "applied" ? "Approved" : input.enteredById === user?._id ? "Waiting for another approver" : "Approve"}</Button></div></TableCell>
                       </TableRow>;
                     })}</TableBody>
-                  </Table>
+                  </Table></div>
                 </CardContent>
               </Card>
             )}
@@ -582,7 +584,8 @@ export default function PayrollGenerationPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
+                  <div className="space-y-2 p-3 xl:hidden">{ineligibleEmployees.map((emp) => <div key={emp._id} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 p-3 dark:border-amber-900/50"><div className="min-w-0"><p className="break-words text-sm font-medium">{emp.firstName} {emp.lastName}</p><p className="mt-0.5 break-all text-xs text-muted-foreground">{emp.employeeId} · {emp.department || emp.position || "No department"}</p><p className="mt-1 text-xs text-amber-700 dark:text-amber-300">No current salary</p></div><Button size="sm" variant="outline" className="min-h-10 shrink-0" onClick={() => navigate(`/employees/${emp._id}`)}>Set Salary</Button></div>)}</div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50/50 dark:bg-slate-900/50">
@@ -639,14 +642,14 @@ export default function PayrollGenerationPage() {
             )}
 
             {/* Actions */}
-            <div className="flex items-center justify-between">
-              <Button variant="outline" onClick={() => setStep(1)}>
+            <div className="grid gap-2 sm:flex sm:items-center sm:justify-between">
+              <Button className="min-h-11" variant="outline" onClick={() => setStep(1)}>
                 Back
               </Button>
               <Button
                 onClick={handleGenerate}
                 disabled={generateMutation.isPending || selectedCount === 0 || !hasPermission("payroll:create")}
-                className="bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+                className="min-h-11 bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
               >
                 {generateMutation.isPending && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

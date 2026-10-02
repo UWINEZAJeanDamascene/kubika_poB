@@ -531,7 +531,7 @@ export default function ARReceiptsListPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex h-auto w-full justify-start gap-1 overflow-x-auto">
             <TabsTrigger value="receipts">{t('arReceipt.receipts', 'Receipts')}</TabsTrigger>
             <TabsTrigger value="aging">{t('arAging.title', 'Aging Report')}</TabsTrigger>
             <TabsTrigger value="reconciliation">
@@ -551,7 +551,7 @@ export default function ARReceiptsListPage() {
           <TabsContent value="receipts" className="space-y-6">
             {/* Filters */}
             <div className="bg-card rounded-lg border p-4 dark:bg-slate-800 dark:border-slate-700">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 <div>
                   <label className="text-sm font-medium mb-1 block dark:text-slate-200">{t('arReceipt.search', 'Search')}</label>
                   <Input
@@ -619,7 +619,9 @@ export default function ARReceiptsListPage() {
                   <Loader2 className="h-8 w-8 animate-spin" />
                 </div>
               ) : (
-                <Table>
+                <>
+                <div className="space-y-3 p-3 xl:hidden">{receiptList.length === 0 ? <div className="py-6"><EmptyState compact icon={Wallet} title={t('arReceipt.noReceipts', 'No receipts yet')} description={t('arReceipt.noReceiptsHint', 'Customer payments and receipt records will appear here once created.')}/></div> : receiptList.map((receipt) => <article key={receipt._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all font-mono text-sm font-semibold">{receipt.referenceNo || 'N/A'}</p><p className="mt-1 break-words text-sm">{receipt.client?.name || '-'}</p></div>{getStatusBadge(receipt.status)}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-700"><div className="text-muted-foreground">Date<p className="mt-1 text-sm text-foreground">{formatDate(receipt.receiptDate)}</p></div><div className="text-muted-foreground">Method<p className="mt-1 text-sm text-foreground">{getPaymentMethodLabel(receipt.paymentMethod)}</p></div><div className="col-span-2 text-muted-foreground">Amount<p className="mt-1 text-base font-semibold text-foreground">{formatCurrency(receipt.amountReceived, receipt.currencyCode)}</p></div></div><div className="mt-3 flex flex-wrap gap-2 border-t pt-3 dark:border-slate-700"><Button size="sm" variant="outline" onClick={() => navigate(`/ar-receipts/${receipt._id}`)}><Eye className="mr-1.5 h-4 w-4"/>View</Button>{receipt.status === 'draft' && <><Button size="sm" variant="outline" onClick={() => navigate(`/ar-receipts/${receipt._id}/edit`)}><Send className="mr-1.5 h-4 w-4"/>Edit</Button><Button size="sm" onClick={() => handlePost(receipt._id)}><Send className="mr-1.5 h-4 w-4"/>Post</Button></>}{receipt.status === 'posted' && <Button size="sm" variant="outline" onClick={() => handleReverse(receipt._id)}><Undo2 className="mr-1.5 h-4 w-4"/>Reverse</Button>}</div></article>)}</div>
+                <div className="hidden overflow-x-auto xl:block"><Table>
                   <TableHeader>
                     <TableRow className="dark:bg-slate-700/50">
                       <TableHead className="dark:text-slate-200">{t('arReceipt.reference', 'Reference')}</TableHead>
@@ -731,7 +733,8 @@ export default function ARReceiptsListPage() {
                       ))
                     )}
                   </TableBody>
-                </Table>
+                </Table></div>
+                </>
               )}
             </div>
 

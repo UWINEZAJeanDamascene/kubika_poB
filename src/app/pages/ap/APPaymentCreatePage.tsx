@@ -13,7 +13,6 @@ import {
   Save,
   Send,
   Loader2,
-  Calculator,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -62,13 +61,6 @@ interface GRN {
 interface Allocation {
   grn: string;
   amount: number;
-}
-
-interface BankAccount {
-  _id: string;
-  accountName: string;
-  accountCode: string;
-  accountNumber: string;
 }
 
 interface APPaymentFormData {
@@ -254,7 +246,7 @@ export default function APPaymentCreatePage() {
     return grn ? parseFloat(grn.balance || grn.totalAmount) : 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent, draft: boolean = true) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
 
@@ -334,7 +326,7 @@ export default function APPaymentCreatePage() {
           </div>
         </div>
 
-        <form onSubmit={(e) => handleSubmit(e, true)}>
+        <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Basic Information */}
             <div className="lg:col-span-2">

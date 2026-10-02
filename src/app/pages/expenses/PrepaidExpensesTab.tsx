@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { prepaidExpenseApi } from '@/lib/api';
 import type { PrepaidExpense } from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
+import { Card, CardContent } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
 import { Input } from '@/app/components/ui/input';
@@ -17,9 +17,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from '@/app/components/ui/select';
 import {
-  Plus, Loader2, Calendar, Wallet, TrendingDown, CheckCircle2,
+  Plus, Loader2, Calendar, Wallet, CheckCircle2,
   Clock, AlertCircle, Search, RefreshCcw, Receipt, Trash2, FileCheck,
-  ArrowRight, Banknote, ChevronDown, ChevronUp
+  ChevronDown, ChevronUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -258,7 +258,18 @@ export default function PrepaidExpensesTab() {
               <p className="text-sm font-medium">No prepaid expenses found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="space-y-3 p-3 xl:hidden">
+              {prepaids.map((prepaid) => (
+                <div key={prepaid._id} className="rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-3"><button type="button" className="min-w-0 flex-1 text-left" onClick={() => setExpandedId(expandedId === prepaid._id ? null : prepaid._id)}><p className="font-mono text-xs font-semibold text-indigo-600 dark:text-indigo-300">{prepaid.referenceNo}</p><p className="mt-1 text-sm font-semibold dark:text-white">{prepaid.vendor || '-'}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{prepaid.description}</p></button><div className="flex shrink-0 items-center gap-2">{getStatusBadge(prepaid.status)}{prepaid.status === 'active' && <Button type="button" variant="outline" size="icon" className="h-10 w-10 text-red-600" onClick={() => handleDelete(prepaid._id)} aria-label="Delete prepaid expense"><Trash2 className="h-4 w-4"/></Button>}</div></div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 dark:border-slate-800"><div><p className="text-xs text-slate-500">Prepaid amount</p><p className="mt-1 text-sm font-semibold dark:text-white">{formatRWF(prepaid.totalAmount)}</p></div><div><p className="text-xs text-slate-500">Remaining</p><p className="mt-1 text-sm font-semibold text-amber-600">{formatRWF(prepaid.remainingBalance)}</p></div><div className="col-span-2"><p className="text-xs text-slate-500">Period</p><p className="mt-1 text-xs dark:text-slate-300">{new Date(prepaid.startDate).toLocaleDateString()} – {new Date(prepaid.endDate).toLocaleDateString()}</p></div></div>
+                  <Button type="button" variant="ghost" size="sm" className="mt-2 min-h-10 w-full" onClick={() => setExpandedId(expandedId === prepaid._id ? null : prepaid._id)}><Calendar className="mr-2 h-4 w-4"/>{expandedId === prepaid._id ? 'Hide amortization schedule' : `View schedule · ${prepaid.frequency}`}</Button>
+                  {expandedId === prepaid._id && <div className="mt-2 space-y-2 border-t border-slate-100 pt-3 dark:border-slate-800"><p className="text-xs text-slate-500">Expense account: {EXPENSE_ACCOUNTS.find(a => a.code === prepaid.expenseAccountCode)?.name || prepaid.expenseAccountCode}</p>{prepaid.amortizations.map((amort: AmortizationEntry, idx: number) => {const isDue = new Date(amort.date).getTime() <= Date.now();return <div key={amort._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-2"><div><p className="text-xs text-slate-500">Installment {idx + 1} · {new Date(amort.date).toLocaleDateString()}</p><p className="mt-1 text-sm font-medium dark:text-white">{amort.description}</p></div><p className="shrink-0 text-sm font-semibold dark:text-white">{formatRWF(amort.amount)}</p></div><div className="mt-2 flex items-center justify-between gap-2">{amort.status === 'posted' ? <Badge variant="outline" className="border-0 bg-emerald-100 text-emerald-700"><CheckCircle2 className="mr-1 h-3 w-3"/>Posted</Badge> : isDue ? <Badge variant="outline" className="border-0 bg-amber-100 text-amber-700"><Clock className="mr-1 h-3 w-3"/>Due</Badge> : <Badge variant="outline" className="border-0 bg-slate-100 text-slate-600"><Clock className="mr-1 h-3 w-3"/>Scheduled</Badge>}{amort.status === 'pending' && prepaid.status === 'active' && isDue && <Button type="button" size="sm" variant="outline" className="min-h-10" onClick={() => handlePostAmortization(prepaid._id, amort._id)}><FileCheck className="mr-2 h-4 w-4"/>Post</Button>}</div></div>})}</div>}
+                </div>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto xl:block">
               <Table className="min-w-[980px]">
                 <TableHeader>
                   <TableRow className="bg-muted/40">
@@ -391,6 +402,7 @@ export default function PrepaidExpensesTab() {
                 </TableBody>
               </Table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>
