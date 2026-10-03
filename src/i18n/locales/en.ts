@@ -24,6 +24,7 @@ const en = {
     descProjectsBudgets: "Project delivery, budgets and controls",
     labelPayrollManagement: "Payroll Management",
     descPayrollManagement: "Employees, payroll runs and exceptions",
+    myPayroll: "My payroll",
     labelReports: "Reports & Insights",
     descReports: "Reports and financial ratios",
     labelSystem: "System Control",

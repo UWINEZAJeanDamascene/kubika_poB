@@ -23,6 +23,7 @@ const rw = {
     descProjectsBudgets: "Imishinga, ingengo y'imari n'igenzura",
     labelPayrollManagement: "Imicungire y'imishahara",
     descPayrollManagement: "Abakozi, imishahara n'ibibazo",
+    myPayroll: "Umushahara wanjye",
     labelReports: "Raporo n'isesengura",
     descReports: "Raporo n'igereranyo ry'imari",
     labelSystem: "Igenzura rya sisitemu",

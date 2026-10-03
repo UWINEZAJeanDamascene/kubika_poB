@@ -23,6 +23,7 @@ const fr = {
     descProjectsBudgets: "Projets, budgets et contrôles",
     labelPayrollManagement: "Gestion de la paie",
     descPayrollManagement: "Employés, paies et exceptions",
+    myPayroll: "Ma paie",
     labelReports: "Rapports et analyses",
     descReports: "Rapports et ratios financiers",
     labelSystem: "Contrôle système",

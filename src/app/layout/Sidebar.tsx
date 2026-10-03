@@ -612,6 +612,7 @@ const payrollNav: NavSection = {
   glow: "bg-cyan-400/12",
   icon: DollarSign,
   items: [
+    { nameKey: "nav.myPayroll", href: "/my-payroll", icon: FileText, permission: "payroll:self", featureKey: "payroll", moduleNames: ["Payroll runs"] },
     { nameKey: "nav.employees", href: "/employees", icon: Users, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Employees"] },
     { nameKey: "nav.payroll", href: "/payroll", icon: DollarSign, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
     { nameKey: "payroll.payrollRuns", href: "/payroll-runs", icon: Play, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
@@ -1004,6 +1005,8 @@ export function Sidebar({
     items.filter(
       (item) => hasFeatureAccess(item.featureKey) && hasModuleAccess(item),
     );
+  const canAccessNavItem = (item: NavItem) =>
+    item.href === "/my-payroll" || checkPermission(item.permission);
 
   const visibleSections = ALL_SECTIONS
     .map((section) => ({ section, items: filterVisible(section.items) }))
@@ -1102,7 +1105,7 @@ export function Sidebar({
         <div className="mb-1.5">
           {visible.map((item) => (
             <div key={item.href} className="mb-1">
-              {renderNavItem(item, isPathActive(item.href), section, false, !checkPermission(item.permission) || item.disabled)}
+              {renderNavItem(item, isPathActive(item.href), section, false, !canAccessNavItem(item) || item.disabled)}
             </div>
           ))}
         </div>
@@ -1128,7 +1131,7 @@ export function Sidebar({
           <ul className="min-h-0 overflow-hidden space-y-0.5 px-1 pb-1">
             {isOpen && visible.map((item) => (
               <li key={item.href}>
-                {renderNavItem(item, isPathActive(item.href), section, false, !checkPermission(item.permission) || item.disabled)}
+                {renderNavItem(item, isPathActive(item.href), section, false, !canAccessNavItem(item) || item.disabled)}
               </li>
             ))}
           </ul>
@@ -1311,7 +1314,7 @@ export function Sidebar({
                 const isLastUnpairedItem = quickLaunchItems.length % 2 === 1 && index === quickLaunchItems.length - 1;
                 return (
                   <div key={item.href} className={cn("bg-(--dashboard-rail)", isLastUnpairedItem && "col-span-2")}>
-                    {renderNavItem(item, isPathActive(item.href), section, true, !checkPermission(item.permission) || item.disabled)}
+                    {renderNavItem(item, isPathActive(item.href), section, true, !canAccessNavItem(item) || item.disabled)}
                   </div>
                 );
               })}
@@ -1323,22 +1326,6 @@ export function Sidebar({
         {visibleSections.map(({ section, items }) => (
           <div key={section.labelKey}>{renderSection(section, items)}</div>
         ))}
-
-        {user && (
-          <Link
-            to="/my-payroll"
-            onClick={handleNavigate}
-            className={cn(
-              "group mt-2 flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors",
-              collapsed && "mx-auto h-11 w-11 justify-center px-0",
-              isPathActive("/my-payroll") ? "bg-cyan-500/10 text-cyan-300" : "text-slate-300 hover:bg-white/5 hover:text-white",
-            )}
-            title={collapsed ? "My payslips" : undefined}
-          >
-            <FileText className="h-4 w-4 flex-shrink-0" />
-            {!collapsed && <><span>My payslips</span><ArrowRight className="ml-auto h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" /></>}
-          </Link>
-        )}
 
         {/* Onboarding Guide */}
         <Link
