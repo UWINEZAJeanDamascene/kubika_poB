@@ -11,6 +11,7 @@ import {
   Truck,
   CreditCard,
   Download,
+  Printer,
   Send,
   DollarSign,
   List,
@@ -459,6 +460,51 @@ export default function InvoiceDetailPage() {
     }
   };
 
+  // Use the checkout device's normal print system so USB and Ethernet printers
+  // installed in Windows/macOS/Linux (including thermal printers) work without
+  // exposing printer credentials or addresses to the tenant's backend.
+  const handlePrintReceipt = () => {
+    if (!invoice) return;
+    const printWindow = window.open('', '_blank', 'popup,width=420,height=720');
+    if (!printWindow) {
+      toast.error('Allow pop-ups to print this receipt.');
+      return;
+    }
+
+    const htmlEscapes: Record<string, string> = {
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    };
+    const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (character) => htmlEscapes[character]);
+    const money = (amount: number) => escapeHtml(formatCurrency(Number.isFinite(amount) ? amount : 0));
+    const receiptLines = (invoice.lines || []).map((line) => {
+      const quantity = Number(line.qty || line.quantity || 0);
+      const lineTotal = Number(line.lineTotal ?? line.lineSubtotal ?? quantity * Number(line.unitPrice || 0));
+      return `<tr><td>${escapeHtml(line.product?.name || 'Item')}<small>${quantity} × ${money(Number(line.unitPrice || 0))}</small></td><td class="amount">${money(lineTotal)}</td></tr>`;
+    }).join('');
+    const company = (invoice as any).company?.name || (invoice as any).companyName || 'KUBIKA SYSTEM';
+    const receiptNumber = invoice.referenceNo || invoice.invoiceNumber || invoice._id;
+
+    printWindow.document.open();
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Receipt ${escapeHtml(receiptNumber)}</title><style>
+      @page { size: 80mm auto; margin: 3mm; }
+      * { box-sizing: border-box; } body { width: 100%; margin: 0; color: #111; font: 12px/1.4 Arial, sans-serif; }
+      header { text-align: center; border-bottom: 1px dashed #555; padding-bottom: 10px; margin-bottom: 10px; }
+      h1 { font-size: 17px; margin: 0 0 5px; } p { margin: 2px 0; }
+      table { width: 100%; border-collapse: collapse; } td { padding: 5px 0; vertical-align: top; }
+      td small { display:block; color:#444; } .amount { text-align:right; white-space:nowrap; }
+      .totals { border-top: 1px dashed #555; margin-top: 8px; padding-top: 7px; }
+      .total { font-weight:700; font-size:15px; } footer { text-align:center; border-top:1px dashed #555; margin-top:12px; padding-top:9px; }
+      @media screen { body { max-width: 74mm; margin: 16px auto; padding: 8px; box-shadow: 0 1px 12px #bbb; } }
+    </style></head><body><header><h1>${escapeHtml(company)}</h1><p>Sales receipt</p><p>${escapeHtml(receiptNumber)}</p><p>${escapeHtml(new Date(invoice.invoiceDate).toLocaleString())}</p><p>Customer: ${escapeHtml(invoice.client?.name || 'Walk-in customer')}</p></header><table>${receiptLines}</table><section class="totals"><p>Subtotal <span style="float:right">${money(subtotalAmount)}</span></p><p>Tax <span style="float:right">${money(taxAmount)}</span></p><p class="total">Total <span style="float:right">${money(totalAmount)}</span></p><p>Paid <span style="float:right">${money(paidAmount)}</span></p><p>Balance <span style="float:right">${money(outstandingAmount)}</span></p></section><footer><p>Thank you for your business</p></footer></body></html>`);
+    printWindow.document.close();
+    window.setTimeout(() => {
+      if (!printWindow.closed) {
+        printWindow.focus();
+        printWindow.print();
+      }
+    }, 250);
+  };
+
   const handleSendEmail = async () => {
     if (!id) return;
     try {
@@ -750,6 +796,10 @@ export default function InvoiceDetailPage() {
                 <Button size="sm" variant="outline" onClick={handleDownloadPDF} className="gap-1.5 dark:border-slate-700 dark:text-slate-200">
                   <Download className="h-4 w-4" />
                   PDF
+                </Button>
+                <Button size="sm" variant="outline" onClick={handlePrintReceipt} className="gap-1.5 dark:border-slate-700 dark:text-slate-200">
+                  <Printer className="h-4 w-4" />
+                  Print receipt
                 </Button>
                 {invoice.status !== 'draft' && invoice.status !== 'cancelled' && (
                   <Button size="sm" variant="outline" onClick={handleSendEmail} className="gap-1.5 dark:border-slate-700 dark:text-slate-200">

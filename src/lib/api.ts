@@ -2473,6 +2473,17 @@ export interface PosProduct {
 }
 
 export const salesLegacyApi = {
+  getHeldSales: () =>
+    request<{ success: boolean; data: Array<Record<string, unknown>> }>("/sales-legacy/held-sales"),
+  holdSale: (label: string, saleData: Record<string, unknown>) =>
+    request<{ success: boolean; data: Record<string, unknown> }>("/sales-legacy/held-sales", {
+      method: "POST",
+      body: { label, saleData },
+    }),
+  deleteHeldSale: (id: string) =>
+    request<{ success: boolean; message: string }>(`/sales-legacy/held-sales/${id}`, {
+      method: "DELETE",
+    }),
   // Create direct sale (invoice + payment in one)
   createDirectSale: (data: SalesLegacyRequest, sendEmail?: boolean) =>
     request<{ success: boolean; message: string; data: unknown; changeDue: number }>(
@@ -2489,15 +2500,12 @@ export const salesLegacyApi = {
     warehouseId?: string;
     category?: string;
     limit?: number;
-    page?: number;
+    cursor?: string;
   }) => {
     const query = buildQuery(params as Record<string, any>);
     return request<{
       success: boolean;
-      count: number;
-      total: number;
-      pages: number;
-      pagination: PaginationMeta;
+      pagination: { limit: number; hasMore: boolean; nextCursor: string | null };
       data: PosProduct[];
     }>(
       `/sales-legacy/products${query ? `?${query}` : ""}`,

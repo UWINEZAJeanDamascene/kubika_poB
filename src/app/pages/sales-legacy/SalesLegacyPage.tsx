@@ -53,6 +53,8 @@ import { useFormatCurrency } from '@/lib/currencyUtils';
 import { useTranslation } from 'react-i18next';
 import { EBMStatusBadge } from '@/app/components/EBMStatusBadge';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/store/authStore';
+import { useAuth } from '@/contexts/AuthContext';
 import { TRANSACTIONAL_STALE_TIME } from '@/lib/hooks/useListQuery';
 import { useClientPicker } from '@/lib/hooks/useEntities';
 
@@ -88,6 +90,10 @@ interface HeldSale {
   walkInName: string;
   notes: string;
   paymentMethod: 'cash' | 'card' | 'bank_transfer' | 'mobile_money' | 'cheque';
+  selectedWarehouseId: string;
+  paymentAmount: number;
+  paymentReference: string;
+  bankAccountId: string;
 }
 
 interface TillSession {
@@ -126,9 +132,8 @@ interface PosInvoice {
 
 interface PosProductsPage {
   products: PosProduct[];
-  page: number;
-  total: number;
-  pages: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 const POS_PRODUCTS_PAGE_SIZE = 10;
@@ -142,6 +147,7 @@ const toNumericAmount = (val: number | any): number => {
 
 export default function SalesLegacyPage() {
   const { t } = useTranslation();
+  const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const appFormatCurrency = useFormatCurrency();
   const formatCurrency = useCallback((amount: number | any, overrideCurrency?: string) => {
@@ -152,7 +158,7 @@ export default function SalesLegacyPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [productPage, setProductPage] = useState(1);
+  const [productCursors, setProductCursors] = useState<Array<string | null>>([null]);
   const [selectedClientId, setSelectedClientId] = useState<string>('walk-in');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer' | 'mobile_money' | 'cheque'>('cash');
@@ -163,7 +169,6 @@ export default function SalesLegacyPage() {
   const [sendEmail, setSendEmail] = useState(false);
   const [, setShowCart] = useState(false);
   const [bankAccountId, setBankAccountId] = useState<string>('');
-  const [heldSales, setHeldSales] = useState<HeldSale[]>([]);
   const [tillLoading, setTillLoading] = useState(false);
   const [openingFloatInput, setOpeningFloatInput] = useState('');
   const [closingCountInput, setClosingCountInput] = useState('');
@@ -176,26 +181,56 @@ export default function SalesLegacyPage() {
   const scanFlushTimerRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
   const tillKey = ['pos', 'active-till'] as const;
+  const activeCompanyId = useAuthStore((state) => state.activeCompanyId);
+  const heldSalesKey = useMemo(() => ['pos', 'held-sales', activeCompanyId] as const, [activeCompanyId]);
+  const migratedLocalHeldSales = useRef(false);
+  const heldSalesQuery = useQuery({
+    queryKey: heldSalesKey,
+    enabled: Boolean(activeCompanyId),
+    queryFn: async (): Promise<HeldSale[]> => {
+      const response = await salesLegacyApi.getHeldSales();
+      if (!response.success) throw new Error('Failed to load held sales');
+      return (Array.isArray(response.data) ? response.data : []) as unknown as HeldSale[];
+    },
+    staleTime: 15_000,
+  });
+  const heldSales = heldSalesQuery.data ?? [];
 
   useEffect(() => {
-    const storedHeldSales = localStorage.getItem('pos-held-sales');
-    if (storedHeldSales) {
+    if (!activeCompanyId || !heldSalesQuery.isSuccess || migratedLocalHeldSales.current) return;
+    migratedLocalHeldSales.current = true;
+    const stored = localStorage.getItem('pos-held-sales');
+    if (!stored) return;
+
+    void (async () => {
       try {
-        setHeldSales(JSON.parse(storedHeldSales));
-      } catch {
+        const legacySales = JSON.parse(stored) as Array<Record<string, any>>;
+        if (Array.isArray(legacySales)) {
+          for (const sale of legacySales) {
+            if (!Array.isArray(sale?.cart) || sale.cart.length === 0) continue;
+            const { id: _oldId, heldAt: _oldDate, label, ...saleData } = sale;
+            await salesLegacyApi.holdSale(String(label || 'Held sale'), {
+              ...saleData,
+              selectedWarehouseId: saleData.selectedWarehouseId || '',
+              paymentAmount: Number(saleData.paymentAmount) || 0,
+              paymentReference: String(saleData.paymentReference || ''),
+              bankAccountId: String(saleData.bankAccountId || ''),
+            });
+          }
+        }
         localStorage.removeItem('pos-held-sales');
+        await queryClient.invalidateQueries({ queryKey: heldSalesKey });
+      } catch {
+        toast.error('Your previous held sales could not be synced. They are still saved on this device.');
+        migratedLocalHeldSales.current = false;
       }
-    }
-  }, []);
+    })();
+  }, [activeCompanyId, heldSalesQuery.isSuccess, heldSalesKey, queryClient]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
     return () => window.clearTimeout(timer);
   }, [searchQuery]);
-
-  useEffect(() => {
-    localStorage.setItem('pos-held-sales', JSON.stringify(heldSales));
-  }, [heldSales]);
 
   const warehousesQuery = useQuery({
     queryKey: ['warehouses', 'picker'],
@@ -213,20 +248,19 @@ export default function SalesLegacyPage() {
   }, [selectedWarehouseId, warehouses]);
 
   const productsQuery = useQuery({
-    queryKey: ['pos', 'products', { warehouseId: selectedWarehouseId, search: debouncedSearchQuery || undefined, page: productPage }],
+    queryKey: ['pos', 'products', { warehouseId: selectedWarehouseId, search: debouncedSearchQuery || undefined, cursor: productCursors[productCursors.length - 1] }],
     queryFn: async (): Promise<PosProductsPage> => {
       const response = await salesLegacyApi.getProducts({
         search: debouncedSearchQuery || undefined,
         warehouseId: selectedWarehouseId,
         limit: POS_PRODUCTS_PAGE_SIZE,
-        page: productPage,
+        cursor: productCursors[productCursors.length - 1] || undefined,
       });
       if (!response.success) throw new Error('Failed to load products');
       return {
         products: Array.isArray(response.data) ? response.data : [],
-        page: response.pagination?.page ?? productPage,
-        total: response.pagination?.total ?? response.total ?? response.count ?? 0,
-        pages: response.pagination?.pages ?? response.pages ?? 0,
+        hasMore: response.pagination?.hasMore === true,
+        nextCursor: response.pagination?.nextCursor || null,
       };
     },
     enabled: Boolean(selectedWarehouseId),
@@ -234,9 +268,7 @@ export default function SalesLegacyPage() {
     staleTime: TRANSACTIONAL_STALE_TIME,
   });
   const products = productsQuery.data?.products ?? [];
-  const visibleProductPage = productsQuery.data?.page ?? productPage;
-  const totalProducts = productsQuery.data?.total ?? 0;
-  const totalProductPages = productsQuery.data?.pages ?? 0;
+  const visibleProductPage = productCursors.length;
   const isLoading = productsQuery.isPending;
 
   const clientsQuery = useClientPicker();
@@ -314,7 +346,7 @@ export default function SalesLegacyPage() {
     const code = extractCodeFromScan(rawValue);
     if (!code || !selectedWarehouseId) return;
 
-    setProductPage(1);
+    setProductCursors([null]);
     setSearchQuery(code);
     try {
       const response = await salesLegacyApi.getProducts({
@@ -383,6 +415,7 @@ export default function SalesLegacyPage() {
 
       scanBufferRef.current += event.key;
       setSearchQuery(scanBufferRef.current);
+      setProductCursors([null]);
 
       if (scanFlushTimerRef.current) {
         window.clearTimeout(scanFlushTimerRef.current);
@@ -465,40 +498,66 @@ export default function SalesLegacyPage() {
     setPaymentAmount(0);
   };
 
-  const holdSale = () => {
+  const holdSale = async () => {
     if (cart.length === 0) {
       toast.error('Add items before holding a sale');
-      return;
+      return false;
     }
-    const heldSale: HeldSale = {
-      id: crypto.randomUUID(),
-      heldAt: new Date().toISOString(),
-      label: walkInName || clients.find((client) => client._id === selectedClientId)?.name || `Sale ${heldSales.length + 1}`,
-      cart,
-      selectedClientId,
-      walkInName,
-      notes,
-      paymentMethod,
-    };
-    setHeldSales((prev) => [heldSale, ...prev]);
+    const label = walkInName || clients.find((client) => client._id === selectedClientId)?.name || `Sale ${heldSales.length + 1}`;
+    try {
+      const response = await salesLegacyApi.holdSale(label, {
+        cart,
+        selectedClientId,
+        walkInName,
+        notes,
+        paymentMethod,
+        selectedWarehouseId,
+        paymentAmount,
+        paymentReference,
+        bankAccountId,
+      });
+      if (!response.success) throw new Error('Could not save this held sale.');
+      await queryClient.invalidateQueries({ queryKey: heldSalesKey });
+    } catch (error: any) {
+      toast.error(error?.message || 'Could not save this held sale');
+      return false;
+    }
     clearCart();
+    setPaymentReference('');
+    setPaymentAmount(0);
     setSelectedClientId('walk-in');
     setWalkInName('');
     setNotes('');
     setPaymentMethod('cash');
+    setBankAccountId('');
     toast.success('Sale held. Fresh cart opened.');
+    return true;
   };
 
-  const recallSale = (heldSale: HeldSale) => {
+  const recallSale = async (heldSale: HeldSale) => {
     if (cart.length > 0) {
-      holdSale();
+      const savedCurrentSale = await holdSale();
+      if (!savedCurrentSale) return;
+    }
+    try {
+      const response = await salesLegacyApi.deleteHeldSale(heldSale.id);
+      if (!response.success) throw new Error('Could not recall this held sale.');
+      queryClient.setQueryData<HeldSale[]>(heldSalesKey, (previous) =>
+        (previous || []).filter((sale) => sale.id !== heldSale.id),
+      );
+    } catch (error: any) {
+      toast.error(error?.message || 'Could not recall this held sale');
+      return;
     }
     setCart(heldSale.cart);
     setSelectedClientId(heldSale.selectedClientId);
     setWalkInName(heldSale.walkInName);
     setNotes(heldSale.notes);
     setPaymentMethod(heldSale.paymentMethod);
-    setHeldSales((prev) => prev.filter((sale) => sale.id !== heldSale.id));
+    setSelectedWarehouseId(heldSale.selectedWarehouseId || selectedWarehouseId);
+    setPaymentAmount(heldSale.paymentAmount || 0);
+    setPaymentReference(heldSale.paymentReference || '');
+    setBankAccountId(heldSale.bankAccountId || '');
     setShowCart(true);
     toast.success('Held sale recalled');
   };
@@ -563,17 +622,7 @@ export default function SalesLegacyPage() {
     setInvoiceDialogOpen(true);
   };
 
-  const requireManagerPin = () => {
-    const pin = window.prompt('Manager PIN required');
-    if (!pin) {
-      toast.error('Manager PIN required');
-      return false;
-    }
-    return true;
-  };
-
   const voidInvoice = async (invoice: PosInvoice) => {
-    if (!requireManagerPin()) return;
     const reason = window.prompt('Reason for voiding this sale') || 'POS manager void';
     try {
       const response = await invoicesApi.cancel(invoice._id, reason);
@@ -588,7 +637,6 @@ export default function SalesLegacyPage() {
   };
 
   const refundInvoice = async (invoice: PosInvoice) => {
-    if (!requireManagerPin()) return;
     try {
       const lines = (invoice.lines || []).map((line) => {
         const quantity = toNumber(line.quantity || line.qty || 1);
@@ -1053,7 +1101,7 @@ export default function SalesLegacyPage() {
                         value={selectedWarehouseId}
                         onValueChange={(warehouseId) => {
                           setSelectedWarehouseId(warehouseId);
-                          setProductPage(1);
+                          setProductCursors([null]);
                         }}
                       >
                         <SelectTrigger className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700">
@@ -1073,7 +1121,7 @@ export default function SalesLegacyPage() {
                         value={searchQuery}
                         onChange={(e) => {
                           setSearchQuery(e.target.value);
-                          setProductPage(1);
+                          setProductCursors([null]);
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') findScannedProduct(searchQuery);
@@ -1094,9 +1142,15 @@ export default function SalesLegacyPage() {
                 </CardContent>
               </Card>
 
-              {(heldSales.length > 0 || tillSession) && (
+              {(heldSales.length > 0 || tillSession || heldSalesQuery.isError) && (
                 <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardContent className="space-y-3 p-5">
+                    {heldSalesQuery.isError && (
+                      <div className="flex items-center justify-between gap-3 text-sm text-red-600 dark:text-red-300">
+                        <span>Held sales could not be loaded from the server.</span>
+                        <Button variant="outline" size="sm" onClick={() => void heldSalesQuery.refetch()}>Retry</Button>
+                      </div>
+                    )}
                     {tillSession && (
                       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
                         <span className="font-medium text-emerald-800 dark:text-emerald-200">
@@ -1139,9 +1193,6 @@ export default function SalesLegacyPage() {
                   <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-950 dark:text-white">
                     <Package className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                     Products
-                    {totalProducts > 0 && (
-                      <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">({totalProducts})</span>
-                    )}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-5 pb-5">
@@ -1189,32 +1240,33 @@ export default function SalesLegacyPage() {
                       ))}
                     </div>
                   )}
-                  {!isLoading && totalProducts > 0 && (
+                  {!isLoading && (products.length > 0 || visibleProductPage > 1) && (
                     <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
                       <span className="text-sm text-slate-600 dark:text-slate-300" aria-live="polite">
-                        Showing {(visibleProductPage - 1) * POS_PRODUCTS_PAGE_SIZE + 1}–{(visibleProductPage - 1) * POS_PRODUCTS_PAGE_SIZE + products.length} of {totalProducts} products
+                        {products.length} products on page {visibleProductPage}
                       </span>
                       <div className="flex items-center gap-2">
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setProductPage(Math.max(1, visibleProductPage - 1))}
+                          onClick={() => setProductCursors((previous) => previous.length > 1 ? previous.slice(0, -1) : previous)}
                           disabled={visibleProductPage <= 1 || productsQuery.isFetching}
                           aria-label="Previous products page"
                         >
                           <ChevronLeft className="mr-1 h-4 w-4" />
                           Previous
                         </Button>
-                        <span className="min-w-[5rem] text-center text-sm text-slate-600 dark:text-slate-300">
-                          Page {visibleProductPage} of {Math.max(1, totalProductPages)}
-                        </span>
+                        <span className="min-w-[5rem] text-center text-sm text-slate-600 dark:text-slate-300">Page {visibleProductPage}</span>
                         <Button
                           type="button"
                           variant="outline"
                           size="sm"
-                          onClick={() => setProductPage(Math.min(totalProductPages, visibleProductPage + 1))}
-                          disabled={visibleProductPage >= totalProductPages || productsQuery.isFetching}
+                          onClick={() => {
+                            const nextCursor = productsQuery.data?.nextCursor;
+                            if (nextCursor) setProductCursors((previous) => [...previous, nextCursor]);
+                          }}
+                          disabled={!productsQuery.data?.hasMore || productsQuery.isFetching}
                           aria-label="Next products page"
                         >
                           Next
@@ -1400,9 +1452,9 @@ export default function SalesLegacyPage() {
                           <Banknote className="h-4 w-4" /> Cash
                         </span>
                       </SelectItem>
-                      <SelectItem value="card" className="dark:focus:bg-slate-800 dark:focus:text-white">
+                      <SelectItem value="card" disabled className="dark:focus:bg-slate-800 dark:focus:text-white">
                         <span className="flex items-center gap-2">
-                          <CreditCard className="h-4 w-4" /> Card
+                          <CreditCard className="h-4 w-4" /> Card (terminal not configured)
                         </span>
                       </SelectItem>
                       <SelectItem value="bank_transfer" className="dark:focus:bg-slate-800 dark:focus:text-white">Bank Transfer</SelectItem>
@@ -1410,6 +1462,11 @@ export default function SalesLegacyPage() {
                       <SelectItem value="cheque" className="dark:focus:bg-slate-800 dark:focus:text-white">Cheque</SelectItem>
                     </SelectContent>
                   </Select>
+                  {paymentMethod === 'card' && (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">
+                      Card payments are unavailable until a terminal is connected. No card payment will be recorded.
+                    </p>
+                  )}
 
                   {(paymentMethod === 'bank_transfer' || paymentMethod === 'cheque' || paymentMethod === 'mobile_money') && (
                     <div>
@@ -1589,12 +1646,12 @@ export default function SalesLegacyPage() {
                     <Button variant="outline" size="sm" onClick={() => navigate(`/invoices/${invoice._id}`)}>
                       Open
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => voidInvoice(invoice)} disabled={invoice.status === 'cancelled'}>
+                    {hasPermission('sales_invoices:delete') && <Button variant="outline" size="sm" onClick={() => voidInvoice(invoice)} disabled={invoice.status === 'cancelled'}>
                       Void
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => refundInvoice(invoice)} disabled={invoice.status === 'cancelled'}>
+                    </Button>}
+                    {hasPermission('credit_notes:approve') && <Button variant="outline" size="sm" onClick={() => refundInvoice(invoice)} disabled={invoice.status === 'cancelled'}>
                       Refund
-                    </Button>
+                    </Button>}
                   </div>
                 </div>
               ))
