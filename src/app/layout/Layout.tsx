@@ -101,43 +101,37 @@ export function Layout({ children }: LayoutProps) {
   );
 
   useEffect(() => {
+    const isTouchTablet = () => {
+      if (window.innerWidth > 1366) return false;
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+      return navigator.maxTouchPoints > 0 ||
+        'ontouchstart' in window ||
+        window.matchMedia('(pointer: coarse)').matches ||
+        isStandalone;
+    };
+    const onChange = () => setIsLg(window.innerWidth >= 1024 && !isTouchTablet());
     const mql = window.matchMedia('(min-width: 1024px)');
-    const onChange = () => setIsLg(mql.matches);
+    const coarsePointer = window.matchMedia('(pointer: coarse)');
+    const standalone = window.matchMedia('(display-mode: standalone)');
     mql.addEventListener('change', onChange);
-    setIsLg(mql.matches);
-    return () => mql.removeEventListener('change', onChange);
-  }, []);
-
-  // Orientation changes can happen while the navigation sheet is open. On iOS
-  // standalone mode that leaves the old sheet dimensions layered over the new
-  // viewport, so dismiss transient app chrome and let it recalculate cleanly.
-  useEffect(() => {
-    let previousOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
-    const handleOrientationChange = () => {
-      const nextOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
-      if (nextOrientation !== previousOrientation) {
-        previousOrientation = nextOrientation;
-        setSidebarOpen(false);
-        setCurrencyOpen(false);
-        setSearchOpen(false);
-      }
-    };
-    window.addEventListener('orientationchange', handleOrientationChange);
-    window.addEventListener('resize', handleOrientationChange);
-    const orientation = window.screen?.orientation;
-    orientation?.addEventListener?.('change', handleOrientationChange);
+    coarsePointer.addEventListener('change', onChange);
+    standalone.addEventListener('change', onChange);
+    window.addEventListener('resize', onChange);
+    window.addEventListener('orientationchange', onChange);
+    window.visualViewport?.addEventListener('resize', onChange);
+    window.screen.orientation?.addEventListener('change', onChange);
+    onChange();
     return () => {
-      window.removeEventListener('orientationchange', handleOrientationChange);
-      window.removeEventListener('resize', handleOrientationChange);
-      orientation?.removeEventListener?.('change', handleOrientationChange);
+      mql.removeEventListener('change', onChange);
+      coarsePointer.removeEventListener('change', onChange);
+      standalone.removeEventListener('change', onChange);
+      window.removeEventListener('resize', onChange);
+      window.removeEventListener('orientationchange', onChange);
+      window.visualViewport?.removeEventListener('resize', onChange);
+      window.screen.orientation?.removeEventListener('change', onChange);
     };
   }, []);
-
-  // Crossing into the desktop shell should never leave a previously opened
-  // mobile drawer mounted above the page.
-  useEffect(() => {
-    if (isLg) setSidebarOpen(false);
-  }, [isLg]);
 
   useEffect(() => {
     if (!hasEnterpriseAI) {
@@ -167,13 +161,13 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div
-      className="app-shell relative flex h-dvh min-h-0 overflow-hidden"
+      className={`app-shell relative flex h-dvh min-h-0 overflow-hidden ${!isLg ? 'app-touch-shell' : ''}`}
       style={{ paddingRight: isLg && effectiveChatOpen ? chatWidth : undefined }}
     >
       {/* Full-app background */}
       <div className="absolute inset-0 bg-background" />
       {/* Desktop Sidebar - always visible on lg screens */}
-      <div className={`hidden lg:block relative z-10 shrink-0 transition-[width] duration-300 ${sidebarCollapsed ? 'w-[72px]' : 'w-[340px]'}`}>
+      <div className={`app-desktop-sidebar hidden lg:block relative z-10 shrink-0 transition-[width] duration-300 ${sidebarCollapsed ? 'w-[72px]' : 'w-[340px]'}`}>
         <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
       </div>
 
@@ -203,7 +197,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden relative z-10">
         {/* Mobile Header - show on screens smaller than lg */}
-        <div className="app-mobile-header lg:hidden sticky top-0 z-50 flex items-center gap-2 border-b border-border bg-card/95 px-3 py-2 shadow-sm backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-3">
+        <div className="app-mobile-header app-touch-header lg:hidden sticky top-0 z-50 flex items-center gap-2 border-b border-border bg-card/95 px-3 py-2 shadow-sm backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-3">
           <Button
             variant="ghost"
             size="icon"
@@ -254,7 +248,7 @@ export function Layout({ children }: LayoutProps) {
 
         {/* Desktop Top Bar */}
         {!isMobile && (
-            <header className="hidden h-14 flex-shrink-0 items-center justify-between border-b border-border bg-card/95 px-5 shadow-sm backdrop-blur-xl lg:flex">
+            <header className="app-desktop-header hidden h-14 flex-shrink-0 items-center justify-between border-b border-border bg-card/95 px-5 shadow-sm backdrop-blur-xl lg:flex">
             <div className="flex items-center gap-4 min-w-0">
               <Breadcrumbs />
             </div>
@@ -308,7 +302,7 @@ export function Layout({ children }: LayoutProps) {
         )}
 
         {/* Mobile breadcrumbs */}
-        <div className="app-mobile-breadcrumbs flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-2 lg:hidden">
+        <div className="app-mobile-breadcrumbs app-touch-breadcrumbs flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-2 lg:hidden">
           <div className="min-w-0"><Breadcrumbs /></div>
           {renderHeaderNavigation(true)}
         </div>

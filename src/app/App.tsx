@@ -540,7 +540,6 @@ const TimesheetFormPage = lazy(
 const TimesheetDetailPage = lazy(
   () => import("./pages/timesheets/TimesheetDetailPage"),
 );
-import { LanguageProvider } from "../contexts/LanguageContext";
 // AI chat widget intentionally removed per user request
 import OfflineSyncBanner from "./components/OfflineSyncBanner";
 import { Toaster } from "sonner";
@@ -1383,33 +1382,33 @@ function AppRoutes() {
           <Route
             path="/employees"
             element={
-              <ErrorBoundary>
-                <EmployeesListPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read" roles={["admin", "manager", "hr"]}>
+                <ErrorBoundary><EmployeesListPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/employees/new"
             element={
-              <ErrorBoundary>
-                <EmployeeFormPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:create" roles={["admin", "manager", "hr"]}>
+                <ErrorBoundary><EmployeeFormPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/employees/:id"
             element={
-              <ErrorBoundary>
-                <EmployeeDetailPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read" roles={["admin", "manager", "hr"]}>
+                <ErrorBoundary><EmployeeDetailPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/employees/:id/edit"
             element={
-              <ErrorBoundary>
-                <EmployeeFormPage />
-              </ErrorBoundary>
+              <ProtectedRoute permissions={["payroll:read", "payroll:update"]} requireAll roles={["admin", "manager", "hr"]}>
+                <ErrorBoundary><EmployeeFormPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
 
@@ -1461,57 +1460,57 @@ function AppRoutes() {
           <Route
             path="/payroll"
             element={
-              <ErrorBoundary>
-                <PayrollListPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><PayrollListPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/payroll-runs"
             element={
-              <ErrorBoundary>
-                <PayrollRunsListPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><PayrollRunsListPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/payroll-runs/new"
             element={
-              <ErrorBoundary>
-                <PayrollRunDetailPage />
-              </ErrorBoundary>
+              <ProtectedRoute permissions={["payroll:read", "payroll:create"]} requireAll>
+                <ErrorBoundary><PayrollRunDetailPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/payroll-runs/:id"
             element={
-              <ErrorBoundary>
-                <PayrollRunDetailPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><PayrollRunDetailPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/payroll/:id"
             element={
-              <ErrorBoundary>
-                <PayrollDetailPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><PayrollDetailPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/payroll/:id/edit"
             element={
-              <ErrorBoundary>
-                <PayrollDetailPage />
-              </ErrorBoundary>
+              <ProtectedRoute permissions={["payroll:read", "payroll:update"]} requireAll>
+                <ErrorBoundary><PayrollDetailPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/payroll/generate"
             element={
-              <ErrorBoundary>
-                <PayrollGenerationPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><PayrollGenerationPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
 
@@ -2128,15 +2127,13 @@ export default function App() {
       <BrowserRouter>
         <SeoManager />
         <ThemeProvider>
-          <LanguageProvider>
-            <AuthProvider>
-              <CurrencyProvider>
-                <EnterpriseAIChatBot />
-                <Toaster position="top-right" richColors />
-                <AppRoutes />
-              </CurrencyProvider>
-            </AuthProvider>
-        </LanguageProvider>
+          <AuthProvider>
+            <CurrencyProvider>
+              <EnterpriseAIChatBot />
+              <Toaster position="top-right" richColors />
+              <AppRoutes />
+            </CurrencyProvider>
+          </AuthProvider>
         </ThemeProvider>
       </BrowserRouter>
       <ReactQueryDevtools initialIsOpen={false} />

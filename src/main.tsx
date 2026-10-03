@@ -2,6 +2,7 @@ console.log('[main.tsx] Entry point loading');
 
 import { createRoot } from 'react-dom/client';
 import App from './app/App';
+import { LanguageProvider } from './contexts/LanguageContext';
 import { initializeClientPerformanceMonitoring, markApplicationShellReady } from './lib/clientPerformance';
 import './i18n'; // initialise i18next before rendering
 import './styles/index.css';
@@ -23,7 +24,11 @@ if (!rootElement) {
     initializeClientPerformanceMonitoring();
 
     try {
-      createRoot(rootElement).render(<App />);
+      createRoot(rootElement).render(
+        <LanguageProvider>
+          <App />
+        </LanguageProvider>,
+      );
       window.requestAnimationFrame(markApplicationShellReady);
       console.log('[main.tsx] Render called successfully');
     } catch (err) {

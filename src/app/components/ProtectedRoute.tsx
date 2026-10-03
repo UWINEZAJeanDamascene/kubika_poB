@@ -6,6 +6,7 @@ interface ProtectedRouteProps {
   children: React.ReactNode;
   permission?: string;
   permissions?: string[];
+  roles?: string[];
   requireAll?: boolean;
   fallback?: React.ReactNode;
 }
@@ -34,6 +35,7 @@ export function ProtectedRoute({
   children, 
   permission, 
   permissions,
+  roles,
   requireAll = false,
   fallback
 }: ProtectedRouteProps) {
@@ -55,19 +57,24 @@ export function ProtectedRoute({
   }
 
   // Check permissions
+  const hasLegacyRole = Boolean(roles?.some((role) =>
+    user?.role === role || user?.roles?.some((assigned) =>
+      (typeof assigned === "string" ? assigned : assigned?.name) === role,
+    ),
+  ));
   let hasAccess = true;
 
   if (permission) {
     hasAccess = permission === "platform:admin" && user?.role === "platform_admin"
       ? true
-      : hasPermission(permission);
+      : hasPermission(permission) || hasLegacyRole;
   } else if (permissions && permissions.length > 0) {
     if (requireAll) {
       // Check if user has ALL permissions
-      hasAccess = permissions.every(p => hasPermission(p));
+      hasAccess = permissions.every(p => hasPermission(p)) || hasLegacyRole;
     } else {
       // Check if user has ANY permission
-      hasAccess = hasAnyPermission(permissions);
+      hasAccess = hasAnyPermission(permissions) || hasLegacyRole;
     }
   }
 

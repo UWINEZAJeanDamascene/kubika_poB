@@ -8,6 +8,7 @@ export interface User {
   name: string;
   email: string;
   role: string;
+  roles?: Array<string | { name?: string }>;
   company?: string;
   avatar?: string;
   phone?: string;

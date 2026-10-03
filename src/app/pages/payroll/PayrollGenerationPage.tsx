@@ -66,11 +66,13 @@ const MONTHS = [
   { value: 12, label: "December" },
 ];
 
+type PayrollInputActor = { id: string; name: string; email: string };
 type PayrollInputDraft = {
   scheduledDays: number; workedDays: number; paidLeaveDays: number; unpaidLeaveDays: number;
   overtime: number; bonuses: number; commissions: number; benefitsInKind: number;
   healthInsurance: number; loanDeductions: number; otherDeductions: number;
   id?: string; status?: "draft" | "approved" | "applied"; enteredById?: string | null; approvedById?: string | null;
+  enteredBy?: PayrollInputActor | null; approvedBy?: PayrollInputActor | null;
 };
 
 function defaultPayrollInput(month: number, year: number): PayrollInputDraft {
@@ -88,6 +90,12 @@ function formatCurrency(value: number): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function payrollActorLabel(actor?: PayrollInputActor | null, fallbackId?: string | null): string {
+  if (actor?.name && actor.email) return `${actor.name} (${actor.email})`;
+  if (actor?.name || actor?.email) return actor.name || actor.email;
+  return fallbackId ? `User ${fallbackId}` : "Unknown user";
 }
 
 interface StepProps {
@@ -246,6 +254,7 @@ export default function PayrollGenerationPage() {
           commissions: Number(input.additionalIncome?.commissions || 0), benefitsInKind: Number(input.additionalIncome?.benefitsInKind || 0),
           healthInsurance: Number(input.deductions?.healthInsurance || 0), loanDeductions: Number(input.deductions?.loanDeductions || 0), otherDeductions: Number(input.deductions?.otherDeductions || 0),
           id: input.id, status: input.status, enteredById: input.enteredById, approvedById: input.approvedById,
+          enteredBy: input.enteredBy, approvedBy: input.approvedBy,
         };
       }
       setPayrollInputs(next);
@@ -268,7 +277,7 @@ export default function PayrollGenerationPage() {
         additionalIncome: { overtime: input.overtime, bonuses: input.bonuses, commissions: input.commissions, benefitsInKind: input.benefitsInKind },
         deductions: { healthInsurance: input.healthInsurance, loanDeductions: input.loanDeductions, otherDeductions: input.otherDeductions },
       });
-      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...input, id: response.data.id, status: response.data.status as PayrollInputDraft["status"], enteredById: response.data.enteredById } }));
+      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...input, id: response.data.id, status: response.data.status as PayrollInputDraft["status"], enteredById: response.data.enteredById, enteredBy: response.data.enteredBy } }));
       return response.data.id;
     } catch (error: any) { toast.error(error?.message || "Could not save payroll inputs"); return undefined; }
     finally { setInputBusyEmployeeId(null); }
@@ -282,7 +291,7 @@ export default function PayrollGenerationPage() {
     setInputBusyEmployeeId(employeeId);
     try {
       const response = await payrollApi.approvePeriodInput(id);
-      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...(all[employeeId] || input), id, status: response.data.status as PayrollInputDraft["status"], approvedById: response.data.approvedById } }));
+      setPayrollInputs((all) => ({ ...all, [employeeId]: { ...(all[employeeId] || input), id, status: response.data.status as PayrollInputDraft["status"], approvedById: response.data.approvedById, approvedBy: response.data.approvedBy } }));
       toast.success("Attendance and leave inputs approved");
     } catch (error: any) { toast.error(error?.message || "Could not approve payroll inputs"); }
     finally { setInputBusyEmployeeId(null); }
@@ -548,7 +557,7 @@ export default function PayrollGenerationPage() {
                   <p className="text-sm text-slate-500 dark:text-slate-400">Enter scheduled, worked, paid leave, and unpaid leave days. Save and approve each employee’s inputs before generation; only approved inputs affect prorated pay.</p>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="space-y-3 p-3 xl:hidden">{selectedEmployeeRows.map((employee) => { const input = payrollInputs[employee._id] || defaultPayrollInput(month, year); const locked = input.status === "approved" || input.status === "applied"; const numberField = (key: keyof PayrollInputDraft, label: string) => <Input aria-label={`${employee.firstName} ${label}`} type="number" min="0" step="0.5" className="mt-1 min-h-11 w-full" disabled={locked || inputBusyEmployeeId === employee._id} value={input[key] as number} onChange={(event) => updatePayrollInput(employee._id, key, Number(event.target.value) || 0)} />; return <article key={employee._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{employee.firstName} {employee.lastName}</p><p className="mt-0.5 text-xs text-muted-foreground">{employee.employeeId}</p></div><Badge variant="outline" className="capitalize">{input.status || "not saved"}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3">{([["scheduledDays", "Scheduled days"], ["workedDays", "Worked days"], ["paidLeaveDays", "Paid leave days"], ["unpaidLeaveDays", "Unpaid leave days"], ["overtime", "Overtime"], ["bonuses", "Bonus"], ["commissions", "Commission"], ["benefitsInKind", "Benefits in kind"], ["healthInsurance", "Health deduction"], ["loanDeductions", "Loan deduction"], ["otherDeductions", "Other deduction"]] as Array<[keyof PayrollInputDraft, string]>).map(([key, label]) => <label key={key} className="min-w-0 text-xs text-muted-foreground">{label}{numberField(key, label)}</label>)}</div>{input.enteredById && <p className="mt-2 text-xs text-muted-foreground">Prepared by {input.enteredById}{input.approvedById ? ` · Approved by ${input.approvedById}` : ""}</p>}<div className="mt-3 flex flex-wrap gap-2 border-t pt-3 dark:border-slate-800">{input.id && <Button size="sm" variant="outline" onClick={() => setAuditInputId(input.id!)}><History className="mr-1.5 h-4 w-4"/>Audit</Button>}<Button size="sm" variant="outline" className="min-h-10 flex-1" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:update")} onClick={() => void savePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin"/>}Save</Button><Button size="sm" className="min-h-10 flex-1" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:approve") || (!!input.enteredById && input.enteredById === user?._id)} onClick={() => void approvePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin"/>}{input.status === "approved" || input.status === "applied" ? "Approved" : input.enteredById === user?._id ? "Waiting for another approver" : "Approve"}</Button></div></article>; })}</div>
+                  <div className="space-y-3 p-3 xl:hidden">{selectedEmployeeRows.map((employee) => { const input = payrollInputs[employee._id] || defaultPayrollInput(month, year); const locked = input.status === "approved" || input.status === "applied"; const numberField = (key: keyof PayrollInputDraft, label: string) => <Input aria-label={`${employee.firstName} ${label}`} type="number" min="0" step="0.5" className="mt-1 min-h-11 w-full" disabled={locked || inputBusyEmployeeId === employee._id} value={input[key] as number} onChange={(event) => updatePayrollInput(employee._id, key, Number(event.target.value) || 0)} />; return <article key={employee._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-semibold">{employee.firstName} {employee.lastName}</p><p className="mt-0.5 text-xs text-muted-foreground">{employee.employeeId}</p></div><Badge variant="outline" className="capitalize">{input.status || "not saved"}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3">{([["scheduledDays", "Scheduled days"], ["workedDays", "Worked days"], ["paidLeaveDays", "Paid leave days"], ["unpaidLeaveDays", "Unpaid leave days"], ["overtime", "Overtime"], ["bonuses", "Bonus"], ["commissions", "Commission"], ["benefitsInKind", "Benefits in kind"], ["healthInsurance", "Health deduction"], ["loanDeductions", "Loan deduction"], ["otherDeductions", "Other deduction"]] as Array<[keyof PayrollInputDraft, string]>).map(([key, label]) => <label key={key} className="min-w-0 text-xs text-muted-foreground">{label}{numberField(key, label)}</label>)}</div>{input.enteredById && <div className="mt-2 space-y-1 text-xs text-muted-foreground"><p>Prepared by {payrollActorLabel(input.enteredBy, input.enteredById)}</p>{input.approvedById && <p>Approved by {payrollActorLabel(input.approvedBy, input.approvedById)}</p>}</div>}<div className="mt-3 flex flex-wrap gap-2 border-t pt-3 dark:border-slate-800">{input.id && <Button size="sm" variant="outline" onClick={() => setAuditInputId(input.id!)}><History className="mr-1.5 h-4 w-4"/>Audit</Button>}<Button size="sm" variant="outline" className="min-h-10 flex-1" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:update")} onClick={() => void savePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin"/>}Save</Button><Button size="sm" className="min-h-10 flex-1" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:approve") || (!!input.enteredById && input.enteredById === user?._id)} onClick={() => void approvePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin"/>}{input.status === "approved" || input.status === "applied" ? "Approved" : input.enteredById === user?._id ? "Waiting for another approver" : "Approve"}</Button></div></article>; })}</div>
                   <div className="hidden overflow-x-auto xl:block"><Table>
                     <TableHeader><TableRow>
                       <TableHead>Employee</TableHead><TableHead>Scheduled</TableHead><TableHead>Worked</TableHead><TableHead>Paid leave</TableHead><TableHead>Unpaid leave</TableHead>
@@ -562,7 +571,7 @@ export default function PayrollGenerationPage() {
                         <TableCell className="whitespace-nowrap font-medium">{employee.firstName} {employee.lastName}</TableCell>
                         <TableCell>{numberField("scheduledDays", "scheduled days")}</TableCell><TableCell>{numberField("workedDays", "worked days")}</TableCell><TableCell>{numberField("paidLeaveDays", "paid leave days")}</TableCell><TableCell>{numberField("unpaidLeaveDays", "unpaid leave days")}</TableCell>
                         <TableCell>{numberField("overtime", "overtime")}</TableCell><TableCell>{numberField("bonuses", "bonus")}</TableCell><TableCell>{numberField("commissions", "commission")}</TableCell><TableCell>{numberField("benefitsInKind", "benefits in kind")}</TableCell><TableCell>{numberField("healthInsurance", "health insurance deduction")}</TableCell><TableCell>{numberField("loanDeductions", "loan deduction")}</TableCell><TableCell>{numberField("otherDeductions", "other deduction")}</TableCell>
-                        <TableCell><div className="capitalize">{input.status || "not saved"}</div>{input.enteredById && <div className="text-xs text-slate-500">Prepared by {input.enteredById}</div>}{input.approvedById && <div className="text-xs text-slate-500">Approved by {input.approvedById}</div>}</TableCell>
+                        <TableCell><div className="capitalize">{input.status || "not saved"}</div>{input.enteredById && <div className="text-xs text-slate-500">Prepared by {payrollActorLabel(input.enteredBy, input.enteredById)}</div>}{input.approvedById && <div className="text-xs text-slate-500">Approved by {payrollActorLabel(input.approvedBy, input.approvedById)}</div>}</TableCell>
                         <TableCell><div className="flex gap-2">{input.id && <Button size="sm" variant="ghost" title="View immutable audit history" onClick={() => setAuditInputId(input.id!)}><History className="h-4 w-4" />Audit</Button>}<Button size="sm" variant="outline" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:update")} onClick={() => void savePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}Save</Button><Button size="sm" disabled={locked || inputBusyEmployeeId === employee._id || !hasPermission("payroll:approve") || (!!input.enteredById && input.enteredById === user?._id)} title={input.enteredById === user?._id ? "A different user must approve inputs you prepared" : undefined} onClick={() => void approvePeriodInput(employee._id)}>{inputBusyEmployeeId === employee._id && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}{input.status === "approved" || input.status === "applied" ? "Approved" : input.enteredById === user?._id ? "Waiting for another approver" : "Approve"}</Button></div></TableCell>
                       </TableRow>;
                     })}</TableBody>

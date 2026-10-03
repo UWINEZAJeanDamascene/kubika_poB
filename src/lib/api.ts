@@ -7832,7 +7832,9 @@ export interface PayrollPeriodInput {
   deductions: Record<string, number>;
   status: "draft" | "approved" | "applied";
   enteredById?: string | null;
+  enteredBy?: { id: string; name: string; email: string } | null;
   approvedById?: string | null;
+  approvedBy?: { id: string; name: string; email: string } | null;
   approvedAt?: string | null;
   appliedPayrollId?: string | null;
   notes?: string | null;

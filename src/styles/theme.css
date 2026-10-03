@@ -1907,3 +1907,22 @@
     font-size: 0.6rem;
   }
 }
+
+/* Keep touch tablets in their app shell when landscape width crosses Tailwind's
+   desktop breakpoint. The top controls and bottom destinations remain visible;
+   the navigation drawer is opened and closed only by the user's menu action. */
+@media (min-width: 1024px) and (max-width: 1366px) and (orientation: landscape) {
+  .app-shell.app-touch-shell .app-desktop-sidebar,
+  .app-shell.app-touch-shell .app-desktop-header {
+    display: none !important;
+  }
+
+  .app-shell.app-touch-shell .app-touch-header,
+  .app-shell.app-touch-shell .app-touch-breadcrumbs {
+    display: flex !important;
+  }
+
+  .app-shell.app-touch-shell .app-bottom-navigation {
+    display: grid !important;
+  }
+}

@@ -481,15 +481,17 @@ export default function RolesSettingsPage() {
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 flex-1 gap-1 text-xs dark:border-slate-700 dark:text-slate-200"
-                        onClick={() => openEdit(role)}
-                      >
-                        <Edit2 className="h-3.5 w-3.5" />
-                        Edit
-                      </Button>
+                      {!role.is_system_role && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 flex-1 gap-1 text-xs dark:border-slate-700 dark:text-slate-200"
+                          onClick={() => openEdit(role)}
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                          Edit
+                        </Button>
+                      )}
                       {!role.is_system_role && (
                         <Button
                           variant="outline"
