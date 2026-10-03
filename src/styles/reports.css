@@ -29,7 +29,7 @@
   background: #0f172a;
 }
 
-.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) :is([class*="bg-white"], [class*="bg-gray-50"], [class*="bg-red-50"], [class*="bg-green-50"], [class*="bg-blue-50"], [class*="bg-purple-50"], [class*="bg-violet-50"], [class*="bg-amber-50"], [class*="bg-emerald-50"], [class*="bg-slate-900"], [class*="bg-blue-900"], [class*="bg-green-900"], [class*="bg-purple-900"], [class*="bg-orange-900"], [class*="bg-violet-900"], [class*="bg-amber-900"], [class*="bg-indigo-900"], [class*="bg-rose-900"]) {
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) :is([class*="bg-white"], [class*="bg-gray-50"], [class*="bg-gray-100"], [class*="bg-red-50"], [class*="bg-green-50"], [class*="bg-blue-50"], [class*="bg-purple-50"], [class*="bg-violet-50"], [class*="bg-amber-50"], [class*="bg-emerald-50"], [class*="bg-slate-50"], [class*="bg-slate-100"], [class*="bg-slate-900"], [class*="bg-blue-900"], [class*="bg-green-900"], [class*="bg-purple-900"], [class*="bg-orange-900"], [class*="bg-violet-900"], [class*="bg-amber-900"], [class*="bg-indigo-900"], [class*="bg-rose-900"]) {
   border-color: #334155;
   background-color: #111c30;
   color: #e2e8f0;
