@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'v6-socket-telemetry-bypass';
+const CACHE_VERSION = 'v7-kubika-pwa-icons';
 const STATIC_CACHE = `stock-mgt-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `stock-mgt-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `stock-mgt-api-${CACHE_VERSION}`;
@@ -10,7 +10,10 @@ const STATIC_ASSETS = [
   '/index.html',
   '/manifest.json',
   '/offline.html',
-  '/favicon.svg'
+  '/favicon.svg',
+  '/kubika-system-logo.png',
+  '/pwa-icon-192.png',
+  '/pwa-icon-512.png'
 ];
 
 // API endpoints that can be cached for offline use

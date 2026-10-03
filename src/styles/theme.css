@@ -1826,6 +1826,10 @@
 }
 
 @media (max-width: 1023px) {
+  .public-header {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
   .app-mobile-header {
     padding-top: max(0.5rem, env(safe-area-inset-top, 0px));
   }
