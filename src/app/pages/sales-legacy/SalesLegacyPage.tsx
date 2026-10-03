@@ -712,13 +712,19 @@ export default function SalesLegacyPage() {
     mutationFn: async ({ requestData, shouldSendEmail }: { requestData: any; shouldSendEmail: boolean }) =>
       salesLegacyApi.createDirectSale(requestData, shouldSendEmail),
     onMutate: async ({ requestData }) => {
-      await queryClient.cancelQueries({ queryKey: ['pos', 'products'] });
-      const previousProducts = queryClient.getQueriesData({ queryKey: ['pos', 'products'] });
-      const quantities = new Map<string, number>(
-        requestData.items.map((item: { productId: string; quantity: number }) => [item.productId, Number(item.quantity) || 0] as [string, number]),
-      );
+      const selectedWarehouseProducts = {
+        predicate: (query: any) => query.queryKey[0] === 'pos'
+          && query.queryKey[1] === 'products'
+          && query.queryKey[2]?.warehouseId === requestData.warehouseId,
+      };
+      await queryClient.cancelQueries(selectedWarehouseProducts);
+      const previousProducts = queryClient.getQueriesData(selectedWarehouseProducts);
+      const quantities = new Map<string, number>();
+      for (const item of requestData.items as Array<{ productId: string; quantity: number }>) {
+        quantities.set(item.productId, (quantities.get(item.productId) || 0) + (Number(item.quantity) || 0));
+      }
 
-      queryClient.setQueriesData({ queryKey: ['pos', 'products'] }, (old: unknown) => {
+      queryClient.setQueriesData(selectedWarehouseProducts, (old: unknown) => {
         const apply = (product: any) => {
           const quantity = quantities.get(product?._id);
           if (quantity == null) return product;
@@ -752,6 +758,10 @@ export default function SalesLegacyPage() {
       queryClient.invalidateQueries({ queryKey: ['products'] }),
       queryClient.invalidateQueries({ queryKey: ['stock'] }),
       queryClient.invalidateQueries({ queryKey: ['invoices'] }),
+      queryClient.invalidateQueries({ queryKey: ['bank-accounts'] }),
+      queryClient.invalidateQueries({ queryKey: ['bank-transactions'] }),
+      queryClient.invalidateQueries({ queryKey: ['journal-entries'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
     ]),
   });
   
@@ -767,7 +777,19 @@ export default function SalesLegacyPage() {
       ? 'Select a warehouse'
       : !tillSession
         ? 'Open the till before recording a sale'
-        : null;
+        : paymentAmount < 0 || !Number.isFinite(paymentAmount)
+          ? 'Enter a valid non-negative payment amount'
+          : paymentAmount > cartCalculations.grandTotal && paymentMethod !== 'cash'
+            ? 'Only cash payments can be above the sale total'
+          : paymentAmount > 0
+              && ['bank_transfer', 'cheque', 'mobile_money'].includes(paymentMethod)
+              && (bankAccountsQuery.isPending || bankAccountsQuery.isError || bankAccounts.length === 0 || !bankAccountId)
+                ? bankAccountsQuery.isPending
+                  ? 'Loading payment accounts'
+                  : bankAccountsQuery.isError || bankAccounts.length === 0
+                    ? 'No active payment account is available'
+                    : 'Select the bank account used for this payment'
+                : null;
   
   const handleSubmit = async () => {
     // Validation
@@ -823,7 +845,10 @@ export default function SalesLegacyPage() {
       const response = await saleMutation.mutateAsync({ requestData, shouldSendEmail: sendEmail });
       
       if (response.success) {
-        toast.success('Sale completed successfully!');
+        const changeDue = Number(response.changeDue) || 0;
+        toast.success(changeDue > 0
+          ? `Sale completed. Change due: ${formatCurrency(changeDue)}`
+          : 'Sale completed successfully!');
         const saleLog = JSON.parse(localStorage.getItem('pos-sale-log') || '[]');
         saleLog.push({
           invoiceId: response.data && (response.data as any)._id,
@@ -1408,6 +1433,7 @@ export default function SalesLegacyPage() {
                     <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Amount Received</label>
                     <Input
                       type="number"
+                      min={0}
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(parseFloat(e.target.value) || 0)}
                       className="h-11 bg-white text-lg font-bold text-slate-950 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700"
@@ -1451,9 +1477,15 @@ export default function SalesLegacyPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500 dark:text-slate-400">
-                      {paymentAmount >= cartCalculations.grandTotal ? 'Change Due' : 'Outstanding'}
+                      {paymentAmount > cartCalculations.grandTotal && paymentMethod === 'cash'
+                        ? 'Change Due'
+                        : paymentAmount > cartCalculations.grandTotal
+                          ? 'Overpayment'
+                          : paymentAmount === cartCalculations.grandTotal
+                            ? 'Change Due'
+                            : 'Outstanding'}
                     </span>
-                    <span className={`font-semibold ${paymentAmount >= cartCalculations.grandTotal ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <span className={`font-semibold ${paymentAmount >= cartCalculations.grandTotal && (paymentMethod === 'cash' || paymentAmount === cartCalculations.grandTotal) ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
                       {formatCurrency(Math.abs(paymentAmount - cartCalculations.grandTotal))}
                     </span>
                   </div>

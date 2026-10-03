@@ -2465,6 +2465,8 @@ export interface PosProduct {
   taxRate: number;
   taxCode: string;
   currentStock: number;
+  onHandStock?: number;
+  reservedStock?: number;
   averageCost: number;
   category?: string;
   isAvailable: boolean;
@@ -2473,7 +2475,7 @@ export interface PosProduct {
 export const salesLegacyApi = {
   // Create direct sale (invoice + payment in one)
   createDirectSale: (data: SalesLegacyRequest, sendEmail?: boolean) =>
-    request<{ success: boolean; message: string; data: unknown }>(
+    request<{ success: boolean; message: string; data: unknown; changeDue: number }>(
       "/sales-legacy/direct-sale",
       {
         method: "POST",
