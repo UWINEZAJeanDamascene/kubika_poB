@@ -2,7 +2,7 @@
   "name": "KUBIKA SYSTEM",
   "short_name": "KUBIKA SYSTEM",
   "description": "KUBIKA SYSTEM — manage inventory, invoices, suppliers, clients, finance, payroll, and reports",
-  "start_url": "/dashboard",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",

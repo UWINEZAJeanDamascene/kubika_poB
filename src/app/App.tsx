@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router";
 import { useEffect, lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -546,6 +546,7 @@ import { Toaster } from "sonner";
 // Wrapper for ProductsListPage
 function ProductsListPageWrapper() {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -556,11 +557,7 @@ function ProductsListPageWrapper() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div style={{ padding: 20, textAlign: "center", background: "#fff" }}>
-        <div>Please log in to view products</div>
-      </div>
-    );
+    return <Navigate to="/login" state={{ from: `${location.pathname}${location.search}` }} replace />;
   }
 
   try {
@@ -578,6 +575,7 @@ function ProductsListPageWrapper() {
 // Wrapper for ProductDetailPage
 function ProductDetailPageWrapper() {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -588,11 +586,7 @@ function ProductDetailPageWrapper() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div style={{ padding: 20, textAlign: "center", background: "#fff" }}>
-        <div>Please log in to view product details</div>
-      </div>
-    );
+    return <Navigate to="/login" state={{ from: `${location.pathname}${location.search}` }} replace />;
   }
 
   try {
@@ -610,13 +604,14 @@ function ProductDetailPageWrapper() {
 // Wrapper for authenticated dashboard sub-routes (inventory, sales, etc.)
 function DashboardRouteWrapper({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <RouteLoadingFallback />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: `${location.pathname}${location.search}` }} replace />;
   }
 
   return <ErrorBoundary>{children}</ErrorBoundary>;
@@ -631,9 +626,7 @@ function DashboardPageWrapper() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div style={{ padding: 40, textAlign: "center" }}>Please log in</div>
-    );
+    return <Navigate to="/login" state={{ from: "/dashboard" }} replace />;
   }
 
   return (
@@ -657,6 +650,7 @@ function DashboardPageWrapper() {
 // Wrapper for GRNListPage
 function GRNListPageWrapper() {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -667,11 +661,7 @@ function GRNListPageWrapper() {
   }
 
   if (!isAuthenticated) {
-    return (
-      <div style={{ padding: 20, textAlign: "center", background: "#fff" }}>
-        <div>Please log in to view GRN</div>
-      </div>
-    );
+    return <Navigate to="/login" state={{ from: `${location.pathname}${location.search}` }} replace />;
   }
 
   try {
