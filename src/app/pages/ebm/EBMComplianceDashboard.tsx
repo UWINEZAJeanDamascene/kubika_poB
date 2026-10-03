@@ -219,7 +219,11 @@ export function EBMComplianceDashboardContent({ embedded = false }: { embedded?:
                     and set an RRA Branch ID on each location.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {devices.branches.map((b) => <article key={b.branchId} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words font-semibold">{b.branchName || b.branchId}</p><p className="mt-1 break-all font-mono text-xs text-muted-foreground">{b.branchId}</p></div><DeviceStatusBadge status={b.status} /></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-muted-foreground">Mode<b className="mt-1 block capitalize text-sm text-foreground">{b.initializedMode ?? '—'}</b></span><span className="text-muted-foreground">Initialized<b className="mt-1 block text-sm text-foreground">{fmt(b.initializedAt)}</b></span><span className="text-muted-foreground">TIN / Device SN<b className="mt-1 block break-all font-mono text-sm text-foreground">{b.tin ?? '—'}{b.deviceSerialNo ? ` / ${b.deviceSerialNo}` : ''}</b></span></div>{b.lastErrorMessage && <p className="mt-3 break-words rounded-md bg-red-50 p-2 text-xs text-red-700">{b.lastErrorMessage}</p>}</article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -261,6 +265,7 @@ export function EBMComplianceDashboardContent({ embedded = false }: { embedded?:
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -282,7 +287,11 @@ export function EBMComplianceDashboardContent({ embedded = false }: { embedded?:
                     page or via the API.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {syncStates.map((s, idx) => <article key={`${s.branchId}-${s.syncType}-${idx}`} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><p className="break-all font-mono text-xs font-semibold">{s.branchId ?? '—'}</p><Badge variant="outline">{s.summary?.received ?? '—'} codes</Badge></div><p className="mt-2 capitalize">{s.syncType?.replace(/_/g, ' ') ?? '—'}</p><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-muted-foreground">Last success<b className="mt-1 block text-sm text-foreground">{s.lastSuccessfulSyncAt ? fmt(s.lastSuccessfulSyncAt) : 'Never'}</b></span><span className="text-muted-foreground">Last attempt<b className="mt-1 block text-sm text-foreground">{fmt(s.lastAttemptAt)}</b></span></div>{s.lastErrorMessage && <p className="mt-3 break-words text-xs text-red-600">{s.lastErrorMessage}</p>}</article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -322,6 +331,7 @@ export function EBMComplianceDashboardContent({ embedded = false }: { embedded?:
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -370,7 +380,11 @@ export function EBMComplianceDashboardContent({ embedded = false }: { embedded?:
                     <CheckCircle2 className="h-4 w-4" /> No abandoned submissions — all clear.
                   </p>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {alerts.map((a) => <article key={a._id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><p className="capitalize font-semibold">{a.documentType ?? '—'}</p><Badge variant="destructive">{a.attemptsMade ?? '—'} attempts</Badge></div><p className="mt-1 break-all font-mono text-xs text-muted-foreground">{a.documentId ?? '—'}</p><p className="mt-3 text-xs text-muted-foreground">Abandoned {fmt(a.abandonedAt ?? a.createdAt)}</p>{a.lastErrorMessage && <p className="mt-2 break-words border-t pt-2 text-xs text-red-600">{a.lastErrorMessage}</p>}</article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -400,6 +414,7 @@ export function EBMComplianceDashboardContent({ embedded = false }: { embedded?:
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>

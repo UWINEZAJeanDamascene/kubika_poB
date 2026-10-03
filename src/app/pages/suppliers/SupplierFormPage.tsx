@@ -231,9 +231,9 @@ export default function SupplierFormPage() {
           </div>
 
           <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
               {/* Main Fields */}
-              <div className="space-y-6 lg:col-span-2">
+              <div className="space-y-6 xl:col-span-2">
                 <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardHeader className="border-b border-slate-100 pb-4 dark:border-slate-800">
                     <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export default function SupplierFormPage() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="region" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                           {t('suppliers.region', 'Region')}
@@ -435,7 +435,7 @@ export default function SupplierFormPage() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                       <div className="space-y-1.5">
                         <Label htmlFor="city" className="text-sm font-medium text-slate-700 dark:text-slate-300">
                           {t('suppliers.city', 'City')}

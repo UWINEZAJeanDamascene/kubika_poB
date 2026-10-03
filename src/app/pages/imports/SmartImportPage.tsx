@@ -211,12 +211,12 @@ export default function SmartImportPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-5 gap-2">
+          <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
             {steps.map((item, index) => {
               const currentIndex = steps.findIndex((candidate) => candidate.key === step);
               const done = index < currentIndex;
               return (
-                <div key={item.key} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm ${item.key === step ? "border-cyan-500 bg-cyan-50 text-cyan-900" : "border-slate-200"}`}>
+                <div key={item.key} className={`flex min-h-11 min-w-max items-center gap-2 rounded-md border px-3 py-2 text-sm ${item.key === step ? "border-cyan-500 bg-cyan-50 text-cyan-900" : "border-slate-200"}`}>
                   {done ? <Check className="h-4 w-4 text-emerald-600" /> : <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-xs">{index + 1}</span>}
                   <span className="truncate">{item.label}</span>
                 </div>
@@ -289,7 +289,7 @@ export default function SmartImportPage() {
                     {sectionFields.map((field) => {
                       const needsAttention = field.required && !columnMapping[field.key];
                       return (
-                        <div key={field.key} className={`grid gap-3 border-b px-4 py-3 md:grid-cols-[260px_1fr_260px] ${needsAttention ? "bg-amber-50" : ""}`}>
+                        <div key={field.key} className={`grid min-w-0 gap-3 border-b px-4 py-3 xl:grid-cols-[260px_minmax(0,1fr)_260px] ${needsAttention ? "bg-amber-50" : ""}`}>
                           <div>
                             <div className="flex items-center gap-2 font-medium">{field.label}{field.required && <Badge variant="destructive">Required</Badge>}</div>
                             <div className="text-xs text-slate-500">{field.example}</div>
@@ -325,7 +325,7 @@ export default function SmartImportPage() {
                   <div className="font-medium">{validation.summary}</div>
                   <div className="text-sm text-slate-500">{validation.duplicateGroups?.length || 0} duplicate groups detected.</div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <Select value={duplicateAction} onValueChange={(value: "skip" | "update" | "create") => setDuplicateAction(value)}>
                     <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -340,7 +340,11 @@ export default function SmartImportPage() {
               </CardContent></Card>
 
               <Card><CardContent className="p-0">
-                <Table>
+                <div className="space-y-3 p-3 xl:hidden">
+                  {validationRows.map((row: any) => <article key={row.rowNumber} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><p className="font-semibold">Row {row.rowNumber}</p>{row.valid ? (Array.isArray(row.warnings) && row.warnings.length ? <Badge className="border border-amber-200 bg-amber-100 text-amber-800">Valid with warnings</Badge> : <Badge className="bg-emerald-600">Valid</Badge>) : <Badge variant="destructive">Error</Badge>}</div>{Array.isArray(row.warnings) && row.warnings.length > 0 && <div className="mt-2 space-y-1 text-xs text-amber-700">{row.warnings.map((warn: any, index: number) => <p key={`${row.rowNumber}-warning-${index}`}>Warning: {warn.message || warn}</p>)}</div>}{Array.isArray(row.errors) && row.errors.length > 0 && <div className="mt-2 space-y-1 text-xs text-red-600">{row.errors.map((error: any, index: number) => <p key={`${row.rowNumber}-error-${index}`}>{error.field ? `${error.field}: ` : ''}{error.message}</p>)}</div>}<details className="mt-3 border-t pt-3"><summary className="cursor-pointer text-sm font-medium">Row data</summary><pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs text-slate-600">{JSON.stringify(row.data, null, 2)}</pre></details></article>)}
+                  {!validationRows.length && <p className="py-6 text-center text-sm text-slate-500">No rows on this page.</p>}
+                </div>
+                <div className="hidden overflow-x-auto xl:block"><Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Row</TableHead>
@@ -394,7 +398,7 @@ export default function SmartImportPage() {
                       );
                     })}
                   </TableBody>
-                </Table>
+                </Table></div>
               </CardContent></Card>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous</Button>
@@ -414,7 +418,7 @@ export default function SmartImportPage() {
           {step === "results" && (
             <Card><CardContent className="space-y-4 p-6">
               <div className="flex items-center gap-2 text-lg font-semibold"><Check className="h-5 w-5 text-emerald-600" />Import complete</div>
-              <div className="grid gap-3 md:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 {["totalRows", "successRows", "errorRows", "skippedRows"].map((key) => <div key={key} className="rounded-md border p-3"><div className="text-xs uppercase text-slate-500">{key}</div><div className="text-2xl font-semibold">{progress?.result?.[key] ?? 0}</div></div>)}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -428,7 +432,11 @@ export default function SmartImportPage() {
           <Card>
             <CardContent className="p-0">
               <div className="border-b px-4 py-3 font-medium">Import History</div>
-              <Table>
+              <div className="space-y-3 p-3 xl:hidden">
+                {history.slice(0, 8).map((item) => <article key={item._id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words font-medium">{item.fileName}</p><Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{item.status}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-slate-500">Started<b className="mt-1 block text-sm text-foreground">{item.startedAt ? new Date(item.startedAt).toLocaleString() : ""}</b></span><span className="text-slate-500">Rows<b className="mt-1 block text-sm text-foreground">{item.successRows}/{item.totalRows}</b></span></div><div className="mt-3 flex flex-wrap gap-2">{item.resultsReportUrl && <Button size="sm" variant="outline" className="min-h-10" onClick={() => void downloadAuthenticated(smartImportsApi.downloadResultsReportUrl(item._id), "import-results.csv")}>Results</Button>}{item.errorReportUrl && <Button size="sm" variant="outline" className="min-h-10" onClick={() => void downloadAuthenticated(smartImportsApi.downloadErrorReportUrl(item._id), "import-errors.csv")}>Errors</Button>}</div></article>)}
+                {!history.length && <p className="py-6 text-center text-sm text-slate-500">No imports yet for this entity.</p>}
+              </div>
+              <div className="hidden overflow-x-auto xl:block"><Table>
                 <TableHeader><TableRow><TableHead>File</TableHead><TableHead>Status</TableHead><TableHead>Started</TableHead><TableHead>Rows</TableHead><TableHead>Reports</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {history.slice(0, 8).map((item) => (
@@ -445,7 +453,7 @@ export default function SmartImportPage() {
                   ))}
                   {!history.length && <TableRow><TableCell colSpan={5} className="py-6 text-center text-sm text-slate-500">No imports yet for this entity.</TableCell></TableRow>}
                 </TableBody>
-              </Table>
+              </Table></div>
             </CardContent>
           </Card>
         </div>

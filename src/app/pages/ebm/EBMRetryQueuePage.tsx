@@ -217,7 +217,7 @@ export function EBMRetryQueueContent() {
           </div>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {[
             ["pending", "Total pending"],
             ["failed", "Total failed"],
@@ -279,7 +279,11 @@ export function EBMRetryQueueContent() {
 
         <Card>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
+            <div className="space-y-3 p-3 xl:hidden">
+              {items.map((item) => <article key={item._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start gap-3"><Checkbox checked={selectedSet.has(item._id)} onCheckedChange={(checked) => toggleOne(item._id, checked === true)} aria-label={`Select ${item.documentType} ${item.documentId}`} /><div className="min-w-0 flex-1"><a href={documentLink(item)} className="break-words text-sm font-semibold text-blue-700 hover:underline dark:text-blue-300">{item.documentType}</a><p className="mt-1 break-all font-mono text-xs text-muted-foreground">{item.documentId}</p></div><Badge className={statusClass(item.ebmStatus)}>{item.ebmStatus}</Badge></div><p className="mt-2 break-words text-sm text-muted-foreground">{typeof item.companyId === "object" ? item.companyId.name || item.companyId.code : "-"}</p><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-muted-foreground">Retries<b className="mt-1 block text-sm text-foreground">{item.retryCount} / {item.maxRetries}</b></span><span className="text-muted-foreground">Next retry<b className="mt-1 block text-sm text-foreground">{formatDate(item.nextRetryAt)}</b></span><span className="text-muted-foreground">Created<b className="mt-1 block text-sm text-foreground">{formatDate(item.createdAt)}</b></span></div>{item.lastError && <p className="mt-3 break-words border-t pt-3 text-xs text-red-600">{formatRraErrorMessage(item.lastError?.code, item.lastError?.message)}</p>}<div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-4"><Button size="sm" variant="outline" className="min-h-10" onClick={() => openDetail(item._id)} disabled={busyId === item._id}><Eye className="mr-1.5 h-4 w-4"/>Error</Button><Button size="sm" variant="outline" className="min-h-10" onClick={() => copyPayload(item.payload)}><FileJson className="mr-1.5 h-4 w-4"/>Payload</Button><Button size="sm" variant="outline" className="min-h-10" onClick={() => retry(item._id)} disabled={busyId === item._id || item.ebmStatus === "submitted"}><RotateCcw className="mr-1.5 h-4 w-4"/>Retry</Button><Button size="sm" variant="outline" className="min-h-10" onClick={() => resolve(item._id)} disabled={busyId === item._id}><CheckCircle2 className="mr-1.5 h-4 w-4"/>Resolve</Button></div></article>)}
+              {!items.length && <p className="py-8 text-center text-sm text-slate-500">{loading ? "Loading EBM queue..." : "No EBM queue records found."}</p>}
+            </div>
+            <div className="hidden overflow-x-auto xl:block">
               <table className="w-full table-fixed text-sm">
                 <thead className="border-b bg-white text-left text-xs uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-900">
                   <tr>
@@ -340,7 +344,7 @@ export function EBMRetryQueueContent() {
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between border-t px-4 py-3 text-sm dark:border-slate-800">
+            <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
               <span className="text-slate-500">Page {pagination.page} of {pagination.pages || 1} · {pagination.total} records</span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" disabled={pagination.page <= 1} onClick={() => load(pagination.page - 1)}>Previous</Button>

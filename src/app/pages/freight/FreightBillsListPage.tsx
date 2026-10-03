@@ -24,6 +24,7 @@ import {
 import { Badge } from "@/app/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { useTranslation } from "react-i18next";
+import { EmptyState } from "@/app/components/EmptyState";
 
 interface FreightBill {
   _id: string;
@@ -121,7 +122,10 @@ export function FreightBillsContent() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
+              <div className="space-y-3 xl:hidden">
+                {bills.length === 0 ? <EmptyState compact icon={Truck} title={t("freight.noBills", "No freight bills found")} /> : bills.map((bill) => <article key={bill._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all font-mono text-sm font-semibold text-slate-900 dark:text-white">{bill.referenceNo}</p><p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">{bill.carrierName || bill.supplier?.name || "—"}</p></div>{bill.status === "confirmed" ? <Badge className="shrink-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"><CheckCircle className="mr-1 h-3 w-3" />{t("freight.confirmed", "Confirmed")}</Badge> : <Badge variant="outline" className="shrink-0 border-amber-200 text-amber-600 dark:border-amber-800 dark:text-amber-300">{t("freight.draft", "Draft")}</Badge>}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-muted-foreground">{t("freight.amount", "Amount")}<b className="mt-1 block text-sm text-foreground">{formatCurrency(bill.amount)}</b></span><span className="text-muted-foreground">{t("freight.invoiceDate", "Invoice Date")}<b className="mt-1 block text-sm text-foreground">{bill.invoiceDate ? new Date(bill.invoiceDate).toLocaleDateString() : "—"}</b></span></div>{bill.status === "draft" && <div className="mt-3 flex flex-wrap gap-2 border-t pt-3"><Button size="sm" variant="outline" className="min-h-10 flex-1" onClick={() => navigate(`/freight-bills/${bill._id}/edit`)}>{t("common.edit", "Edit")}</Button><Button size="sm" className="min-h-10 flex-1" onClick={() => handleConfirm(bill._id)}>{t("common.confirm", "Confirm")}</Button><Button size="sm" variant="outline" className="min-h-10 min-w-10 text-red-600" onClick={() => handleDelete(bill._id)} aria-label={t("freight.deleteBill", "Delete freight bill")}><XCircle className="h-4 w-4"/></Button></div>}</article>)}
+              </div>
+              <div className="hidden overflow-x-auto xl:block">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">

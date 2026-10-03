@@ -426,7 +426,7 @@ export default function CreditNotesListPage() {
           </div>
 
           {/* Metric Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">

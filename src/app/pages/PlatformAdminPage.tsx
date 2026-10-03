@@ -1003,7 +1003,10 @@ export default function PlatformAdminPage() {
                   <EmptyPanel title="No activity recorded" text="Platform audit logs will appear here once actions are taken." />
                 ) : (
                   <div className="space-y-3">
-                    <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+                    <div className="space-y-3 xl:hidden">
+                      {auditLogs.map((log) => <article key={log._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{log.action}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{log.user_id?.name || "System"}{log.company_id ? ` · ${log.company_id.name}` : ""}</p></div><Badge variant={log.status === "success" ? "default" : "destructive"}>{log.status}</Badge></div><div className="mt-3 flex items-center justify-between gap-3 border-t pt-3 text-xs"><Badge variant="outline" className="rounded-md">{log.entity_type}</Badge><span className="text-slate-500 dark:text-slate-400">{formatDate(log.createdAt)}</span></div></article>)}
+                    </div>
+                    <div className="hidden overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 xl:block">
                       <div className="grid min-w-[680px] grid-cols-[minmax(260px,1fr)_120px_100px_140px] gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
                         <span>Action</span>
                         <span>Entity</span>

@@ -979,7 +979,12 @@ export default function CompanyProfilePage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {ebmBranches.map((branch) => <article key={branch.branchId} className="rounded-xl border border-slate-200 p-3 dark:border-white/10"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><h4 className="break-words font-semibold text-slate-900 dark:text-white">{branch.branchName}</h4><p className="mt-1 text-xs text-muted-foreground">Branch ID: {branch.branchId}</p></div>{renderEbmStatus(branch)}</div><dl className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><div><dt className="text-muted-foreground">Device serial</dt><dd className="mt-1 break-all font-mono text-sm">{branch.deviceSerialNo || '-'}</dd></div><div><dt className="text-muted-foreground">Mode</dt><dd className="mt-1 text-sm">{branch.initializedMode || '-'}</dd></div><div className="col-span-2"><dt className="text-muted-foreground">Initialized</dt><dd className="mt-1 text-sm">{formatDateTime(branch.initializedAt)}</dd></div></dl>{branch.lastErrorMessage && <p className="mt-3 break-words rounded-md bg-red-50 p-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">{branch.lastErrorMessage}</p>}<Button className="mt-3 min-h-11 w-full gap-2" onClick={() => handleInitializeEbm(branch)} disabled={!ebmTin || initializingBranch === branch.branchId}>{initializingBranch === branch.branchId ? <Loader2 className="h-4 w-4 animate-spin" /> : <ReceiptText className="h-4 w-4" />}Initialize</Button></article>)}
+                    {!ebmBranches.length && <p className="py-6 text-center text-sm text-slate-500">No EBM branches configured.</p>}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <table className="w-full min-w-[900px] text-left">
                       <thead>
                         <tr className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-white/10 dark:text-slate-400">
@@ -1028,6 +1033,7 @@ export default function CompanyProfilePage() {
                       </tbody>
                     </table>
                   </div>
+                  </>
                 )}
               </div>
             </div>
@@ -1050,7 +1056,11 @@ export default function CompanyProfilePage() {
                     Sync Codes
                   </Button>
                 </div>
-                <div className="mt-4 overflow-x-auto">
+                <div className="mt-4 space-y-3 xl:hidden">
+                  {codeSyncStates.map((state) => <article key={`${state.syncType}-${state.branchId}-${state.mode}`} className="rounded-lg border border-slate-200 p-3 dark:border-white/10"><div className="flex items-start justify-between gap-3"><p className="font-medium capitalize text-slate-900 dark:text-white">{String(state.syncType).replace(/_/g, ' ')}</p>{state.lastErrorMessage && <Badge variant="destructive">Error</Badge>}</div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-muted-foreground">Last request<b className="mt-1 block break-all font-mono text-sm text-foreground">{state.lastReqDt || '-'}</b></span><span className="text-muted-foreground">Last synced<b className="mt-1 block text-sm text-foreground">{formatDateTime(state.lastSuccessfulSyncAt)}</b></span><p className={`col-span-2 break-words ${state.lastErrorMessage ? 'text-red-600 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300'}`}>{state.lastErrorMessage || `${(state.summary?.upserted || 0) + (state.summary?.matched || 0)} records`}</p></div></article>)}
+                  {!codeSyncStates.length && <p className="py-6 text-sm text-slate-500">No RRA code sync has run yet.</p>}
+                </div>
+                <div className="mt-4 hidden overflow-x-auto xl:block">
                   <table className="w-full min-w-[640px] text-left">
                     <thead>
                       <tr className="border-b border-slate-200 text-xs uppercase text-slate-500 dark:border-white/10 dark:text-slate-400">

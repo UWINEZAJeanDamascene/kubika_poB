@@ -481,7 +481,7 @@ export default function TaxesPage() {
 
         {/* Tabs */}
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full max-w-lg grid-cols-3">
+          <TabsList className="flex h-auto w-full max-w-lg justify-start gap-1 overflow-x-auto">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <Calculator className="h-4 w-4" />
               Dashboard
@@ -598,7 +598,7 @@ export default function TaxesPage() {
                 {/* Grand Total & Quick Actions */}
                 <Card>
                   <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                       <div>
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                           Total Tax Obligations
@@ -755,7 +755,10 @@ export default function TaxesPage() {
                     </Button>
                   </div>
                 ) : (
-                  <div className="border rounded-lg overflow-hidden">
+                  <div className="space-y-3 xl:hidden">
+                    {filteredRates.map((rate) => <article key={rate._id} className="rounded-xl border border-slate-200 p-4 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words font-semibold text-slate-900 dark:text-white">{rate.name}</p><p className="mt-1 font-mono text-xs text-muted-foreground">{rate.code}</p></div><Badge variant={rate.is_active ? 'default' : 'secondary'} className={rate.is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : ''}>{rate.is_active ? 'Active' : 'Inactive'}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-sm"><span className="text-muted-foreground">Type<b className="mt-1 block text-foreground">{getTaxTypeBadge(rate.type)}</b></span><span className="text-muted-foreground">Rate<b className="mt-1 block text-foreground">{rate.rate_pct.toFixed(2)}%</b></span><span className="min-w-0 text-muted-foreground">Input account<b className="mt-1 block break-all font-mono text-xs text-foreground">{rate.input_account_code}</b></span><span className="min-w-0 text-muted-foreground">Output account<b className="mt-1 block break-all font-mono text-xs text-foreground">{rate.output_account_code}</b></span></div><div className="mt-3 flex gap-2 border-t pt-3"><Button variant="outline" className="min-h-11 flex-1" onClick={() => handleOpenRateForm(rate)}><Edit className="mr-2 h-4 w-4"/>Edit</Button><Button variant="outline" className="min-h-11 min-w-11" onClick={() => handleDeleteRate(rate._id)} aria-label="Delete tax rate"><Trash2 className="h-4 w-4 text-red-600"/></Button></div></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto rounded-lg border xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow>

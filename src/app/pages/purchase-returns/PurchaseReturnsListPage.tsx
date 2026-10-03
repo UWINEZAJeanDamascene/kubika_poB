@@ -199,7 +199,7 @@ export default function PurchaseReturnsListPage() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
             <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="flex items-center gap-3 p-4">
                 <div className="rounded-lg bg-slate-50 p-2.5 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800">

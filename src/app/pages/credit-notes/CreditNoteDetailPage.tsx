@@ -275,7 +275,7 @@ export default function CreditNoteDetailPage() {
         <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-[1400px] 2xl:max-w-[2200px] space-y-6">
             <Skeleton className="h-40 w-full rounded-xl" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Skeleton key={i} className="h-24 w-full rounded-xl" />
               ))}
@@ -362,7 +362,7 @@ export default function CreditNoteDetailPage() {
           </div>
 
           {/* Metric Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
             <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">

@@ -643,7 +643,11 @@ function UnmatchedPurchasesTab({
       </div>
 
       <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-        <Table>
+        <div className="space-y-3 p-3 xl:hidden">
+          {items.map((item) => <article key={item._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><p className="break-words font-semibold">{item.supplierName || "-"}</p><p className="mt-1 break-all font-mono text-xs text-muted-foreground">{item.supplierTin || "-"}</p><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-muted-foreground">Seller invoice<b className="mt-1 block break-all text-sm text-foreground">{item.sellerInvoiceNo || "-"}</b></span><span className="text-muted-foreground">Date<b className="mt-1 block text-sm text-foreground">{item.invoiceDate ? new Date(item.invoiceDate).toLocaleDateString() : "-"}</b></span><span className="text-muted-foreground">VAT<b className="mt-1 block text-sm text-foreground">{(item.taxAmount || 0).toLocaleString()}</b></span><span className="text-muted-foreground">Total<b className="mt-1 block text-sm font-semibold text-foreground">{(item.totalAmount || 0).toLocaleString()}</b></span></div></article>)}
+          {!items.length && <p className="py-6 text-center text-sm text-slate-500">{loading ? "Loading..." : "No unmatched RRA purchase records"}</p>}
+        </div>
+        <div className="hidden overflow-x-auto xl:block"><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Supplier</TableHead>
@@ -673,7 +677,7 @@ function UnmatchedPurchasesTab({
               </TableRow>
             )}
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
     </div>
   );
@@ -732,7 +736,11 @@ function StockMasterTab({
       </div>
 
       <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-        <Table>
+        <div className="space-y-3 p-3 xl:hidden">
+          {rows.slice(0, 50).map((row) => <article key={`${row.itemCd}-${row.status}`} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-mono text-xs">{row.itemCd}</p><p className="mt-1 break-words font-medium">{row.productName || row.vsdcItemName || "-"}</p></div><Badge variant="outline">{statusLabel(row)}</Badge></div><div className="mt-3 grid grid-cols-3 gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">Local<b className="mt-1 block text-sm text-foreground">{row.localQty == null ? "-" : row.localQty.toLocaleString()}</b></span><span className="text-muted-foreground">VSDC<b className="mt-1 block text-sm text-foreground">{row.vsdcQty == null ? "-" : row.vsdcQty.toLocaleString()}</b></span><span className="text-muted-foreground">Difference<b className="mt-1 block text-sm text-foreground">{row.difference.toLocaleString()}</b></span></div></article>)}
+          {!rows.length && <p className="py-6 text-center text-sm text-slate-500">{loading ? "Loading..." : "Run reconciliation to compare local stock with VSDC"}</p>}
+        </div>
+        <div className="hidden overflow-x-auto xl:block"><Table>
           <TableHeader>
             <TableRow>
               <TableHead>Item Code</TableHead>
@@ -762,7 +770,7 @@ function StockMasterTab({
               </TableRow>
             )}
           </TableBody>
-        </Table>
+        </Table></div>
       </div>
     </div>
   );
@@ -834,7 +842,11 @@ function SalesSyncTab({
                 </div>
               )}
               <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-                <Table>
+                <div className="space-y-3 p-3 xl:hidden">
+                  {salesRows.slice(0, 50).map((row, index) => <article key={`${row.invcNo}-${index}`} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all font-semibold">{row.invcNo || "—"}</p><p className="mt-1 text-xs text-muted-foreground">{formatVsdcDate(row.salesDt)}</p></div><Badge variant="outline" className={matchStatusClass(row.matchStatus)}>{matchStatusLabel(row.matchStatus)}</Badge></div><div className="mt-3 flex items-center justify-between gap-3 border-t pt-3 text-sm"><span className="text-muted-foreground">Total</span><b>{row.totAmt != null ? row.totAmt.toLocaleString() : "—"}</b></div>{row.localDocumentId ? <Link to={`/invoices/${row.localDocumentId}`} className="mt-2 inline-flex min-h-10 items-center text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-300">{row.localReferenceNo || "View invoice"}</Link> : <p className="mt-2 text-sm text-slate-500">No local invoice linked</p>}</article>)}
+                  {!salesRows.length && <p className="py-6 text-center text-sm text-slate-500">No RRA sales were returned for this branch and date range.</p>}
+                </div>
+                <div className="hidden overflow-x-auto xl:block"><Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>RRA invoice #</TableHead>
@@ -874,7 +886,7 @@ function SalesSyncTab({
                       </TableRow>
                     )}
                   </TableBody>
-                </Table>
+                </Table></div>
               </div>
             </>
           ) : (
@@ -922,7 +934,11 @@ function SalesSyncTab({
                 </div>
               )}
               <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-                <Table>
+                <div className="space-y-3 p-3 xl:hidden">
+                  {itemRows.slice(0, 50).map((row) => <article key={row.itemCd} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all font-mono text-xs">{row.itemCd}</p><p className="mt-1 break-words font-medium">{row.itemNm || "—"}</p></div><Badge variant="outline" className={matchStatusClass(row.matchStatus)}>{matchStatusLabel(row.matchStatus)}</Badge></div><div className="mt-3 border-t pt-3">{row.localProductId ? <Link to={`/products/${row.localProductId}`} className="inline-flex min-h-10 items-center text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-300">{row.localProductName || "View product"}</Link> : <span className="text-sm text-slate-500">Not linked to a local product</span>}</div></article>)}
+                  {!itemRows.length && <p className="py-6 text-center text-sm text-slate-500">No registered items were returned from RRA for this branch.</p>}
+                </div>
+                <div className="hidden overflow-x-auto xl:block"><Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>RRA item code</TableHead>
@@ -960,7 +976,7 @@ function SalesSyncTab({
                       </TableRow>
                     )}
                   </TableBody>
-                </Table>
+                </Table></div>
               </div>
             </>
           ) : (

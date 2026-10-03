@@ -260,7 +260,7 @@ export default function AssetsListPage() {
           </div>
 
           {/* ── Summary Cards ── */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
               <CardContent className="p-4">
                 <div className="flex items-start justify-between gap-3">

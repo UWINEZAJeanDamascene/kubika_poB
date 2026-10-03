@@ -643,7 +643,13 @@ export default function RolesSettingsPage() {
                         Permissions
                       </Label>
                       <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
-                        <div className="overflow-x-auto">
+                        <div className="space-y-3 p-3 xl:hidden">
+                          {ALL_RESOURCES.map((resource) => {
+                            const perm = formPermissions.find((p) => p.resource === resource);
+                            return <article key={resource} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><h4 className="font-medium text-slate-900 dark:text-white">{resourceLabel(resource)}</h4><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-3">{ALL_ACTIONS.map((action) => <label key={action} className="flex min-h-11 items-center gap-2 rounded-md px-2 text-sm"><Checkbox checked={perm?.actions.includes(action) || false} onCheckedChange={() => togglePermission(resource, action)} className="h-4 w-4"/><span>{actionLabel(action)}</span></label>)}</div></article>;
+                          })}
+                        </div>
+                        <div className="hidden overflow-x-auto xl:block">
                           <Table>
                             <TableHeader>
                               <TableRow className="hover:bg-transparent dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">

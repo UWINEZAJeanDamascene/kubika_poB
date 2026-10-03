@@ -291,7 +291,12 @@ export default function CurrencySettingsPage() {
                     <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
                   </div>
                 ) : (
-                  <Table>
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {latest.map((r) => <article key={r.currency} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="font-semibold">{r.currency}<span className="ml-2 break-words text-sm font-normal text-muted-foreground">{r.name}</span></p><p className="mt-1 font-mono text-base">{r.rate != null ? r.rate.toLocaleString(undefined, { maximumFractionDigits: 6 }) : "-"}</p></div>{!r.has_rate ? <Badge variant="outline" className="border-0 bg-red-50 text-xs text-red-700 dark:bg-red-950/40 dark:text-red-300">No rate</Badge> : r.stale ? <Badge variant="outline" className="border-0 bg-amber-50 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">Stale</Badge> : <Badge variant="outline" className="border-0 bg-emerald-50 text-xs text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">Current</Badge>}</div><div className="mt-3 flex items-center justify-between gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">Effective {fmtDate(r.effective_date)} · <SourceBadge source={r.source} /></span><Button variant="outline" size="sm" className="min-h-10" onClick={() => openOverride(r.currency)}>Set rate</Button></div></article>)}
+                    {!latest.length && <p className="py-6 text-center text-sm text-muted-foreground">No active foreign currencies. Activate currencies below.</p>}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block"><Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>Currency</TableHead>
@@ -344,7 +349,8 @@ export default function CurrencySettingsPage() {
                         </TableRow>
                       ))}
                     </TableBody>
-                  </Table>
+                  </Table></div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -425,7 +431,11 @@ export default function CurrencySettingsPage() {
               </Select>
             </CardHeader>
             <CardContent>
-              <Table>
+              <div className="space-y-3 xl:hidden">
+                {history.map((h) => <article key={h._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><p className="font-semibold">{h.from_currency} → {h.to_currency}</p><p className="font-mono text-sm">{Number(h.rate).toLocaleString(undefined, { maximumFractionDigits: 6 })}</p></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-muted-foreground">Effective date<b className="mt-1 block text-sm text-foreground">{fmtDate(h.effective_date)}</b></span><span className="text-muted-foreground">Recorded<b className="mt-1 block text-sm text-foreground">{fmtDate(h.createdAt)}</b></span><span className="col-span-2 text-muted-foreground">Source <SourceBadge source={h.source} /></span></div></article>)}
+                {!history.length && <p className="py-6 text-center text-sm text-muted-foreground">No rates recorded yet. Use “Refresh Now” or add a manual rate.</p>}
+              </div>
+              <div className="hidden overflow-x-auto xl:block"><Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Pair</TableHead>
@@ -455,7 +465,7 @@ export default function CurrencySettingsPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
+              </Table></div>
             </CardContent>
           </Card>
         </div>
