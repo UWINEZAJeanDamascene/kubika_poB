@@ -90,7 +90,7 @@ export function QuickCreateMenu({ compact = false }: QuickCreateMenuProps) {
           type="button"
           className={
             compact
-              ? 'flex h-9 w-9 min-h-9 min-w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
+              ? 'flex h-8 w-8 min-h-8 min-w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 sm:h-9 sm:w-9 sm:min-h-9 sm:min-w-9'
               : 'flex h-10 min-h-10 items-center gap-2 rounded-xl bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
           }
           title="Create new"
