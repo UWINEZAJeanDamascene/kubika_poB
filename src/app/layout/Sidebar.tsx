@@ -421,6 +421,14 @@ const purchasingNav: NavSection = {
         "Purchase orders",
       ],
     },
+    {
+      nameKey: "nav.accountsPayable",
+      href: "/ap-payments",
+      icon: Wallet,
+      permission: "ap_payments:read",
+      featureKey: "sales",
+      moduleNames: ["AR and AP"],
+    },
   ],
 };
 
@@ -512,14 +520,6 @@ const salesNav: NavSection = {
       featureKey: "sales",
       moduleNames: ["AR and AP"],
     },
-    {
-      nameKey: "nav.accountsPayable",
-      href: "/ap-payments",
-      icon: Wallet,
-      permission: "ap_payments:read",
-      featureKey: "sales",
-      moduleNames: ["AR and AP"],
-    },
   ],
 };
 
@@ -587,30 +587,20 @@ const financeNav: NavSection = {
       featureKey: "finance",
       moduleNames: ["Expenses"],
     },
-    {
-      nameKey: "nav.budgets",
-      href: "/budgets",
-      icon: PieChart,
-      permission: "budgets:read",
-      featureKey: "finance",
-      moduleNames: ["Budgets"],
-    },
-    {
-      nameKey: "nav.projects",
-      href: "/projects",
-      icon: FolderTree,
-      permission: "projects:read",
-      featureKey: "projects",
-      moduleNames: ["Projects"],
-    },
-    {
-      nameKey: "nav.budgetSettings",
-      href: "/budgets/settings",
-      icon: Settings,
-      permission: "budgets:read",
-      featureKey: "finance",
-      moduleNames: ["Budgets"],
-    },
+  ],
+};
+
+const projectsBudgetsNav: NavSection = {
+  title: "nav.sectionProjectsBudgets",
+  labelKey: "nav.labelProjectsBudgets",
+  descriptionKey: "nav.descProjectsBudgets",
+  accent: "from-indigo-300 to-violet-200",
+  glow: "bg-indigo-400/12",
+  icon: FolderTree,
+  items: [
+    { nameKey: "nav.projects", href: "/projects", icon: FolderTree, permission: "projects:read", featureKey: "projects", moduleNames: ["Projects"] },
+    { nameKey: "nav.budgets", href: "/budgets", icon: PieChart, permission: "budgets:read", featureKey: "finance", moduleNames: ["Budgets"] },
+    { nameKey: "nav.budgetSettings", href: "/budgets/settings", icon: Settings, permission: "budgets:read", featureKey: "finance", moduleNames: ["Budgets"] },
   ],
 };
 
@@ -785,6 +775,7 @@ const ALL_SECTIONS: NavSection[] = [
   salesNav,
   purchasingNav,
   financeNav,
+  projectsBudgetsNav,
   payrollNav,
   reportsNav,
   systemNav,
