@@ -611,46 +611,21 @@ const financeNav: NavSection = {
       featureKey: "finance",
       moduleNames: ["Budgets"],
     },
-    {
-      nameKey: "nav.employees",
-      href: "/employees",
-      icon: Users,
-      permission: "payroll:read",
-      featureKey: "payroll",
-      moduleNames: ["Employees"],
-    },
-    {
-      nameKey: "nav.payroll",
-      href: "/payroll",
-      icon: DollarSign,
-      permission: "payroll:read",
-      featureKey: "payroll",
-      moduleNames: ["Payroll runs"],
-    },
-    {
-      nameKey: "payroll.payrollRuns",
-      href: "/payroll-runs",
-      icon: Play,
-      permission: "payroll:read",
-      featureKey: "payroll",
-      moduleNames: ["Payroll runs"],
-    },
-    {
-      nameKey: "Payroll exceptions",
-      href: "/payroll-exceptions",
-      icon: AlertTriangle,
-      permission: "payroll:read",
-      featureKey: "payroll",
-      moduleNames: ["Payroll runs"],
-    },
-    {
-      nameKey: "nav.accountingPeriods",
-      href: "/periods",
-      icon: Calendar,
-      permission: "periods:read",
-      featureKey: "finance",
-      moduleNames: ["Financial reports"],
-    },
+  ],
+};
+
+const payrollNav: NavSection = {
+  title: "nav.sectionPayrollManagement",
+  labelKey: "nav.labelPayrollManagement",
+  descriptionKey: "nav.descPayrollManagement",
+  accent: "from-cyan-300 to-emerald-200",
+  glow: "bg-cyan-400/12",
+  icon: DollarSign,
+  items: [
+    { nameKey: "nav.employees", href: "/employees", icon: Users, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Employees"] },
+    { nameKey: "nav.payroll", href: "/payroll", icon: DollarSign, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
+    { nameKey: "payroll.payrollRuns", href: "/payroll-runs", icon: Play, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
+    { nameKey: "Payroll exceptions", href: "/payroll-exceptions", icon: AlertTriangle, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
   ],
 };
 
@@ -709,6 +684,14 @@ const reportsNav: NavSection = {
       permission: "reports:read",
       featureKey: "reports",
       moduleNames: ["Debt maturity"],
+    },
+    {
+      nameKey: "nav.accountingPeriods",
+      href: "/periods",
+      icon: Calendar,
+      permission: "periods:read",
+      featureKey: "finance",
+      moduleNames: ["Financial reports"],
     },
   ],
 };
@@ -802,6 +785,7 @@ const ALL_SECTIONS: NavSection[] = [
   salesNav,
   purchasingNav,
   financeNav,
+  payrollNav,
   reportsNav,
   systemNav,
 ];

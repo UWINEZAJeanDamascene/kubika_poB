@@ -6,6 +6,7 @@ const en = {
     sectionPurchasing: "Purchasing",
     sectionSales: "Sales",
     sectionFinance: "Finance",
+    sectionPayrollManagement: "Payroll Management",
     sectionReports: "Reports",
     sectionSystem: "System",
 
@@ -18,6 +19,8 @@ const en = {
     descPurchasing: "Suppliers, buying and receiving",
     labelFinance: "Finance Control",
     descFinance: "Cash, ledgers and payroll",
+    labelPayrollManagement: "Payroll Management",
+    descPayrollManagement: "Employees, payroll runs and exceptions",
     labelReports: "Reports & Insights",
     descReports: "Reports and financial ratios",
     labelSystem: "System Control",

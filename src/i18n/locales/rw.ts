@@ -5,6 +5,7 @@ const rw = {
     sectionPurchasing: "Kugura",
     sectionSales: "Kugurisha",
     sectionFinance: "Imari",
+    sectionPayrollManagement: "Imicungire y'imishahara",
     sectionReports: "Raporo",
     sectionSystem: "Sisitemu",
 
@@ -17,6 +18,8 @@ const rw = {
     descPurchasing: "Abatanga, kugura no kwakira",
     labelFinance: "Igenzura ry'imari",
     descFinance: "Amafaranga, konti n'umushahara",
+    labelPayrollManagement: "Imicungire y'imishahara",
+    descPayrollManagement: "Abakozi, imishahara n'ibibazo",
     labelReports: "Raporo n'isesengura",
     descReports: "Raporo n'igereranyo ry'imari",
     labelSystem: "Igenzura rya sisitemu",

@@ -8208,6 +8208,7 @@ export interface PayrollRun {
   journal_entry_id?: { _id: string; entryNumber: string } | string | null;
   reversal_journal_entry_id?: string | null;
   notes?: string | null;
+  warnings?: string[];
   posted_by?: { _id: string; name: string } | null;
   created_by?: string | { _id: string; name?: string } | null;
   lines: PayrollRunLine[];

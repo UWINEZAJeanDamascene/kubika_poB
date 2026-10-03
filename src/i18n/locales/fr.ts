@@ -5,6 +5,7 @@ const fr = {
     sectionPurchasing: "Achats",
     sectionSales: "Ventes",
     sectionFinance: "Finance",
+    sectionPayrollManagement: "Gestion de la paie",
     sectionReports: "Rapports",
     sectionSystem: "Système",
 
@@ -17,6 +18,8 @@ const fr = {
     descPurchasing: "Fournisseurs, achats et réceptions",
     labelFinance: "Contrôle financier",
     descFinance: "Trésorerie, comptabilité et paie",
+    labelPayrollManagement: "Gestion de la paie",
+    descPayrollManagement: "Employés, paies et exceptions",
     labelReports: "Rapports et analyses",
     descReports: "Rapports et ratios financiers",
     labelSystem: "Contrôle système",
