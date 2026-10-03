@@ -111,7 +111,7 @@ export default function MonthlyBudgetVsActualPage() {
         <Card className="bg-green-900/20 border-green-800">
           <CardHeader className="border-b border-green-800"><CardTitle className="text-green-300">Revenue</CardTitle></CardHeader>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-4 gap-4 text-center">
+            <div className="grid grid-cols-2 gap-3 text-center sm:grid-cols-4 sm:gap-4">
               <div><div className="text-sm text-green-400">Budget</div><div className="font-bold text-green-100">{formatCurrency(report.revenue.budget)}</div></div>
               <div><div className="text-sm text-green-400">Actual</div><div className="font-bold text-green-100">{formatCurrency(report.revenue.actual)}</div></div>
               <div><div className="text-sm text-green-400">Variance</div><div className={`font-bold ${report.revenue.variance >= 0 ? 'text-green-300' : 'text-red-300'}`}>{formatCurrency(report.revenue.variance)}</div></div>

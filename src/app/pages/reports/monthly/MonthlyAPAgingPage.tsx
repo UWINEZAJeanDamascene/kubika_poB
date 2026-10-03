@@ -126,7 +126,7 @@ export default function MonthlyAPAgingPage() {
             <CardTitle className="text-white">Aging Summary</CardTitle>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 xl:grid-cols-5">
               {[
                 { label: 'Current', bucket: report.buckets.current, color: 'bg-green-900/40 border-green-700', textColor: 'text-green-300' },
                 { label: '1-30 Days', bucket: report.buckets.days30, color: 'bg-yellow-900/40 border-yellow-700', textColor: 'text-yellow-300' },
@@ -134,9 +134,9 @@ export default function MonthlyAPAgingPage() {
                 { label: '61-90 Days', bucket: report.buckets.days90, color: 'bg-red-900/40 border-red-700', textColor: 'text-red-300' },
                 { label: '90+ Days', bucket: report.buckets.days90plus, color: 'bg-red-900/60 border-red-600', textColor: 'text-red-200' },
               ].map((item, idx) => (
-                <div key={idx} className={`p-4 rounded-lg border ${item.color}`}>
-                  <div className="text-sm font-medium text-slate-300">{item.label}</div>
-                  <div className={`text-lg font-bold ${item.textColor}`}>{formatCurrency(item.bucket.amount)}</div>
+                <div key={idx} className={`min-w-0 rounded-lg border p-3 sm:p-4 ${item.color}`}>
+                  <div className="text-xs font-medium text-slate-300 sm:text-sm">{item.label}</div>
+                  <div className={`mt-1 break-words text-base font-bold sm:text-lg ${item.textColor}`}>{formatCurrency(item.bucket.amount)}</div>
                   <div className="text-xs text-slate-500">{item.bucket.count} bills</div>
                 </div>
               ))}
@@ -151,7 +151,23 @@ export default function MonthlyAPAgingPage() {
             <CardDescription className="text-slate-400">{report.suppliers.length} suppliers with outstanding balances</CardDescription>
           </CardHeader>
           <CardContent className="pt-4 px-3 sm:px-6 -mx-3 sm:mx-0">
-            <div className="overflow-x-auto">
+            <div className="space-y-3 xl:hidden">
+              {report.suppliers.slice(0, 50).map((supplier, idx) => (
+                <div key={idx} className="rounded-lg border border-slate-700 bg-slate-950/40 p-3">
+                  <div className="flex items-start justify-between gap-3 border-b border-slate-700 pb-2">
+                    <p className="min-w-0 break-words font-semibold text-slate-100">{supplier.supplierName}</p>
+                    <p className="shrink-0 text-right font-mono font-bold text-white">{formatCurrency(supplier.total)}</p>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:grid-cols-3">
+                    {[["Current", supplier.current], ["1-30 days", supplier.days30], ["31-60 days", supplier.days60], ["61-90 days", supplier.days90], ["90+ days", supplier.days90plus]].map(([label, amount]) => (
+                      <div key={String(label)} className="min-w-0"><p className="text-slate-400">{label}</p><p className="break-words font-mono text-slate-100">{formatCurrency(Number(amount))}</p></div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              {report.suppliers.length === 0 && <p className="rounded-lg border border-dashed border-slate-700 p-6 text-center text-sm text-slate-400">No supplier balances for this period.</p>}
+            </div>
+            <div className="hidden overflow-x-auto xl:block">
               <table className="w-full text-sm min-w-[600px]">
                 <thead>
                   <tr className="border-b border-slate-700">

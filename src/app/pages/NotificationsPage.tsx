@@ -586,7 +586,7 @@ export default function NotificationsPage() {
                       <div
                         key={notification._id}
                         className={cn(
-                          "group flex items-start gap-4 p-4 transition-colors",
+                          "group relative flex items-start gap-3 p-3 transition-colors sm:gap-4 sm:p-4",
                           !notification.isRead
                             ? "bg-blue-50/40 dark:bg-blue-900/10 hover:bg-blue-50/70 dark:hover:bg-blue-900/20"
                             : "hover:bg-slate-50 dark:hover:bg-slate-800/60"
@@ -600,7 +600,7 @@ export default function NotificationsPage() {
                         <div className={cn("p-2 rounded-lg shrink-0", SEVERITY_RINGS[notification.severity || 'info'])}>
                           <Icon className="h-5 w-5" />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="min-w-0 flex-1 pb-8 sm:pb-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <p className={cn(
                               "font-medium text-sm",
@@ -619,7 +619,7 @@ export default function NotificationsPage() {
                               <span className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />
                             )}
                           </div>
-                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                          <p className="mt-1 break-words text-sm text-slate-500 dark:text-slate-400 [overflow-wrap:anywhere]">
                             {notification.message}
                           </p>
                           <div className="flex items-center gap-3 mt-2">
@@ -631,7 +631,7 @@ export default function NotificationsPage() {
                             </Badge>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="absolute bottom-2 right-2 flex items-center gap-1 opacity-100 transition-opacity sm:static sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                           {!notification.isRead && (
                             <Button
                               variant="ghost"

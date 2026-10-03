@@ -49,7 +49,7 @@ export default function AnnualTaxSummaryPage() {
         </div>
 
         {/* Tax Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="border-amber-200">
             <CardHeader className="bg-amber-50"><CardTitle className="text-amber-800 text-lg">VAT</CardTitle></CardHeader>
             <CardContent className="pt-4">
