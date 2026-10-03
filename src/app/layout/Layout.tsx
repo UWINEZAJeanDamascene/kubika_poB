@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Sheet, SheetContent, SheetTitle } from '@/app/components/ui/sheet';
 import { useIsMobile } from '@/app/components/ui/use-mobile';
-import { Menu, Sun, Moon, Home, Sparkles, Search, LayoutDashboard, Boxes, TrendingUp, PieChart, MoreHorizontal } from 'lucide-react';
+import { Menu, Sun, Moon, Home, Sparkles, Search, LayoutDashboard, Boxes, TrendingUp, PieChart, Coins } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Link, useNavigate, useLocation } from 'react-router';
@@ -16,7 +16,6 @@ import { useChatPanelStore } from '@/store/chatPanelStore';
 import { useCompanyStore } from '@/store/companyStore';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { LanguageSelector } from '@/app/components/LanguageSelector';
 import CurrencySelector from '@/app/components/CurrencySelector';
 
 interface LayoutProps {
@@ -30,7 +29,7 @@ const HEADER_NAV_LINKS = [
 
 export function Layout({ children }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [currencyOpen, setCurrencyOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem('sidebar-collapsed') === 'true';
@@ -157,24 +156,17 @@ export function Layout({ children }: LayoutProps) {
         </Sheet>
       )}
 
-      {/* Quick settings are separated from navigation; the header menu button opens the sidebar. */}
-      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
-        <SheetContent side="bottom" className="max-h-[70dvh] gap-0 rounded-t-2xl border-border bg-card px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6">
+      {/* Currency has its own bottom navigation destination; hamburger opens the sidebar. */}
+      <Sheet open={currencyOpen} onOpenChange={setCurrencyOpen}>
+        <SheetContent side="bottom" className="gap-0 rounded-t-2xl border-border bg-card px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-5 sm:px-6">
           <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-muted-foreground/30" aria-hidden="true" />
           <div className="mb-4 pr-10">
-            <SheetTitle>{t('common.more', { defaultValue: 'More' })}</SheetTitle>
-            <p className="mt-1 text-sm text-muted-foreground">{t('common.quickSettings', { defaultValue: 'Language and display currency' })}</p>
+            <SheetTitle>{t('common.currency', { defaultValue: 'Currency' })}</SheetTitle>
+            <p className="mt-1 text-sm text-muted-foreground">{t('common.displayCurrency', { defaultValue: 'Choose the currency used to display amounts' })}</p>
           </div>
-          <div className="grid gap-3">
-            <LanguageSelector
-              variant="compact"
-              className="w-full justify-start rounded-xl border border-border bg-muted/40 px-4 py-3 text-foreground hover:bg-accent hover:text-accent-foreground"
-            />
-            <section className="rounded-xl border border-border bg-muted/40 p-4" aria-label={t('common.currency', { defaultValue: 'Currency' })}>
-              <div className="mb-2 text-sm font-medium text-foreground">{t('common.currency', { defaultValue: 'Currency' })}</div>
-              <CurrencySelector />
-            </section>
-          </div>
+          <section className="rounded-xl border border-border bg-muted/40 p-4" aria-label={t('common.currency', { defaultValue: 'Currency' })}>
+            <CurrencySelector />
+          </section>
         </SheetContent>
       </Sheet>
 
@@ -325,9 +317,9 @@ export function Layout({ children }: LayoutProps) {
             <PieChart aria-hidden="true" />
             <span>{t('nav.financeShort', { defaultValue: 'Finance' })}</span>
           </Link>
-          <button type="button" className="app-bottom-navigation__item" onClick={() => setMoreOpen(true)} aria-label={t('common.more', { defaultValue: 'More' })} aria-expanded={moreOpen}>
-            <MoreHorizontal aria-hidden="true" />
-            <span>{t('common.more', { defaultValue: 'More' })}</span>
+          <button type="button" className="app-bottom-navigation__item" onClick={() => setCurrencyOpen(true)} aria-label={t('common.currency', { defaultValue: 'Currency' })} aria-expanded={currencyOpen}>
+            <Coins aria-hidden="true" />
+            <span>{t('common.currency', { defaultValue: 'Currency' })}</span>
           </button>
         </nav>
       </main>

@@ -59,7 +59,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
-import CurrencySelector from "../components/CurrencySelector";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { cn } from "../components/ui/utils";
 import { Button } from "@/app/components/ui/button";
@@ -1324,10 +1323,11 @@ export function Sidebar({
         {!collapsed && quickLaunchItems.length > 0 && (
           <section className="mb-4" aria-label={t("nav.quickLaunch", "Quick launch")}>
             <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-white/[0.1] bg-white/[0.1]">
-              {quickLaunchItems.map((item) => {
+              {quickLaunchItems.map((item, index) => {
                 const section = ALL_SECTIONS.find((candidate) => candidate.items.some((candidateItem) => candidateItem.href === item.href)) || inventoryNav;
+                const isLastUnpairedItem = quickLaunchItems.length % 2 === 1 && index === quickLaunchItems.length - 1;
                 return (
-                  <div key={item.href} className="bg-(--dashboard-rail)">
+                  <div key={item.href} className={cn("bg-(--dashboard-rail)", isLastUnpairedItem && "col-span-2")}>
                     {renderNavItem(item, isPathActive(item.href), section, true, !checkPermission(item.permission) || item.disabled)}
                   </div>
                 );
@@ -1378,12 +1378,6 @@ export function Sidebar({
       </div>
 
       {/* ── Currency selector ── */}
-      {!collapsed && (
-        <div className="border-t border-white/10 px-3 py-2 flex-shrink-0 bg-white/[0.025]">
-          <CurrencySelector />
-        </div>
-      )}
-
       {/* ── User section ── */}
       <div
         className={cn(
