@@ -3854,9 +3854,18 @@ export const usersApi = {
     limit?: number;
     role?: string;
     isActive?: boolean;
+    search?: string;
   }) => {
     const query = buildQuery(params as Record<string, any>);
-    return request<{ success: boolean; data: unknown }>(
+    return request<{
+      success: boolean;
+      data: unknown[];
+      count: number;
+      total: number;
+      pages: number;
+      currentPage: number;
+      summary: { total: number; active: number; inactive: number; administrators: number; roles: number };
+    }>(
       `/users${query ? `?${query}` : ""}`,
     );
   },
@@ -3866,10 +3875,10 @@ export const usersApi = {
     name: string;
     email: string;
     role?: string;
-    generateTemp?: boolean;
-    password?: string;
+    departmentId?: string | null;
+    branch?: string | null;
   }) =>
-    request<{ success: boolean; data: unknown; tempPassword?: string }>(
+    request<{ success: boolean; data: unknown; isNewUser?: boolean; invitationEmailSent?: boolean; message?: string }>(
       "/users",
       { method: "POST", body: user },
     ),
@@ -3877,9 +3886,10 @@ export const usersApi = {
     name?: string;
     email: string;
     role?: string;
+    departmentId?: string | null;
     companyId?: string;
   }) =>
-    request<{ success: boolean; data: unknown; isNewUser?: boolean; message?: string }>(
+    request<{ success: boolean; data: unknown; isNewUser?: boolean; invitationEmailSent?: boolean; message?: string }>(
       "/users/invite",
       { method: "POST", body: user },
     ),
@@ -3892,10 +3902,15 @@ export const usersApi = {
     request<{ success: boolean; message: string }>(`/users/${id}`, {
       method: "DELETE",
     }),
-  resetPassword: (id: string, body?: { newPassword?: string }) =>
-    request<{ success: boolean; message: string; tempPassword?: string }>(
+  resetPassword: (id: string) =>
+    request<{ success: boolean; message: string; emailSent: boolean }>(
       `/users/${id}/reset-password`,
-      { method: "POST", body },
+      { method: "POST" },
+    ),
+  resendInvitation: (id: string) =>
+    request<{ success: boolean; invitationEmailSent: boolean; message: string }>(
+      `/users/${id}/resend-invitation`,
+      { method: "POST" },
     ),
   toggleStatus: (id: string) =>
     request<{ success: boolean; data: unknown; message: string }>(

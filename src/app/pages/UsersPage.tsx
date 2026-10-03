@@ -1,7 +1,6 @@
 import { useState, useEffect, type ReactNode } from 'react';
-import { usersApi, accessApi } from '@/lib/api';
+import { usersApi, accessApi, departmentsApi, type Department } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate } from 'react-router';
 import { Layout } from '../layout/Layout';
 import {
   Users,
@@ -14,7 +13,6 @@ import {
   Send,
   Key,
   Mail,
-  Lock,
   Copy,
   CheckCircle,
   UserCheck,
@@ -53,6 +51,8 @@ interface UserRow {
   createdAt: string;
   lastLogin?: string;
   mustChangePassword?: boolean;
+  tempPassword?: boolean;
+  department?: string | null;
 }
 
 interface Role {
@@ -154,23 +154,27 @@ function getStatusBadgeClass(isActive: boolean) {
 }
 
 export default function UsersPage() {
-  const navigate = useNavigate();
-  const { isAdmin, companyId } = useAuth();
+  const { isAdmin } = useAuth();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageCount, setPageCount] = useState(1);
+  const [summary, setSummary] = useState({ total: 0, active: 0, inactive: 0, administrators: 0, roles: 0 });
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [selectedUser, setSelectedUser] = useState<UserRow | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [generatedPassword, setGeneratedPassword] = useState<string | null>(null);
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
   const [rolesLoading, setRolesLoading] = useState(true);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [departmentsLoading, setDepartmentsLoading] = useState(true);
 
   // Invite form
-  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'viewer' });
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', role: 'viewer', departmentId: '' });
 
   // Create form
-  const [createForm, setCreateForm] = useState({ name: '', email: '', role: 'viewer', password: '' });
+  const [createForm, setCreateForm] = useState({ name: '', email: '', role: 'viewer', departmentId: '' });
 
   // Helper to get role display label
   const roleLabel = (roleName: string) => {
@@ -180,12 +184,17 @@ export default function UsersPage() {
 
   // Change role
   const [newRole, setNewRole] = useState('');
+  const [newDepartmentId, setNewDepartmentId] = useState('');
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (page = currentPage) => {
     setLoading(true);
     try {
-      const response = await usersApi.getAll({ limit: 100 });
+      const response = await usersApi.getAll({ page, limit: 50, search: searchTerm });
       setUsers((response.data as UserRow[]) || []);
+      const pages = Math.max(1, response.pages || 1);
+      setPageCount(pages);
+      setCurrentPage(Math.min(response.currentPage || page, pages));
+      setSummary(response.summary || { total: response.total || 0, active: 0, inactive: 0, administrators: 0, roles: 0 });
     } catch (err: any) {
       toast.error(err.message || 'Failed to load users');
     } finally {
@@ -193,7 +202,10 @@ export default function UsersPage() {
     }
   };
 
-  useEffect(() => { fetchUsers(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchUsers(currentPage); }, 250);
+    return () => window.clearTimeout(timer);
+  }, [searchTerm, currentPage]);
 
   // Fetch available roles from API
   useEffect(() => {
@@ -217,32 +229,37 @@ export default function UsersPage() {
     fetchRoles();
   }, []);
 
-  const filteredUsers = users.filter(u =>
-    u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    u.role.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    departmentsApi.getAll({ isActive: true })
+      .then((response) => setDepartments(response.data || []))
+      .catch((err: any) => toast.error(err.message || 'Failed to load departments'))
+      .finally(() => setDepartmentsLoading(false));
+  }, []);
+
+  const filteredUsers = users;
 
   const closeDrawer = () => {
     setDrawerMode(null);
     setSelectedUser(null);
     setGeneratedPassword(null);
-    setInviteForm({ name: '', email: '', role: 'viewer' });
-    setCreateForm({ name: '', email: '', role: 'viewer', password: '' });
+    setInviteForm({ name: '', email: '', role: 'viewer', departmentId: '' });
+    setCreateForm({ name: '', email: '', role: 'viewer', departmentId: '' });
     setNewRole('');
+    setNewDepartmentId('');
   };
 
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading('invite');
     try {
-      await usersApi.invite({
+      const response = await usersApi.invite({
         name: inviteForm.name,
         email: inviteForm.email,
         role: inviteForm.role,
-        companyId: companyId || localStorage.getItem('companyId') || undefined,
+        departmentId: inviteForm.departmentId || null,
       });
-      toast.success(`Invite sent to ${inviteForm.email}`);
+      if (response.invitationEmailSent) toast.success(`Invitation sent to ${inviteForm.email}`);
+      else toast.warning('The user was added, but the invitation email could not be delivered. Check email settings and try again.');
       closeDrawer();
       fetchUsers();
     } catch (err: any) {
@@ -256,17 +273,15 @@ export default function UsersPage() {
     e.preventDefault();
     setActionLoading('create');
     try {
-      const response = await usersApi.create({
-        ...createForm,
-        generateTemp: !createForm.password,
+      const response = await usersApi.invite({
+        name: createForm.name,
+        email: createForm.email,
+        role: createForm.role,
+        departmentId: createForm.departmentId || null,
       });
-      if (response.tempPassword) {
-        setGeneratedPassword(response.tempPassword);
-        toast.success('User created with temporary password');
-      } else {
-        toast.success('User created successfully');
-        closeDrawer();
-      }
+      if (response.invitationEmailSent) toast.success(`Account created and setup invitation sent to ${createForm.email}`);
+      else toast.warning('The account was created, but the setup email could not be delivered. Check email settings and try again.');
+      closeDrawer();
       fetchUsers();
     } catch (err: any) {
       toast.error(err.message || 'Failed to create user');
@@ -279,8 +294,8 @@ export default function UsersPage() {
     if (!selectedUser || !newRole) return;
     setActionLoading('role');
     try {
-      await usersApi.update(selectedUser._id, { role: newRole });
-      toast.success(`Role changed to ${roleLabel(newRole)}`);
+      await usersApi.update(selectedUser._id, { role: newRole, department: newDepartmentId || null });
+      toast.success('User access details updated');
       closeDrawer();
       fetchUsers();
     } catch (err: any) {
@@ -305,17 +320,26 @@ export default function UsersPage() {
   };
 
   const handleResetPassword = async (user: UserRow) => {
-    setSelectedUser(user);
     setActionLoading('reset');
     try {
       const response = await usersApi.resetPassword(user._id);
-      if (response.tempPassword) {
-        setGeneratedPassword(response.tempPassword);
-        setDrawerMode('password');
-        toast.success('Password reset successfully');
-      }
+      if (response.emailSent) toast.success(`Secure password reset link sent to ${user.email}`);
+      else toast.error('Password reset email could not be delivered');
     } catch (err: any) {
       toast.error(err.message || 'Failed to reset password');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResendInvitation = async (user: UserRow) => {
+    setActionLoading(`invite-${user._id}`);
+    try {
+      const response = await usersApi.resendInvitation(user._id);
+      if (response.invitationEmailSent) toast.success(`Password setup link sent to ${user.email}`);
+      else toast.error(response.message || 'Invitation email could not be delivered');
+    } catch (err: any) {
+      toast.error(err.message || 'Could not resend invitation');
     } finally {
       setActionLoading(null);
     }
@@ -329,6 +353,7 @@ export default function UsersPage() {
   const openChangeRole = (user: UserRow) => {
     setSelectedUser(user);
     setNewRole(user.role);
+    setNewDepartmentId(user.department || '');
     setDrawerMode('role');
   };
 
@@ -346,15 +371,15 @@ export default function UsersPage() {
     );
   }
 
-  const totalUsers = users.length;
-  const activeCount = users.filter((u) => u.isActive).length;
-  const inactiveCount = users.filter((u) => !u.isActive).length;
-  const adminCount = users.filter((u) => u.role === 'admin').length;
-  const roleCount = new Set(users.map((u) => u.role)).size;
+  const totalUsers = summary.total;
+  const activeCount = summary.active;
+  const inactiveCount = summary.inactive;
+  const adminCount = summary.administrators;
+  const roleCount = summary.roles;
 
   return (
     <Layout>
-      <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
+      <div className="min-h-full bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[1600px] 2xl:max-w-[2200px] space-y-6">
           {/* Hero Header */}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
@@ -381,21 +406,13 @@ export default function UsersPage() {
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
                     <Mail className="h-4 w-4" />
-                    <span className="hidden sm:inline">Invite User</span>
-                    <span className="sm:hidden">Invite</span>
-                  </Button>
-                  <Button
-                    onClick={() => setDrawerMode('create')}
-                    className="h-10 gap-2 bg-blue-600 hover:bg-blue-700"
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Create User</span>
-                    <span className="sm:hidden">Create</span>
+                    <span className="hidden sm:inline">Add Team Member</span>
+                    <span className="sm:hidden">Add user</span>
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={fetchUsers}
+                    onClick={() => void fetchUsers(currentPage)}
                     disabled={loading}
                     className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
                   >
@@ -474,7 +491,7 @@ export default function UsersPage() {
             <Input
               placeholder="Search by name, email, or role..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="pl-10 bg-white dark:bg-slate-950 dark:text-white dark:border-slate-800"
             />
           </div>
@@ -497,6 +514,7 @@ export default function UsersPage() {
                     <TableHead className="text-slate-500 dark:text-slate-400">Name</TableHead>
                     <TableHead className="text-slate-500 dark:text-slate-400">Email</TableHead>
                     <TableHead className="text-slate-500 dark:text-slate-400">Role</TableHead>
+                    <TableHead className="text-slate-500 dark:text-slate-400">Department</TableHead>
                     <TableHead className="text-slate-500 dark:text-slate-400">Status</TableHead>
                     <TableHead className="text-slate-500 dark:text-slate-400">Joined</TableHead>
                     <TableHead className="text-right text-slate-500 dark:text-slate-400">Actions</TableHead>
@@ -509,6 +527,7 @@ export default function UsersPage() {
                         <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
@@ -517,7 +536,7 @@ export default function UsersPage() {
                   ) : filteredUsers.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="h-32 text-center text-slate-500 dark:text-slate-400"
                       >
                         <div className="flex flex-col items-center justify-center gap-2">
@@ -543,7 +562,7 @@ export default function UsersPage() {
                               </p>
                               {user.mustChangePassword && (
                                 <p className="text-xs text-amber-600 dark:text-amber-400">
-                                  Must change password
+                                  {user.tempPassword ? 'Invitation pending' : 'Password update required'}
                                 </p>
                               )}
                             </div>
@@ -560,6 +579,9 @@ export default function UsersPage() {
                             {roleLabel(user.role)}
                           </Badge>
                         </TableCell>
+                        <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                          {departments.find((department) => department._id === user.department)?.name || '—'}
+                        </TableCell>
                         <TableCell>
                           <Badge
                             variant="outline"
@@ -573,11 +595,23 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
+                            {user.mustChangePassword && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-slate-500 hover:text-teal-700 dark:text-slate-400 dark:hover:text-teal-300"
+                                title="Resend password setup invitation"
+                                onClick={() => handleResendInvitation(user)}
+                                disabled={actionLoading === `invite-${user._id}`}
+                              >
+                                {actionLoading === `invite-${user._id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-                              title="Change Role"
+                                title="Change role or department"
                               onClick={() => openChangeRole(user)}
                             >
                               <Shield className="h-4 w-4" />
@@ -618,6 +652,16 @@ export default function UsersPage() {
               </Table>
             </CardContent>
           </Card>
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 sm:flex-row sm:items-center sm:justify-between">
+            <p>
+              {totalUsers === 0 ? 'No team members found' : `Showing ${(currentPage - 1) * 50 + 1}–${Math.min(currentPage * 50, totalUsers)} of ${totalUsers} team members`}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} disabled={loading || currentPage <= 1}>Previous</Button>
+              <span className="min-w-20 text-center">Page {currentPage} of {pageCount}</span>
+              <Button variant="outline" size="sm" onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))} disabled={loading || currentPage >= pageCount}>Next</Button>
+            </div>
+          </div>
         </div>
 
         {/* ── Drawer ──────────────────────────────────────────────── */}
@@ -672,6 +716,7 @@ export default function UsersPage() {
                         required
                         className="dark:bg-slate-900 dark:text-white dark:border-slate-700"
                       />
+                      <p className="text-xs leading-5 text-slate-500 dark:text-slate-400">For employee self-service and payslips, use the same email address as the employee record.</p>
                     </div>
                     <div className="space-y-2">
                       <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -694,6 +739,17 @@ export default function UsersPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                      <Select value={inviteForm.departmentId || 'none'} onValueChange={(v) => setInviteForm({ ...inviteForm, departmentId: v === 'none' ? '' : v })} disabled={departmentsLoading}>
+                        <SelectTrigger className="dark:bg-slate-900 dark:text-white dark:border-slate-700"><SelectValue placeholder="Choose a department" /></SelectTrigger>
+                        <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
+                          <SelectItem value="none">No department</SelectItem>
+                          {departments.map((department) => <SelectItem key={department._id} value={department._id}>{department.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">New team members receive a secure, one-time password setup link by email. Existing accounts keep their current password.</p>
                     <div className="pt-4">
                       <Button
                         type="submit"
@@ -722,7 +778,7 @@ export default function UsersPage() {
                         Create User
                       </h2>
                       <p className="text-sm text-slate-500 dark:text-slate-400">
-                        Set up credentials for a new team member
+                        Create an account and send a secure setup invitation
                       </p>
                     </div>
                     <Button
@@ -782,20 +838,16 @@ export default function UsersPage() {
                       </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-1 text-sm font-medium text-slate-700 dark:text-slate-300">
-                        <Lock className="h-3 w-3" /> Password
-                      </Label>
-                      <Input
-                        type="password"
-                        value={createForm.password}
-                        onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                        placeholder="Leave blank to auto-generate"
-                        className="dark:bg-slate-900 dark:text-white dark:border-slate-700"
-                      />
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        If left blank, a temporary password will be generated
-                      </p>
+                      <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                      <Select value={createForm.departmentId || 'none'} onValueChange={(v) => setCreateForm({ ...createForm, departmentId: v === 'none' ? '' : v })} disabled={departmentsLoading}>
+                        <SelectTrigger className="dark:bg-slate-900 dark:text-white dark:border-slate-700"><SelectValue placeholder="Choose a department" /></SelectTrigger>
+                        <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
+                          <SelectItem value="none">No department</SelectItem>
+                          {departments.map((department) => <SelectItem key={department._id} value={department._id}>{department.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
                     </div>
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-5 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">The user will set their own password from an expiring email link. Passwords are never sent by email.</p>
                     {!generatedPassword && (
                       <div className="pt-4">
                         <Button
@@ -808,7 +860,7 @@ export default function UsersPage() {
                           ) : (
                             <UserPlus className="h-4 w-4" />
                           )}
-                          Create User
+                          Create User & Send Setup Link
                         </Button>
                       </div>
                     )}
@@ -856,7 +908,7 @@ export default function UsersPage() {
                     <div>
                       <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-950 dark:text-white">
                         <Shield className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-                        Change Role
+                        Update Access
                       </h2>
                       <p className="text-sm text-slate-500 dark:text-slate-400">
                         {selectedUser.name}
@@ -904,15 +956,25 @@ export default function UsersPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">Department</Label>
+                      <Select value={newDepartmentId || 'none'} onValueChange={(v) => setNewDepartmentId(v === 'none' ? '' : v)} disabled={departmentsLoading}>
+                        <SelectTrigger className="dark:bg-slate-900 dark:text-white dark:border-slate-700"><SelectValue placeholder="Choose a department" /></SelectTrigger>
+                        <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
+                          <SelectItem value="none">No department</SelectItem>
+                          {departments.map((department) => <SelectItem key={department._id} value={department._id}>{department.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Button
                       onClick={handleChangeRole}
                       className="w-full bg-blue-600 hover:bg-blue-700"
-                      disabled={actionLoading === 'role' || newRole === selectedUser.role}
+                      disabled={actionLoading === 'role' || (newRole === selectedUser.role && newDepartmentId === (selectedUser.department || ''))}
                     >
                       {actionLoading === 'role' ? (
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       ) : null}
-                      Update Role
+                      Save Access Details
                     </Button>
                   </div>
                 </>
