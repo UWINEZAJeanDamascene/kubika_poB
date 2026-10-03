@@ -1780,6 +1780,10 @@
   backdrop-filter: blur(18px);
 }
 
+.app-bottom-navigation--six-items {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 /* Keep the floating assistant above the shared phone/tablet bottom navigation. */
 .app-ai-chat-toggle {
   bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));

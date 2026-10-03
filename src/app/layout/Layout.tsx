@@ -23,7 +23,6 @@ interface LayoutProps {
 }
 
 const HEADER_NAV_LINKS = [
-  { href: '/intelligence', labelKey: 'nav.aiIntelligence', featureKey: 'ai_assistant', icon: Sparkles },
   { href: '/dashboard', labelKey: 'nav.dashboard', featureKey: 'inventory', icon: LayoutDashboard },
 ];
 
@@ -53,13 +52,13 @@ export function Layout({ children }: LayoutProps) {
   const [isLg, setIsLg] = useState(false);
   const hasEnterpriseAI = Boolean(company?.subscription_plan === 'enterprise' || company?.feature_access?.ai_assistant);
   const effectiveChatOpen = chatOpen && hasEnterpriseAI;
-
   const hasHeaderFeatureAccess = (featureKey: string) => {
     const featureAccess = company?.feature_access;
     if (!featureAccess || typeof featureAccess !== 'object') return !company;
     if (Object.keys(featureAccess).length === 0) return true;
     return !Object.prototype.hasOwnProperty.call(featureAccess, featureKey) || Boolean(featureAccess[featureKey]);
   };
+  const showIntelligenceInBottomNav = hasHeaderFeatureAccess('ai_assistant');
 
   const renderHeaderNavigation = (compact = false) => (
     <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-1">
@@ -300,7 +299,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
 
         {/* App-style navigation stays within thumb reach on phones and tablets. */}
-        <nav className="app-bottom-navigation lg:hidden" aria-label="Main navigation">
+        <nav className={`app-bottom-navigation ${showIntelligenceInBottomNav ? 'app-bottom-navigation--six-items' : ''} lg:hidden`} aria-label="Main navigation">
           <Link to="/dashboard" aria-current={location.pathname === '/dashboard' ? 'page' : undefined} className={`app-bottom-navigation__item ${location.pathname === '/dashboard' ? 'is-active' : ''}`}>
             <LayoutDashboard aria-hidden="true" />
             <span>{t('nav.dashboardShort', { defaultValue: 'Home' })}</span>
@@ -317,6 +316,12 @@ export function Layout({ children }: LayoutProps) {
             <PieChart aria-hidden="true" />
             <span>{t('nav.financeShort', { defaultValue: 'Finance' })}</span>
           </Link>
+          {showIntelligenceInBottomNav && (
+            <Link to="/intelligence" aria-current={location.pathname === '/intelligence' || location.pathname.startsWith('/intelligence/') ? 'page' : undefined} className={`app-bottom-navigation__item ${location.pathname === '/intelligence' || location.pathname.startsWith('/intelligence/') ? 'is-active' : ''}`} aria-label={t('nav.aiIntelligence', { defaultValue: 'AI Intelligence' })}>
+              <Sparkles aria-hidden="true" />
+              <span>{t('nav.aiShort', { defaultValue: 'AI' })}</span>
+            </Link>
+          )}
           <button type="button" className="app-bottom-navigation__item" onClick={() => setCurrencyOpen(true)} aria-label={t('common.currency', { defaultValue: 'Currency' })} aria-expanded={currencyOpen}>
             <Coins aria-hidden="true" />
             <span>{t('common.currency', { defaultValue: 'Currency' })}</span>
