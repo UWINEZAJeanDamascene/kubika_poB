@@ -2,7 +2,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Sheet, SheetContent, SheetTitle } from '@/app/components/ui/sheet';
 import { useIsMobile } from '@/app/components/ui/use-mobile';
-import { Menu, Sun, Moon, Home, Sparkles, Search, LayoutDashboard, Boxes, TrendingUp, PieChart, Coins } from 'lucide-react';
+import { Menu, Sun, Moon, Home, Sparkles, Search, LayoutDashboard, Boxes, TrendingUp, PieChart, Coins, X } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Link, useNavigate, useLocation } from 'react-router';
@@ -38,6 +38,7 @@ export function Layout({ children }: LayoutProps) {
   });
   const [searchOpen, setSearchOpen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+  const [landscapeNavigationOpen, setLandscapeNavigationOpen] = useState(false);
   useGlobalSearchShortcut(setSearchOpen);
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
@@ -102,6 +103,7 @@ export function Layout({ children }: LayoutProps) {
   );
 
   useEffect(() => {
+    let wasLandscape = window.matchMedia('(orientation: landscape)').matches;
     const isTouchTablet = () => {
       if (window.innerWidth > 1366) return false;
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
@@ -112,6 +114,11 @@ export function Layout({ children }: LayoutProps) {
         isStandalone;
     };
     const onChange = () => {
+      const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+      if (isLandscape && !wasLandscape) {
+        setLandscapeNavigationOpen(false);
+      }
+      wasLandscape = isLandscape;
       setIsLg(window.innerWidth >= 1024 && !isTouchTablet());
       const nextHeight = Math.round(window.visualViewport?.height || window.innerHeight);
       setViewportHeight((current) => current === nextHeight ? current : nextHeight);
@@ -145,6 +152,12 @@ export function Layout({ children }: LayoutProps) {
   }, [hasEnterpriseAI, setChatOpen]);
 
   useEffect(() => {
+    if (window.matchMedia('(orientation: landscape)').matches) {
+      setLandscapeNavigationOpen(false);
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
     try {
       localStorage.setItem('sidebar-collapsed', String(sidebarCollapsed));
     } catch (e) {}
@@ -166,7 +179,7 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div
-      className={`app-shell relative flex h-dvh min-h-0 overflow-hidden ${!isLg ? 'app-touch-shell' : ''}`}
+      className={`app-shell relative flex h-dvh min-h-0 overflow-hidden ${!isLg ? 'app-touch-shell' : ''} ${landscapeNavigationOpen ? 'app-landscape-navigation-open' : ''}`}
       style={{
         height: viewportHeight ? `${viewportHeight}px` : '100dvh',
         paddingRight: isLg && effectiveChatOpen ? chatWidth : undefined,
@@ -174,6 +187,17 @@ export function Layout({ children }: LayoutProps) {
     >
       {/* Full-app background */}
       <div className="absolute inset-0 bg-background" />
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="app-landscape-navigation-toggle fixed left-3 top-[max(0.75rem,env(safe-area-inset-top,0px))] z-[60] h-10 w-10 rounded-full border-border bg-card shadow-lg"
+        onClick={() => setLandscapeNavigationOpen(true)}
+        aria-label={t('nav.showNavigation', { defaultValue: 'Show navigation' })}
+        title={t('nav.showNavigation', { defaultValue: 'Show navigation' })}
+      >
+        <Menu className="h-4 w-4" />
+      </Button>
       {/* Desktop Sidebar - always visible on lg screens */}
       <div className={`app-desktop-sidebar hidden lg:block relative z-10 shrink-0 transition-[width] duration-300 ${sidebarCollapsed ? 'w-[72px]' : 'w-[340px]'}`}>
         <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
@@ -211,8 +235,19 @@ export function Layout({ children }: LayoutProps) {
             size="icon"
             onClick={() => setSidebarOpen(true)}
             className="h-10 w-10 min-h-10 min-w-10 flex-shrink-0 rounded-xl"
+            aria-label={t('nav.openMenu', { defaultValue: 'Open menu' })}
           >
             <Menu className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLandscapeNavigationOpen(false)}
+            className="app-landscape-navigation-close h-10 w-10 min-h-10 min-w-10 flex-shrink-0 rounded-xl"
+            aria-label={t('nav.hideNavigation', { defaultValue: 'Hide navigation' })}
+            title={t('nav.hideNavigation', { defaultValue: 'Hide navigation' })}
+          >
+            <X className="h-4 w-4" />
           </Button>
           <div className="flex items-center gap-2">
             <div aria-label="KS" className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[10px] font-extrabold tracking-tight text-primary-foreground">
