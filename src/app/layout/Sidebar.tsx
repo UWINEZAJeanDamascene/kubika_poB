@@ -636,6 +636,14 @@ const financeNav: NavSection = {
       moduleNames: ["Payroll runs"],
     },
     {
+      nameKey: "Payroll exceptions",
+      href: "/payroll-exceptions",
+      icon: AlertTriangle,
+      permission: "payroll:read",
+      featureKey: "payroll",
+      moduleNames: ["Payroll runs"],
+    },
+    {
       nameKey: "nav.accountingPeriods",
       href: "/periods",
       icon: Calendar,
@@ -1340,6 +1348,22 @@ export function Sidebar({
         {visibleSections.map(({ section, items }) => (
           <div key={section.labelKey}>{renderSection(section, items)}</div>
         ))}
+
+        {user && (
+          <Link
+            to="/my-payroll"
+            onClick={handleNavigate}
+            className={cn(
+              "group mt-2 flex items-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-colors",
+              collapsed && "mx-auto h-11 w-11 justify-center px-0",
+              isPathActive("/my-payroll") ? "bg-cyan-500/10 text-cyan-300" : "text-slate-300 hover:bg-white/5 hover:text-white",
+            )}
+            title={collapsed ? "My payslips" : undefined}
+          >
+            <FileText className="h-4 w-4 flex-shrink-0" />
+            {!collapsed && <><span>My payslips</span><ArrowRight className="ml-auto h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" /></>}
+          </Link>
+        )}
 
         {/* Onboarding Guide */}
         <Link

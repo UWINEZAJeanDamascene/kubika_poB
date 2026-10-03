@@ -7851,6 +7851,11 @@ export interface PayrollAuditEvent {
 }
 
 export const payrollApi = {
+  getMyPayroll: () => request<{ success: boolean; data: {
+    employee: { employeeId: string; firstName: string; lastName: string; email: string; phone?: string | null; department?: string | null; position?: string | null; employmentType?: string | null; hireDate?: string | null; taxStatus?: string | null; nationalIdMasked?: string | null; tinMasked?: string | null; rssbRegistrationMasked?: string | null; bankName?: string | null; bankAccountMasked?: string | null; currentPay: Record<string, number | string> };
+    payslips: Array<{ id: string; period: { month?: number; monthName?: string; year?: number }; payPeriodStart?: string; payPeriodEnd?: string; status: string; payment: { status: string; paymentDate?: string | null; paymentMethod?: string | null; reference?: string | null }; earnings: Record<string, number>; deductions: Record<string, number>; employerContributions: Record<string, number>; netPay: number }>;
+    count: number;
+  } }>("/payroll/me"),
   getAll: (params?: {
     month?: number;
     year?: number;
@@ -8282,6 +8287,8 @@ export interface PayrollRunPreview {
 }
 
 export const payrollRunApi = {
+  getOperationalExceptions: (params?: { severity?: string; type?: string; from?: string; to?: string; limit?: number }) =>
+    request<{ success: boolean; generated_at: string; total: number; summary: { critical: number; warning: number; overdue: number }; items: Array<{ id: string; status: string; type: string; severity: "critical" | "warning" | "info"; title: string; description: string; run_id?: string; payroll_id?: string; reference_no?: string; employee_name?: string; due_date?: string; amount?: number | null }> }>(`/payroll-runs/operations/exceptions${buildQuery(params as Record<string, any>) ? `?${buildQuery(params as Record<string, any>)}` : ""}`),
   getAll: (params?: {
     status?: string;
     startDate?: string;

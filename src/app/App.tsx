@@ -343,6 +343,8 @@ const PayrollRunDetailPage = lazy(
 const PayrollGenerationPage = lazy(
   () => import("./pages/payroll/PayrollGenerationPage"),
 );
+const MyPayslipsPage = lazy(() => import("./pages/payroll/MyPayslipsPage"));
+const PayrollExceptionsPage = lazy(() => import("./pages/payroll/PayrollExceptionsPage"));
 const JournalEntriesPage = lazy(
   () => import("./pages/journal/JournalEntriesPage"),
 );
@@ -1454,6 +1456,8 @@ function AppRoutes() {
           />
 
           {/* Payroll routes */}
+          <Route path="/my-payroll" element={<ProtectedRoute><ErrorBoundary><MyPayslipsPage /></ErrorBoundary></ProtectedRoute>} />
+          <Route path="/payroll-exceptions" element={<ProtectedRoute permission="payroll:read"><ErrorBoundary><PayrollExceptionsPage /></ErrorBoundary></ProtectedRoute>} />
           <Route
             path="/payroll"
             element={
