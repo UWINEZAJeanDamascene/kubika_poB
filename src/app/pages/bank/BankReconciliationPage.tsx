@@ -211,7 +211,7 @@ export default function BankReconciliationPage({ embedded = false, accountId, ac
         <CardHeader>
           <CardTitle className="text-base">Create Session</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-5">
+        <CardContent className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           <Input className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-50" type="date" value={form.periodStart} onChange={(e) => setForm({ ...form, periodStart: e.target.value })} />
           <Input className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-50" type="date" value={form.periodEnd} onChange={(e) => setForm({ ...form, periodEnd: e.target.value })} />
           <Input className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-50" type="number" placeholder="Opening statement balance" value={form.openingStatementBalance} onChange={(e) => setForm({ ...form, openingStatementBalance: e.target.value })} />

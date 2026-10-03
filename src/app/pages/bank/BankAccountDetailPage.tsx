@@ -867,7 +867,7 @@ export default function BankAccountDetailPage() {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4 h-11 bg-slate-100 p-1 dark:bg-slate-900">
+            <TabsList className="mb-4 flex h-auto w-full justify-start overflow-x-auto bg-slate-100 p-1 dark:bg-slate-900 [&>[data-slot=tabs-trigger]]:flex-none sm:w-auto">
               <TabsTrigger
                 value="transactions"
                 className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-800 dark:text-slate-300 dark:data-[state=active]:text-white"
@@ -986,7 +986,7 @@ export default function BankAccountDetailPage() {
                   </div>
 
                   {/* Transactions table */}
-                  <div className="space-y-2 md:hidden">
+                  <div className="space-y-2 xl:hidden">
                     {transactions.map((tx) => {
                       const inflow = isBankInflow(tx.type);
                       return (
@@ -1008,7 +1008,7 @@ export default function BankAccountDetailPage() {
                     })}
                     {!transactions.length && <p className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-500 dark:border-slate-700">{t("bankAccount.noTransactions", "No transactions found")}</p>}
                   </div>
-                  <div className="hidden overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 md:block">
+                  <div className="hidden overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-800 xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900/50 dark:hover:bg-slate-900/50">

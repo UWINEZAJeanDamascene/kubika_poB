@@ -1168,15 +1168,15 @@ export default function PettyCashListPage() {
 
                     {/* Primary Actions */}
                     <div className="flex gap-2 flex-wrap">
-                      <Button variant="outline" size="sm" className="flex-1 gap-1 h-8 min-w-[70px] dark:border-slate-700 dark:text-slate-200" onClick={() => openTopUpDialog(fund)}>
+                      <Button variant="outline" size="sm" className="min-h-11 flex-1 gap-1 min-w-[70px] dark:border-slate-700 dark:text-slate-200" onClick={() => openTopUpDialog(fund)}>
                         <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
                         Top Up
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 gap-1 h-8 min-w-[70px] dark:border-slate-700 dark:text-slate-200" onClick={() => openExpenseDialog(fund)}>
+                      <Button variant="outline" size="sm" className="min-h-11 flex-1 gap-1 min-w-[70px] dark:border-slate-700 dark:text-slate-200" onClick={() => openExpenseDialog(fund)}>
                         <TrendingDown className="h-3.5 w-3.5 text-red-500" />
                         Expense
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 gap-1 h-8 min-w-[80px] dark:border-slate-700 dark:text-slate-200" onClick={() => openReplenishDialog(fund)}>
+                      <Button variant="outline" size="sm" className="min-h-11 flex-1 gap-1 min-w-[80px] dark:border-slate-700 dark:text-slate-200" onClick={() => openReplenishDialog(fund)}>
                         <RotateCcw className="h-3.5 w-3.5 text-blue-500" />
                         Replenish
                       </Button>
@@ -1187,20 +1187,20 @@ export default function PettyCashListPage() {
 
                     {/* Advanced Actions */}
                     <div className="flex gap-2 flex-wrap border-t border-slate-100 pt-3 dark:border-slate-800">
-                      <Button variant="outline" size="sm" className="flex-1 gap-1 h-8 min-w-[90px] dark:border-slate-700 dark:text-slate-200" onClick={() => openCashCountDialog(fund)}>
+                      <Button variant="outline" size="sm" className="min-h-11 flex-1 gap-1 min-w-[90px] dark:border-slate-700 dark:text-slate-200" onClick={() => openCashCountDialog(fund)}>
                         <ClipboardCheck className="h-3.5 w-3.5" />
                         Cash Count
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 gap-1 h-8 min-w-[100px] dark:border-slate-700 dark:text-slate-200" onClick={() => openReconciliationsDialog(fund)}>
+                      <Button variant="outline" size="sm" className="min-h-11 flex-1 gap-1 min-w-[100px] dark:border-slate-700 dark:text-slate-200" onClick={() => openReconciliationsDialog(fund)}>
                         <RefreshCw className="h-3.5 w-3.5" />
                         Reconciliations
                       </Button>
-                      <Button variant="outline" size="sm" className="flex-1 gap-1 h-8 min-w-[100px] dark:border-slate-700 dark:text-slate-200" onClick={() => openReplenishmentsDialog(fund)}>
+                      <Button variant="outline" size="sm" className="min-h-11 flex-1 gap-1 min-w-[100px] dark:border-slate-700 dark:text-slate-200" onClick={() => openReplenishmentsDialog(fund)}>
                         <ArrowUpCircle className="h-3.5 w-3.5" />
                         Replenishments
                       </Button>
                       {fund.imprestMode && (
-                        <Button variant="outline" size="sm" className="flex-1 gap-1 h-8 min-w-[90px] dark:border-slate-700 dark:text-slate-200" onClick={() => openImprestDialog(fund)}>
+                        <Button variant="outline" size="sm" className="min-h-11 flex-1 gap-1 min-w-[90px] dark:border-slate-700 dark:text-slate-200" onClick={() => openImprestDialog(fund)}>
                           <Calculator className="h-3.5 w-3.5" />
                           Imprest
                         </Button>

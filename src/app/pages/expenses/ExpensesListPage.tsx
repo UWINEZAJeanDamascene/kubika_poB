@@ -584,8 +584,8 @@ export default function ExpensesListPage() {
           {/* Filters */}
           <Card className="mb-6 overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
-                <div className="relative col-span-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                <div className="relative min-w-0 sm:col-span-2 xl:col-span-2">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                   <Input
                     placeholder="Search expenses..."

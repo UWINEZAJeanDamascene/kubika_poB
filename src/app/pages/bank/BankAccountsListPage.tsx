@@ -949,7 +949,7 @@ export default function BankAccountsListPage() {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex min-w-0 gap-1 overflow-x-auto rounded-lg border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900 [&>button]:min-h-11 [&>button]:min-w-max [&>button]:px-3">
               <button
                 onClick={() => setActiveTab("accounts")}
                 className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
@@ -1289,7 +1289,7 @@ export default function BankAccountsListPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => navigate(`/bank-accounts/${account._id}`)}
-                            className="h-8 flex-1 gap-1 text-xs dark:border-slate-700 dark:text-slate-200"
+                            className="min-h-11 flex-1 gap-1 text-xs dark:border-slate-700 dark:text-slate-200"
                           >
                             <Eye className="h-3.5 w-3.5" />
                             View
@@ -1300,7 +1300,7 @@ export default function BankAccountsListPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => navigate(`/bank-accounts/${account._id}/reconcile`)}
-                                className="h-8 w-8 dark:text-slate-300 dark:hover:bg-slate-800"
+                                className="h-11 w-11 dark:text-slate-300 dark:hover:bg-slate-800"
                               >
                                 <RefreshCw className="h-3.5 w-3.5" />
                               </Button>
@@ -1315,7 +1315,7 @@ export default function BankAccountsListPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => navigate(`/bank-accounts/${account._id}/edit`)}
-                                className="h-8 w-8 dark:text-slate-300 dark:hover:bg-slate-800"
+                                className="h-11 w-11 dark:text-slate-300 dark:hover:bg-slate-800"
                               >
                                 <Edit className="h-3.5 w-3.5" />
                               </Button>
@@ -1341,7 +1341,7 @@ export default function BankAccountsListPage() {
                                     bankAccountsApi.delete(account._id).then(() => fetchAccounts());
                                   }
                                 }}
-                                className="h-8 w-8 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-950/30"
+                                className="h-11 w-11 text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-950/30"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
