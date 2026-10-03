@@ -45,6 +45,8 @@ import {
   RotateCcw,
   DoorOpen,
   DoorClosed,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { salesLegacyApi, warehouseApi, PosProduct, bankAccountsApi, invoicesApi, creditNotesApi, tillApi } from '@/lib/api';
 import { useFormatCurrency } from '@/lib/currencyUtils';
@@ -122,6 +124,15 @@ interface PosInvoice {
   }>;
 }
 
+interface PosProductsPage {
+  products: PosProduct[];
+  page: number;
+  total: number;
+  pages: number;
+}
+
+const POS_PRODUCTS_PAGE_SIZE = 10;
+
 const toNumericAmount = (val: number | any): number => {
   if (typeof val === 'object' && val?.$numberDecimal) {
     return parseFloat(val.$numberDecimal);
@@ -141,6 +152,7 @@ export default function SalesLegacyPage() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [productPage, setProductPage] = useState(1);
   const [selectedClientId, setSelectedClientId] = useState<string>('walk-in');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'bank_transfer' | 'mobile_money' | 'cheque'>('cash');
@@ -201,21 +213,30 @@ export default function SalesLegacyPage() {
   }, [selectedWarehouseId, warehouses]);
 
   const productsQuery = useQuery({
-    queryKey: ['pos', 'products', { warehouseId: selectedWarehouseId, search: debouncedSearchQuery || undefined }],
-    queryFn: async (): Promise<PosProduct[]> => {
+    queryKey: ['pos', 'products', { warehouseId: selectedWarehouseId, search: debouncedSearchQuery || undefined, page: productPage }],
+    queryFn: async (): Promise<PosProductsPage> => {
       const response = await salesLegacyApi.getProducts({
         search: debouncedSearchQuery || undefined,
         warehouseId: selectedWarehouseId,
-        limit: 50,
+        limit: POS_PRODUCTS_PAGE_SIZE,
+        page: productPage,
       });
       if (!response.success) throw new Error('Failed to load products');
-      return Array.isArray(response.data) ? response.data : [];
+      return {
+        products: Array.isArray(response.data) ? response.data : [],
+        page: response.pagination?.page ?? productPage,
+        total: response.pagination?.total ?? response.total ?? response.count ?? 0,
+        pages: response.pagination?.pages ?? response.pages ?? 0,
+      };
     },
     enabled: Boolean(selectedWarehouseId),
     // The POS transacts against this stock immediately. Always revalidate it.
     staleTime: TRANSACTIONAL_STALE_TIME,
   });
-  const products = productsQuery.data ?? [];
+  const products = productsQuery.data?.products ?? [];
+  const visibleProductPage = productsQuery.data?.page ?? productPage;
+  const totalProducts = productsQuery.data?.total ?? 0;
+  const totalProductPages = productsQuery.data?.pages ?? 0;
   const isLoading = productsQuery.isPending;
 
   const clientsQuery = useClientPicker();
@@ -293,6 +314,7 @@ export default function SalesLegacyPage() {
     const code = extractCodeFromScan(rawValue);
     if (!code || !selectedWarehouseId) return;
 
+    setProductPage(1);
     setSearchQuery(code);
     try {
       const response = await salesLegacyApi.getProducts({
@@ -713,6 +735,10 @@ export default function SalesLegacyPage() {
         if (old && typeof old === 'object' && Array.isArray((old as { items?: unknown[] }).items)) {
           return { ...(old as object), items: (old as { items: unknown[] }).items.map(apply) };
         }
+        if (old && typeof old === 'object' && Array.isArray((old as PosProductsPage).products)) {
+          const result = old as PosProductsPage;
+          return { ...result, products: result.products.map(apply) };
+        }
         return old;
       });
 
@@ -998,7 +1024,13 @@ export default function SalesLegacyPage() {
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
                     <div className="flex-1">
                       <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Warehouse</label>
-                      <Select value={selectedWarehouseId} onValueChange={setSelectedWarehouseId}>
+                      <Select
+                        value={selectedWarehouseId}
+                        onValueChange={(warehouseId) => {
+                          setSelectedWarehouseId(warehouseId);
+                          setProductPage(1);
+                        }}
+                      >
                         <SelectTrigger className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700">
                           <SelectValue placeholder="Select warehouse" />
                         </SelectTrigger>
@@ -1014,7 +1046,10 @@ export default function SalesLegacyPage() {
                       <Input
                         placeholder="Search product name, SKU, or barcode..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setProductPage(1);
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') findScannedProduct(searchQuery);
                         }}
@@ -1079,8 +1114,8 @@ export default function SalesLegacyPage() {
                   <CardTitle className="flex items-center gap-2 text-base font-semibold text-slate-950 dark:text-white">
                     <Package className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                     Products
-                    {products.length > 0 && (
-                      <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">({products.length})</span>
+                    {totalProducts > 0 && (
+                      <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">({totalProducts})</span>
                     )}
                   </CardTitle>
                 </CardHeader>
@@ -1127,6 +1162,40 @@ export default function SalesLegacyPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {!isLoading && totalProducts > 0 && (
+                    <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4 dark:border-slate-800">
+                      <span className="text-sm text-slate-600 dark:text-slate-300" aria-live="polite">
+                        Showing {(visibleProductPage - 1) * POS_PRODUCTS_PAGE_SIZE + 1}–{(visibleProductPage - 1) * POS_PRODUCTS_PAGE_SIZE + products.length} of {totalProducts} products
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProductPage(Math.max(1, visibleProductPage - 1))}
+                          disabled={visibleProductPage <= 1 || productsQuery.isFetching}
+                          aria-label="Previous products page"
+                        >
+                          <ChevronLeft className="mr-1 h-4 w-4" />
+                          Previous
+                        </Button>
+                        <span className="min-w-[5rem] text-center text-sm text-slate-600 dark:text-slate-300">
+                          Page {visibleProductPage} of {Math.max(1, totalProductPages)}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setProductPage(Math.min(totalProductPages, visibleProductPage + 1))}
+                          disabled={visibleProductPage >= totalProductPages || productsQuery.isFetching}
+                          aria-label="Next products page"
+                        >
+                          Next
+                          <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>
@@ -1507,4 +1576,3 @@ export default function SalesLegacyPage() {
     </Layout>
   );
 }
-

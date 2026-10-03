@@ -2487,9 +2487,17 @@ export const salesLegacyApi = {
     warehouseId?: string;
     category?: string;
     limit?: number;
+    page?: number;
   }) => {
     const query = buildQuery(params as Record<string, any>);
-    return request<{ success: boolean; count: number; data: PosProduct[] }>(
+    return request<{
+      success: boolean;
+      count: number;
+      total: number;
+      pages: number;
+      pagination: PaginationMeta;
+      data: PosProduct[];
+    }>(
       `/sales-legacy/products${query ? `?${query}` : ""}`,
     );
   },
@@ -13006,7 +13014,5 @@ export const projectsApi = {
       };
     }>("/projects/statistics"),
 };
-
-
 
 
