@@ -70,7 +70,7 @@ export default function MonthlyBankReconciliationPage() {
 
   return (
     <Layout>
-      <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 print:p-0">
+      <div className="monthly-report-detail p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6 print:p-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
           <div className="flex items-center gap-2 sm:gap-3">
             <Button variant="outline" size="icon" onClick={() => navigate('/reports/monthly')}>

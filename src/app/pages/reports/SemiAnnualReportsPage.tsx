@@ -31,6 +31,11 @@ const semiAnnualReports: ReportCatalogItem[] = [
   { id: "tax-obligations", name: "Tax Obligations", description: "Declared vs remitted tax reconciliation for VAT, PAYE, RSSB, and withholding", icon: Receipt, tone: "violet" },
 ];
 
+const semiAnnualReportCatalog = semiAnnualReports.map((report) => ({
+  ...report,
+  tone: "amber" as const,
+}));
+
 const reportPaths = {
   "profit-loss": "/reports/semi-annual/profit-loss",
   "balance-sheet-trend": "/reports/semi-annual/balance-sheet-trend",
@@ -58,9 +63,9 @@ export default function SemiAnnualReportsPage() {
 
   const metrics: ReportMetric[] = [
     { label: "Reports", value: String(semiAnnualReports.length), caption: "Half-year review pack", icon: CalendarRange, tone: "amber" },
-    { label: "Exports", value: String(semiAnnualReports.length * 2), caption: "PDF and Excel formats", icon: Download, tone: "emerald" },
-    { label: "Period", value: selectedPeriod, caption: `${selectedYear} selected`, icon: Calendar, tone: "blue" },
-    { label: "Focus", value: "Trend", caption: "Medium-term analysis", icon: Scale, tone: "violet" },
+    { label: "Exports", value: String(semiAnnualReports.length * 2), caption: "PDF and Excel formats", icon: Download, tone: "amber" },
+    { label: "Period", value: selectedPeriod, caption: `${selectedYear} selected`, icon: Calendar, tone: "amber" },
+    { label: "Focus", value: "Trend", caption: "Medium-term analysis", icon: Scale, tone: "amber" },
   ];
 
   const handleViewReport = (reportId: string) => {
@@ -112,7 +117,7 @@ export default function SemiAnnualReportsPage() {
       badge="Semi-Annual"
       icon={CalendarRange}
       tone="amber"
-      reports={semiAnnualReports}
+      reports={semiAnnualReportCatalog}
       metrics={metrics}
       infoTitle="Half-year performance view"
       infoBody="Pick H1 or H2 to open a six-month pack covering financial statements, stock movement, receivables, HR costs, and tax obligations."

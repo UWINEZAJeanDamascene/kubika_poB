@@ -73,7 +73,7 @@ export default function AnnualGeneralLedgerPage() {
 
   return (
     <Layout>
-      <div className="p-6 space-y-6 print:p-0">
+      <div className="annual-report-detail p-6 space-y-6 print:p-0">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 print:hidden">
           <div className="flex items-center gap-3">
             <Button variant="outline" size="icon" onClick={() => navigate('/reports/annual')}>

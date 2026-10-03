@@ -1,0 +1,119 @@
+/* Report detail pages share the same calm, high contrast visual language as
+   the daily and weekly report screens. */
+.monthly-report-detail,
+.semi-annual-report-detail,
+.annual-report-detail {
+  width: 100%;
+  max-width: 1440px;
+  margin-inline: auto;
+  color: #0f172a;
+}
+
+.dark .monthly-report-detail,
+.dark .semi-annual-report-detail,
+.dark .annual-report-detail {
+  color: #e2e8f0;
+}
+
+.monthly-report-detail > .print\:hidden:first-child,
+.semi-annual-report-detail > .print\:hidden:first-child,
+.annual-report-detail > .print\:hidden:first-child {
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) > .print\:hidden:first-child {
+  border-color: #334155;
+  background: #0f172a;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) :is([class*="bg-white"], [class*="bg-gray-50"], [class*="bg-red-50"], [class*="bg-green-50"], [class*="bg-blue-50"], [class*="bg-purple-50"], [class*="bg-violet-50"], [class*="bg-amber-50"], [class*="bg-emerald-50"], [class*="bg-slate-900"], [class*="bg-blue-900"], [class*="bg-green-900"], [class*="bg-purple-900"], [class*="bg-orange-900"], [class*="bg-violet-900"], [class*="bg-amber-900"], [class*="bg-indigo-900"], [class*="bg-rose-900"]) {
+  border-color: #334155;
+  background-color: #111c30;
+  color: #e2e8f0;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) :is([class*="text-purple-"], [class*="text-violet-"], [class*="text-cyan-"], [class*="text-indigo-"], [class*="text-orange-"], [class*="text-rose-"]) {
+  color: #38bdf8;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) :is([class*="text-slate-900"], [class*="text-slate-800"], [class*="text-slate-700"], [class*="text-slate-600"], [class*="text-gray-900"], [class*="text-gray-800"], [class*="text-gray-700"], [class*="text-black"]) {
+  color: #cbd5e1 !important;
+}
+
+.monthly-report-detail table,
+.semi-annual-report-detail table,
+.annual-report-detail table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) table thead tr {
+  background-color: #1e293b;
+  color: #e2e8f0;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) table tbody tr {
+  border-color: #334155;
+  background-color: #111c30;
+  color: #cbd5e1;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) table tbody tr:nth-child(even) {
+  background-color: #162238;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) table :is(th, td) {
+  border-color: #334155;
+}
+
+.dark :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) table tbody tr:hover {
+  background-color: #1e293b;
+}
+
+@media (max-width: 639px) {
+  .monthly-report-detail,
+  .semi-annual-report-detail,
+  .annual-report-detail {
+    padding-inline: 0.75rem;
+  }
+
+  .monthly-report-detail > .print\:hidden:first-child,
+  .semi-annual-report-detail > .print\:hidden:first-child,
+  .annual-report-detail > .print\:hidden:first-child {
+    padding: 0.875rem;
+  }
+
+  :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) > .print\:hidden:first-child > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+  }
+
+  :is(.monthly-report-detail, .semi-annual-report-detail, .annual-report-detail) > .print\:hidden:first-child > div:last-child > button {
+    flex: 1 1 5.5rem;
+  }
+
+  .monthly-report-detail table,
+  .semi-annual-report-detail table,
+  .annual-report-detail table {
+    min-width: 540px;
+  }
+}
+
+@media print {
+  .monthly-report-detail,
+  .semi-annual-report-detail,
+  .annual-report-detail {
+    max-width: none;
+    color: #111827;
+  }
+
+  .monthly-report-detail > .print\:hidden:first-child,
+  .semi-annual-report-detail > .print\:hidden:first-child,
+  .annual-report-detail > .print\:hidden:first-child {
+    display: none;
+  }
+}

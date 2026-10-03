@@ -38,6 +38,11 @@ const annualReports: ReportCatalogItem[] = [
   { id: "audit-trail", name: "Audit Trail Report", description: "All system users, their actions, posting dates, and any reversals or adjustments made", icon: ShieldCheck, tone: "teal" },
 ];
 
+const annualReportCatalog = annualReports.map((report) => ({
+  ...report,
+  tone: "blue" as const,
+}));
+
 const reportPaths = Object.fromEntries(
   annualReports.map((report) => [report.id, `/reports/annual/${report.id}`])
 ) as Record<string, string>;
@@ -51,10 +56,10 @@ export default function AnnualReportsPage() {
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i);
 
   const metrics: ReportMetric[] = [
-    { label: "Reports", value: String(annualReports.length), caption: `${selectedYear} statutory pack`, icon: FileText, tone: "rose" },
-    { label: "Exports", value: String(annualReports.length * 2), caption: "PDF and Excel formats", icon: Download, tone: "emerald" },
+    { label: "Reports", value: String(annualReports.length), caption: `${selectedYear} statutory pack`, icon: FileText, tone: "blue" },
+    { label: "Exports", value: String(annualReports.length * 2), caption: "PDF and Excel formats", icon: Download, tone: "blue" },
     { label: "Coverage", value: "12", caption: "Months in scope", icon: BarChart3, tone: "blue" },
-    { label: "Readiness", value: "Audit", caption: "External review support", icon: Scale, tone: "amber" },
+    { label: "Readiness", value: "Audit", caption: "External review support", icon: Scale, tone: "blue" },
   ];
 
   const handleViewReport = (reportId: string) => {
@@ -114,8 +119,8 @@ export default function AnnualReportsPage() {
       subtitle="Full-year statutory and strategic reports for external stakeholders, audits, regulatory filing, and planning."
       badge="Annual"
       icon={Calendar}
-      tone="rose"
-      reports={annualReports}
+      tone="blue"
+      reports={annualReportCatalog}
       metrics={metrics}
       infoTitle="Year-end reporting pack"
       infoBody="Select the reporting year to open audit-ready financial statements, ledger support, tax schedules, payroll summaries, and operating reconciliations."

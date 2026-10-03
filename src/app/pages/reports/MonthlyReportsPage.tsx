@@ -48,6 +48,13 @@ const monthlyReports: ReportCatalogItem[] = [
   { id: "general-ledger", name: "General Ledger Activity", description: "Monthly GL movements by account with transaction counts", icon: BookOpen, tone: "slate" },
 ];
 
+// Keep the monthly pack visually calm and consistent; report types are already
+// identified by their labels and icons, so each card uses the same cycle color.
+const monthlyReportCatalog = monthlyReports.map((report) => ({
+  ...report,
+  tone: "emerald" as const,
+}));
+
 const reportPaths = Object.fromEntries(
   monthlyReports.map((report) => [report.id, `/reports/monthly/${report.id}`])
 ) as Record<string, string>;
@@ -67,9 +74,9 @@ export default function MonthlyReportsPage() {
   const periodLabel = `${monthNames[selectedMonth - 1]} ${selectedYear}`;
   const metrics: ReportMetric[] = [
     { label: "Reports", value: String(monthlyReports.length), caption: `Available for ${periodLabel}`, icon: TrendingUp, tone: "emerald" },
-    { label: "Exports", value: String(monthlyReports.length * 2), caption: "PDF and Excel formats", icon: Download, tone: "blue" },
-    { label: "Coverage", value: "Monthly", caption: "Management close pack", icon: Calendar, tone: "amber" },
-    { label: "Analysis", value: "YTD", caption: "Comparative reporting", icon: TrendingDown, tone: "violet" },
+    { label: "Exports", value: String(monthlyReports.length * 2), caption: "PDF and Excel formats", icon: Download, tone: "emerald" },
+    { label: "Coverage", value: "Monthly", caption: "Management close pack", icon: Calendar, tone: "emerald" },
+    { label: "Analysis", value: "YTD", caption: "Comparative reporting", icon: TrendingDown, tone: "emerald" },
   ];
 
   const handleViewReport = (reportId: string) => {
@@ -140,7 +147,7 @@ export default function MonthlyReportsPage() {
       badge="Monthly"
       icon={Calendar}
       tone="emerald"
-      reports={monthlyReports}
+      reports={monthlyReportCatalog}
       metrics={metrics}
       infoTitle="Monthly management close"
       infoBody="Choose the accounting month and year to generate close-ready financial, operating, tax, budget, and ledger reports."
