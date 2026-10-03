@@ -149,7 +149,7 @@ export function Layout({ children }: LayoutProps) {
       {/* Mobile Sidebar - sheet/drawer (render only on mobile to avoid duplicate sidebars) */}
       {!isLg && (
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent side="left" className="app-navigation-drawer h-dvh max-h-dvh w-[min(20rem,88vw)] p-0 bg-slate-900 border-r border-slate-800">
+          <SheetContent side="left" className="app-navigation-drawer h-dvh max-h-dvh w-[min(20rem,88vw)] p-0 pt-[env(safe-area-inset-top,0px)] bg-slate-900 border-r border-slate-800">
             <Sidebar onNavigate={() => setSidebarOpen(false)} />
           </SheetContent>
         </Sheet>

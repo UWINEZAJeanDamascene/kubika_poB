@@ -1841,6 +1841,34 @@
   .app-navigation-drawer {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  .app-navigation-drawer > button:last-child {
+    top: calc(env(safe-area-inset-top, 0px) + 1rem);
+  }
+}
+
+/* Keep shared app chrome compact when a phone or tablet rotates to landscape. */
+@media (max-width: 1023px) and (orientation: landscape) and (max-height: 600px) {
+  .app-mobile-header {
+    padding-bottom: 0.25rem;
+  }
+
+  .app-mobile-breadcrumbs {
+    min-height: 2.25rem;
+    padding-block: 0.375rem;
+  }
+
+  .app-bottom-navigation {
+    min-height: calc(3.25rem + env(safe-area-inset-bottom, 0px));
+    padding-top: 0.125rem;
+    padding-bottom: calc(0.125rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .app-bottom-navigation__item {
+    min-height: 2.875rem;
+    gap: 0.1rem;
+    font-size: 0.6rem;
+  }
 }
 
 @media (max-width: 359px) {
