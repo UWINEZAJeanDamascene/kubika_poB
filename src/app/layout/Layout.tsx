@@ -108,6 +108,37 @@ export function Layout({ children }: LayoutProps) {
     return () => mql.removeEventListener('change', onChange);
   }, []);
 
+  // Orientation changes can happen while the navigation sheet is open. On iOS
+  // standalone mode that leaves the old sheet dimensions layered over the new
+  // viewport, so dismiss transient app chrome and let it recalculate cleanly.
+  useEffect(() => {
+    let previousOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+    const handleOrientationChange = () => {
+      const nextOrientation = window.innerWidth > window.innerHeight ? 'landscape' : 'portrait';
+      if (nextOrientation !== previousOrientation) {
+        previousOrientation = nextOrientation;
+        setSidebarOpen(false);
+        setCurrencyOpen(false);
+        setSearchOpen(false);
+      }
+    };
+    window.addEventListener('orientationchange', handleOrientationChange);
+    window.addEventListener('resize', handleOrientationChange);
+    const orientation = window.screen?.orientation;
+    orientation?.addEventListener?.('change', handleOrientationChange);
+    return () => {
+      window.removeEventListener('orientationchange', handleOrientationChange);
+      window.removeEventListener('resize', handleOrientationChange);
+      orientation?.removeEventListener?.('change', handleOrientationChange);
+    };
+  }, []);
+
+  // Crossing into the desktop shell should never leave a previously opened
+  // mobile drawer mounted above the page.
+  useEffect(() => {
+    if (isLg) setSidebarOpen(false);
+  }, [isLg]);
+
   useEffect(() => {
     if (!hasEnterpriseAI) {
       setChatOpen(false);
