@@ -1920,9 +1920,14 @@
   .app-shell.app-touch-shell .app-touch-header,
   .app-shell.app-touch-shell .app-touch-breadcrumbs {
     display: flex !important;
+    flex-shrink: 0;
   }
 
   .app-shell.app-touch-shell .app-bottom-navigation {
     display: grid !important;
+  }
+
+  .app-shell.app-touch-shell main {
+    min-height: 0;
   }
 }

@@ -37,6 +37,7 @@ export function Layout({ children }: LayoutProps) {
     }
   });
   const [searchOpen, setSearchOpen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   useGlobalSearchShortcut(setSearchOpen);
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
@@ -110,7 +111,11 @@ export function Layout({ children }: LayoutProps) {
         window.matchMedia('(pointer: coarse)').matches ||
         isStandalone;
     };
-    const onChange = () => setIsLg(window.innerWidth >= 1024 && !isTouchTablet());
+    const onChange = () => {
+      setIsLg(window.innerWidth >= 1024 && !isTouchTablet());
+      const nextHeight = Math.round(window.visualViewport?.height || window.innerHeight);
+      setViewportHeight((current) => current === nextHeight ? current : nextHeight);
+    };
     const mql = window.matchMedia('(min-width: 1024px)');
     const coarsePointer = window.matchMedia('(pointer: coarse)');
     const standalone = window.matchMedia('(display-mode: standalone)');
@@ -162,7 +167,10 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div
       className={`app-shell relative flex h-dvh min-h-0 overflow-hidden ${!isLg ? 'app-touch-shell' : ''}`}
-      style={{ paddingRight: isLg && effectiveChatOpen ? chatWidth : undefined }}
+      style={{
+        height: viewportHeight ? `${viewportHeight}px` : '100dvh',
+        paddingRight: isLg && effectiveChatOpen ? chatWidth : undefined,
+      }}
     >
       {/* Full-app background */}
       <div className="absolute inset-0 bg-background" />
@@ -195,9 +203,9 @@ export function Layout({ children }: LayoutProps) {
       </Sheet>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden relative z-10">
+      <main className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {/* Mobile Header - show on screens smaller than lg */}
-        <div className="app-mobile-header app-touch-header lg:hidden sticky top-0 z-50 flex items-center gap-2 border-b border-border bg-card/95 px-3 py-2 shadow-sm backdrop-blur-xl sm:gap-3 sm:px-4 sm:py-3">
+        <div className="app-mobile-header app-touch-header sticky top-0 z-50 flex shrink-0 items-center gap-2 border-b border-border bg-card/95 px-3 py-2 shadow-sm backdrop-blur-xl lg:hidden sm:gap-3 sm:px-4 sm:py-3">
           <Button
             variant="ghost"
             size="icon"
@@ -302,13 +310,13 @@ export function Layout({ children }: LayoutProps) {
         )}
 
         {/* Mobile breadcrumbs */}
-        <div className="app-mobile-breadcrumbs app-touch-breadcrumbs flex items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-2 lg:hidden">
+        <div className="app-mobile-breadcrumbs app-touch-breadcrumbs flex shrink-0 items-center justify-between gap-2 border-b border-border bg-card/80 px-3 py-2 lg:hidden">
           <div className="min-w-0"><Breadcrumbs /></div>
           {renderHeaderNavigation(true)}
         </div>
 
         {isDashboardRoute && (
-          <div className="sticky top-0 z-20 border-b border-border bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4 md:px-5">
+          <div className="sticky top-0 z-20 shrink-0 border-b border-border bg-background/95 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4 md:px-5">
             <DashboardCommandNav />
           </div>
         )}
