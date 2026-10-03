@@ -51,7 +51,7 @@ export default function AnnualAccountsReceivablePage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Customers</p><p className="text-2xl font-bold">{report.totals.totalCustomers}</p></CardContent></Card>
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground flex items-center gap-1"><TrendingUp className="w-4 h-4 text-emerald-500" />Credit Sales</p><p className="text-2xl font-bold text-emerald-600">{formatCurrency(report.totals.totalCreditSales)}</p></CardContent></Card>
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground flex items-center gap-1"><TrendingDown className="w-4 h-4 text-blue-500" />Cash Collected</p><p className="text-2xl font-bold text-blue-600">{formatCurrency(report.totals.totalCashCollected)}</p></CardContent></Card>

@@ -49,7 +49,7 @@ export default function AnnualAuditTrailPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground flex items-center gap-1"><Users className="w-4 h-4" />Active Users</p><p className="text-2xl font-bold">{s.totalUsers}</p></CardContent></Card>
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground flex items-center gap-1"><Activity className="w-4 h-4" />Total Actions</p><p className="text-2xl font-bold">{s.totalAuditEntries.toLocaleString()}</p></CardContent></Card>
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground flex items-center gap-1"><RotateCcw className="w-4 h-4 text-amber-500" />Reversals</p><p className="text-2xl font-bold text-amber-600">{s.totalReversals}</p></CardContent></Card>

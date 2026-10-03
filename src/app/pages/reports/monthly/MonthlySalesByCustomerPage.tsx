@@ -93,7 +93,7 @@ export default function MonthlySalesByCustomerPage() {
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Card><CardHeader className="pb-2"><CardDescription>Total Customers</CardDescription><CardTitle>{report.summary.totalCustomers}</CardTitle></CardHeader></Card>
           <Card><CardHeader className="pb-2"><CardDescription>Total Revenue</CardDescription><CardTitle>{formatCurrency(report.summary.totalRevenue)}</CardTitle></CardHeader></Card>
           <Card><CardHeader className="pb-2"><CardDescription>Total Invoices</CardDescription><CardTitle>{report.summary.totalInvoices}</CardTitle></CardHeader></Card>

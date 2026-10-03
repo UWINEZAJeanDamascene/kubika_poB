@@ -86,7 +86,7 @@ export default function DailySalesReportPage() {
       metrics={metrics}
     >
       {data && !isLoading && (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Card className={reportCardClass}>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">

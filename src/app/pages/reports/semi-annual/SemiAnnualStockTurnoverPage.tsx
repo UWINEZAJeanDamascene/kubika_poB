@@ -123,7 +123,7 @@ export default function SemiAnnualStockTurnoverPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="py-3 px-4">
               <CardDescription className="text-xs">Total Products</CardDescription>

@@ -51,7 +51,7 @@ export default function AnnualPayrollPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground flex items-center gap-1"><Users className="w-4 h-4" />Employees</p><p className="text-2xl font-bold">{yt.totalEmployees}</p></CardContent></Card>
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Gross Salary</p><p className="text-2xl font-bold text-emerald-600">{formatCurrency(yt.grossSalary)}</p></CardContent></Card>
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">PAYE</p><p className="text-2xl font-bold text-amber-600">{formatCurrency(yt.paye)}</p></CardContent></Card>

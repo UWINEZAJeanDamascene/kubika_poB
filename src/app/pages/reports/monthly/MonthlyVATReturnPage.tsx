@@ -106,7 +106,7 @@ export default function MonthlyVATReturnPage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-6">
           {/* Output VAT */}
           <Card className="bg-slate-900 border-slate-700">
             <CardHeader className="border-b border-slate-700">

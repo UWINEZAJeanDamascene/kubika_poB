@@ -628,7 +628,7 @@ export default function ProfitLossPage() {
               </div>
 
               {/* ═══ MARGIN DASHBOARD + WATERFALL ═══ */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <Card className="col-span-1 lg:col-span-2 border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <PanelTitle
                     icon={<Sparkles className="h-4 w-4 text-amber-500" />}
@@ -657,7 +657,7 @@ export default function ProfitLossPage() {
 
               {/* ═══ COMPARATIVE VARIANCE BANNER ═══ */}
               {comp && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {[
                     { label: "Revenue", cur: cur.revenue.total, prev: comp.revenue.total },
                     { label: "Gross Profit", cur: cur.gross_profit, prev: comp.gross_profit },

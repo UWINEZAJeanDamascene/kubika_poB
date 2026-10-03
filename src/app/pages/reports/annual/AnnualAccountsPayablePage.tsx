@@ -51,7 +51,7 @@ export default function AnnualAccountsPayablePage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground">Suppliers</p><p className="text-2xl font-bold">{report.totals.totalSuppliers}</p></CardContent></Card>
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground flex items-center gap-1"><TrendingUp className="w-4 h-4 text-emerald-500" />Credit Purchases</p><p className="text-2xl font-bold text-emerald-600">{formatCurrency(report.totals.totalCreditPurchases)}</p></CardContent></Card>
           <Card><CardContent className="pt-6"><p className="text-sm text-muted-foreground flex items-center gap-1"><TrendingDown className="w-4 h-4 text-blue-500" />Cash Paid</p><p className="text-2xl font-bold text-blue-600">{formatCurrency(report.totals.totalCashPaid)}</p></CardContent></Card>

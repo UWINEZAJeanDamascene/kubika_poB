@@ -93,7 +93,7 @@ export default function MonthlyCashFlowPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           <Card className="bg-slate-900 border-slate-700">
             <CardHeader className="pb-2">
               <CardDescription className="text-slate-400">Beginning Cash</CardDescription>
@@ -161,7 +161,7 @@ export default function MonthlyCashFlowPage() {
         </Card>
 
         {/* Investing & Financing */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-6">
           <Card className="bg-slate-900 border-slate-700">
             <CardHeader className="border-b border-slate-700">
               <CardTitle className="text-blue-400">Investing Activities</CardTitle>

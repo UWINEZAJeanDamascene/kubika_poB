@@ -33,7 +33,7 @@ export default function WeeklySalesPerformanceReportPage() {
   return (
     <WeeklyReportScaffold title="Weekly Sales Performance" shortTitle="Sales" subtitle="Compare this week against last week by value, invoices, orders, and items sold." icon={TrendingUp} tone="blue" weekStart={weekStart} weekLabel={data ? `${data.weekStart} to ${data.weekEnd}` : undefined} onWeekChange={handleWeekChange} loading={isLoading} downloading={downloading} onBack={() => navigate(weeklyReportsApi.getListPath(weekStart))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 xl:grid-cols-3">
           {[
             { title: "This Week", rows: [["Sales", fmt(data.thisWeek.sales)], ["Invoices", data.thisWeek.invoices], ["Orders", data.thisWeek.orders], ["Items Sold", data.thisWeek.items]] },
             { title: "Last Week", rows: [["Sales", fmt(data.lastWeek.sales)], ["Invoices", data.lastWeek.invoices], ["Orders", data.lastWeek.orders], ["Items Sold", data.lastWeek.items]] },

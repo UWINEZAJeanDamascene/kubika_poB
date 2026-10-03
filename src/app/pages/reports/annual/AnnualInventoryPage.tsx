@@ -73,7 +73,7 @@ export default function AnnualInventoryPage() {
                 {summary.isReconciled ? "Inventory Reconciled" : "Reconciliation Issue Detected"}
               </span>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
               <div><p className="text-sm text-muted-foreground">Opening Stock</p><p className="text-lg font-bold">{formatCurrency(summary.openingStock)}</p></div>
               <div><p className="text-sm text-muted-foreground">Purchases</p><p className="text-lg font-bold text-emerald-600">{formatCurrency(summary.totalPurchases)}</p></div>
               <div><p className="text-sm text-muted-foreground">COGS</p><p className="text-lg font-bold text-red-600">({formatCurrency(summary.costOfGoodsSold)})</p></div>

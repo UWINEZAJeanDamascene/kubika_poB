@@ -93,7 +93,7 @@ export default function MonthlyPayrollSummaryPage() {
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Card className="bg-slate-900 border-slate-700">
             <CardHeader className="pb-2">
               <CardDescription className="text-slate-400">Employees</CardDescription>
@@ -121,7 +121,7 @@ export default function MonthlyPayrollSummaryPage() {
         </div>
 
         {/* Deductions Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Card className="bg-blue-900/30 border-blue-700">
             <CardHeader className="pb-2">
               <CardDescription className="text-blue-400">PAYE</CardDescription>

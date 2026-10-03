@@ -93,7 +93,7 @@ export default function MonthlyGeneralLedgerPage() {
         </div>
 
         {/* Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <Card><CardHeader className="pb-2"><CardDescription>Active Accounts</CardDescription><CardTitle>{report.summary.totalAccounts}</CardTitle></CardHeader></Card>
           <Card><CardHeader className="pb-2"><CardDescription>Total Debits</CardDescription><CardTitle>{formatCurrency(report.summary.totalDebits)}</CardTitle></CardHeader></Card>
           <Card><CardHeader className="pb-2"><CardDescription>Total Credits</CardDescription><CardTitle>{formatCurrency(report.summary.totalCredits)}</CardTitle></CardHeader></Card>

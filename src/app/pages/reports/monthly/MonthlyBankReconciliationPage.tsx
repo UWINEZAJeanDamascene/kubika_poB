@@ -108,7 +108,7 @@ export default function MonthlyBankReconciliationPage() {
         </Card>
 
         {/* Summary */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
           <Card className="bg-slate-900 border-slate-700"><CardHeader className="pb-2"><CardDescription className="text-slate-400">Book Balance</CardDescription><CardTitle className="text-white">{formatCurrency(report.summary.totalBookBalance)}</CardTitle></CardHeader></Card>
           <Card className="bg-indigo-900/30 border-indigo-700"><CardHeader className="pb-2"><CardDescription className="text-indigo-300">Bank Statement</CardDescription><CardTitle className="text-indigo-100">{formatCurrency(report.summary.totalBankStatementBalance)}</CardTitle></CardHeader></Card>
           <Card className="bg-green-900/30 border-green-700"><CardHeader className="pb-2"><CardDescription className="text-green-300">Deposits in Transit</CardDescription><CardTitle className="text-green-100">+{formatCurrency(report.summary.totalOutstandingDeposits)}</CardTitle></CardHeader></Card>
@@ -138,7 +138,7 @@ export default function MonthlyBankReconciliationPage() {
               </div>
 
               {/* Two-Sided Reconciliation */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-6 mb-4">
                 {/* Book Side */}
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold text-slate-300 mb-2 border-b border-slate-700 pb-1">Book Side</h4>

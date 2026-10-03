@@ -178,7 +178,7 @@ export default function MonthlyPLReportPage() {
         </Card>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 print:hidden">
           {report.sections
             .filter(s => s.isTotal || s.isSubtotal)
             .map((section, idx) => {

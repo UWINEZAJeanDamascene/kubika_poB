@@ -43,7 +43,7 @@ export default function DailyCashPositionReportPage() {
                     <span className="font-medium text-slate-950 dark:text-white">{account.accountName}</span>
                     {account.bankName && <span className="text-sm text-slate-500 dark:text-slate-400">({account.bankName})</span>}
                   </div>
-                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
+                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
                     <div><p className="text-xs text-slate-500">Opening</p><p className="font-mono">{fmt(account.openingBalance)}</p></div>
                     <div><p className="text-xs text-slate-500">Receipts</p><p className="font-mono text-emerald-600">{fmt(account.receipts)}</p></div>
                     <div><p className="text-xs text-slate-500">Payments</p><p className="font-mono text-rose-600">{fmt(account.payments)}</p></div>

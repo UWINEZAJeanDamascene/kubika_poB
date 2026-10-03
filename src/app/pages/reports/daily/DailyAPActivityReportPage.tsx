@@ -32,7 +32,7 @@ export default function DailyAPActivityReportPage() {
   return (
     <DailyReportScaffold title="Daily AP Activity" shortTitle="AP Activity" subtitle="New bills posted, supplier payments, debit notes, and net payables movement." icon={Truck} tone="rose" date={date} onDateChange={onDateChange} loading={isLoading} downloading={downloading} onBack={() => navigate(dailyReportsApi.getListPath(date))} onDownloadPDF={downloadPDF} onDownloadExcel={downloadExcel} metrics={metrics}>
       {data && !isLoading && (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 xl:grid-cols-3">
           <Card className={reportCardClass}>
             <CardHeader><CardTitle className="flex items-center gap-2 text-base"><FileText className="h-4 w-4 text-rose-600" />New Bills</CardTitle></CardHeader>
             <CardContent><div className="space-y-2 max-h-80 overflow-y-auto">{data.newBills?.map((bill: { purchaseNumber: string; supplierName: string; status: string; total: number }, idx: number) => <div key={`${bill.purchaseNumber}-${idx}`} className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-800 dark:bg-slate-900/50"><div className="min-w-0"><p className="font-medium">{bill.purchaseNumber}</p><p className="truncate text-xs text-slate-500">{bill.supplierName}</p></div><Badge variant="secondary">{bill.status}</Badge><span className="font-mono">{fmt(bill.total)}</span></div>)}</div></CardContent>

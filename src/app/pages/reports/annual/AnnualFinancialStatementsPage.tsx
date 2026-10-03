@@ -147,7 +147,7 @@ export default function AnnualFinancialStatementsPage() {
             <CardTitle className="text-lg">Company Information</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Company Name</p>
                 <p className="font-medium">{report.company.name}</p>

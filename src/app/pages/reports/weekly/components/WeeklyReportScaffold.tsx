@@ -76,7 +76,7 @@ export function WeeklyReportScaffold({
         <div className="mx-auto max-w-7xl space-y-6">
           <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <div className={`h-1 bg-gradient-to-r ${toneClass[tone].accent}`} />
-            <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
+            <div className="grid gap-6 p-5 xl:grid-cols-[minmax(0,1fr)_360px] lg:p-6">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-3">
                   <Button variant="outline" onClick={onBack} className="border-slate-200 bg-slate-50 dark:border-white/15 dark:bg-white/5"><ArrowLeft className="mr-2 h-4 w-4" />{backLabel}</Button>

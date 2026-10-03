@@ -52,7 +52,7 @@ export default function AnnualBudgetVsActualPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-2 gap-4">
           <Card>
             <CardHeader className="bg-emerald-50"><CardTitle className="text-emerald-800">Revenue</CardTitle></CardHeader>
             <CardContent className="pt-4">

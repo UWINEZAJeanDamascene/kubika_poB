@@ -116,13 +116,13 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-6">
       <Skeleton className="h-28 w-full rounded-xl" />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-36 rounded-xl" />
         ))}
       </div>
       <Skeleton className="h-64 w-full rounded-xl" />
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Skeleton className="h-72 rounded-xl" />
         <Skeleton className="h-72 rounded-xl" />
       </div>
@@ -140,7 +140,7 @@ function HeroHeader({ report }: { report: DebtMaturityReport }) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-      <div className="grid items-stretch gap-5 p-5 lg:grid-cols-[1fr_200px]">
+      <div className="grid items-stretch gap-5 p-5 xl:grid-cols-[1fr_200px]">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <div className="rounded-lg bg-indigo-50 p-2.5 text-indigo-700 ring-1 ring-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:ring-indigo-900/60">
@@ -497,7 +497,7 @@ function CovenantWarnings({ report }: { report: DebtMaturityReport }) {
         <p className="mb-3 text-sm text-red-700 dark:text-red-300">
           The following loans have been reclassified to Current liabilities due to covenant breaches:
         </p>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {report.covenant_reclassifications.map((item) => (
             <div
               key={item.loan_id}
@@ -939,13 +939,13 @@ export default function DebtMaturityPage() {
               )}
 
               {/* Maturity Timeline + Cash Flow Chart */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <MaturityTimeline buckets={buckets} />
                 <CashFlowChart buckets={buckets} />
               </div>
 
               {/* Classification + Type + Currency */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <SecurityDonut report={report} />
                 <TypeBreakdown report={report} />
                 <CurrencyExposure report={report} />
@@ -963,7 +963,7 @@ export default function DebtMaturityPage() {
                   <CalendarClock className="h-3.5 w-3.5" />
                   Maturity Buckets
                 </p>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {regularBuckets.map((bucket) => (
                     <BucketCard
                       key={bucket.key}

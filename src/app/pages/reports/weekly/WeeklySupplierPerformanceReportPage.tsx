@@ -38,7 +38,7 @@ export default function WeeklySupplierPerformanceReportPage() {
               {data.suppliers?.length ? data.suppliers.map((supplier) => (
                 <div key={supplier.supplierId} className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
                   <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-semibold text-slate-950 dark:text-white">{supplier.supplierName}</h3>{supplier.overdueDeliveries?.count > 0 && <Badge variant="destructive">{supplier.overdueDeliveries.count} Overdue</Badge>}</div>
-                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-4">
+                  <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-4">
                     <div><p className="text-xs text-slate-500">POs</p><p>{supplier.posRaised?.count || 0} ({fmt(supplier.posRaised?.value || 0)})</p></div>
                     <div><p className="text-xs text-slate-500">Delivered</p><p>{supplier.deliveriesReceived?.count || 0} ({fmt(supplier.deliveriesReceived?.value || 0)})</p></div>
                     <div><p className="text-xs text-slate-500">Pending</p><p>{supplier.pendingOrders?.count || 0}</p></div>

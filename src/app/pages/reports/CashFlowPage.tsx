@@ -902,7 +902,7 @@ export default function CashFlowPage() {
               </div>
 
               {/* ═══ WATERFALL CHART + SECTION SUMMARIES ═══ */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950 lg:col-span-2">
                   <PanelTitle
                     icon={<BarChart3 className="h-4 w-4 text-cyan-500" />}
@@ -995,7 +995,7 @@ export default function CashFlowPage() {
 
               {/* ═══ COMPARATIVE VARIANCE ═══ */}
               {comp && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {[
                     {
                       label: "Opening Balance",

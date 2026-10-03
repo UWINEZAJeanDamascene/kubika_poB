@@ -122,7 +122,7 @@ export default function MonthlyARAgingPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 print:grid-cols-4">
           <Card className="bg-slate-900 border-slate-700">
             <CardHeader className="pb-2">
               <CardDescription className="text-slate-400">Total AR</CardDescription>

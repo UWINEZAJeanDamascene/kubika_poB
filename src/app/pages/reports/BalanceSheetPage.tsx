@@ -856,7 +856,7 @@ export default function BalanceSheetPage() {
               </div>
 
               {/* ═══ COMPOSITION CHARTS ═══ */}
-              <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <PanelTitle
                     icon={<PieChartIcon className="h-4 w-4 text-blue-500" />}
@@ -1038,7 +1038,7 @@ export default function BalanceSheetPage() {
 
               {/* ═══ COMPARATIVE VARIANCE ═══ */}
               {comp && (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   {[
                     {
                       label: "Total Assets",

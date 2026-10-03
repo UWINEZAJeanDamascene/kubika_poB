@@ -131,7 +131,7 @@ export default function SemiAnnualBalanceSheetTrendPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <Card className="bg-emerald-50 border-emerald-200">
             <CardHeader className="py-3 px-4">
               <CardDescription className="text-xs text-emerald-700">Total Assets (Latest)</CardDescription>

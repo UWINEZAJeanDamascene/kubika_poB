@@ -422,16 +422,16 @@ function LoadingSkeleton() {
   return (
     <div className="space-y-6">
       <Skeleton className="h-36 w-full rounded-xl" />
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-36 rounded-xl" />
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Skeleton className="h-80 rounded-xl" />
         <Skeleton className="h-80 rounded-xl" />
       </div>
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         {[...Array(4)].map((_, i) => (
           <Skeleton key={i} className="h-64 rounded-xl" />
         ))}
@@ -467,7 +467,7 @@ function HeroHeader({ report }: { report: FinancialRatiosReportWithCache }) {
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
-      <div className="grid items-stretch gap-5 p-5 lg:grid-cols-[1fr_220px]">
+      <div className="grid items-stretch gap-5 p-5 xl:grid-cols-[1fr_220px]">
         {/* Left: info */}
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -906,7 +906,7 @@ function InputDataSection({ report }: { report: FinancialRatiosReportWithCache }
         <CollapsibleContent>
           <CardContent className="pt-0">
             <Separator className="mb-4" />
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5">
               {inputEntries.map(([key, value]) => (
                 <div
                   key={key}
@@ -943,7 +943,7 @@ function DebtMetricsPanel({ report }: { report: FinancialRatiosReportWithCache }
         <CardDescription className="text-xs">Leverage and debt service indicators</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
           {Object.entries(report.debt_metrics.metrics).map(([key, metric]: [string, any]) => (
             <div
               key={key}
@@ -1165,7 +1165,7 @@ export default function FinancialRatiosPage() {
                 <HeroRatioCards report={report} />
 
                 {/* Radar + Status donut + Category scores */}
-                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
                   <HealthRadarChart report={report} />
                   <StatusDonut report={report} />
                   <CategoryScoreGrid report={report} />
@@ -1177,7 +1177,7 @@ export default function FinancialRatiosPage() {
                     <BarChart2 className="h-3.5 w-3.5" />
                     Detailed Ratio Analysis
                   </p>
-                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                     {Object.entries(report.ratios).map(([key, category]) => (
                       <CategoryCard key={key} catKey={key} category={category} />
                     ))}

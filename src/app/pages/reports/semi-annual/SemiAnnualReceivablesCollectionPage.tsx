@@ -122,7 +122,7 @@ export default function SemiAnnualReceivablesCollectionPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4">
           <Card>
             <CardHeader className="py-3 px-4">
               <CardDescription className="text-xs">Total Customers</CardDescription>
@@ -163,7 +163,7 @@ export default function SemiAnnualReceivablesCollectionPage() {
             <CardTitle className="text-base sm:text-lg text-slate-800">Revenue & Collection Summary</CardTitle>
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
               <div>
                 <p className="text-xs text-muted-foreground">Total Revenue</p>
                 <p className="text-lg font-semibold">{formatCurrency(summary.totalRevenue || 0)}</p>
