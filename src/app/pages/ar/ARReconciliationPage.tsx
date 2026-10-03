@@ -350,7 +350,7 @@ const ARReconciliationPage: React.FC = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto">
             <TabsTrigger value="dashboard">
               <Activity className="w-4 h-4 mr-2" />
               {t('arReconciliation.dashboard', 'Dashboard')}
@@ -370,7 +370,7 @@ const ARReconciliationPage: React.FC = () => {
             {/* Stats Cards */}
             {dashboardData && (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardDescription>{t('arReconciliation.totalTransactions', 'Total Transactions')}</CardDescription>
@@ -437,7 +437,10 @@ const ARReconciliationPage: React.FC = () => {
                     <CardTitle>{t('arReconciliation.recentActivity', 'Recent Activity')}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Table>
+                    <div className="space-y-3 xl:hidden">
+                      {dashboardData.recentActivity.map((transaction) => <button key={transaction._id} type="button" className="w-full rounded-xl border p-3 text-left" onClick={() => { setSelectedTransaction(transaction); setIsDetailOpen(true); }}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-semibold">{transaction.client?.name || '-'}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(transaction.transactionDate)} · {transaction.transactionType}</p></div><span className="shrink-0 text-sm font-semibold">{formatCurrency(transaction.amount)}</span></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3"><span className="min-w-0 break-words text-xs text-muted-foreground">{transaction.description || '-'}</span>{getReconciliationStatusBadge(transaction.reconciliationStatus)}</div></button>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block"><Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t('arReconciliation.date', 'Date')}</TableHead>
@@ -474,7 +477,7 @@ const ARReconciliationPage: React.FC = () => {
                           </TableRow>
                         ))}
                       </TableBody>
-                    </Table>
+                    </Table></div>
                   </CardContent>
                 </Card>
               </>
@@ -537,7 +540,18 @@ const ARReconciliationPage: React.FC = () => {
                     <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <Table>
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {currentReceivables.map((invoice) => (
+                      <button key={invoice._id} type="button" className="w-full rounded-xl border p-3 text-left" onClick={() => navigate(`/invoices/${invoice._id}`)}>
+                        <div className="flex items-start justify-between gap-3"><span className="break-all font-medium">{invoice.invoiceNumber || invoice.referenceNo || '-'}</span><Badge className={invoice.status === 'partially_paid' ? 'bg-yellow-100 text-yellow-800' : 'bg-blue-100 text-blue-800'}>{invoice.status === 'partially_paid' ? 'Partially Paid' : 'Confirmed'}</Badge></div>
+                        <p className="mt-1 break-words text-sm text-muted-foreground">{invoice.client?.name || '-'}</p>
+                        <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">{t('arReconciliation.invoiceDate', 'Date')}<b className="mt-1 block text-sm text-foreground">{formatDate(invoice.invoiceDate)}</b></span><span className="text-muted-foreground">{t('arReconciliation.dueDate', 'Due Date')}<b className={`mt-1 block text-sm ${invoice.dueDate && new Date(invoice.dueDate) < new Date() ? 'text-red-600' : 'text-foreground'}`}>{formatDate(invoice.dueDate)}</b></span><span className="text-muted-foreground">{t('arReconciliation.totalAmount', 'Total')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(invoice.totalAmount)}</b></span><span className="text-muted-foreground">{t('arReconciliation.outstanding', 'Outstanding')}<b className="mt-1 block text-sm font-semibold text-blue-600">{formatCurrency(invoice.amountOutstanding)}</b></span></div>
+                      </button>
+                    ))}
+                    {currentReceivables.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{t('arReconciliation.noOutstandingInvoices', 'No outstanding invoices found')}</p>}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block"><Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('arReconciliation.invoiceNumber', 'Invoice #')}</TableHead>
@@ -586,7 +600,8 @@ const ARReconciliationPage: React.FC = () => {
                         ))
                       )}
                     </TableBody>
-                  </Table>
+                  </Table></div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -597,7 +612,7 @@ const ARReconciliationPage: React.FC = () => {
             {/* Filters */}
             <Card>
               <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
                   <div>
                     <label className="text-sm font-medium mb-2 block">
                       {t('arReconciliation.transactionType', 'Transaction Type')}
@@ -683,7 +698,11 @@ const ARReconciliationPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <Table>
+                    <div className="space-y-3 xl:hidden">
+                      {transactions.map((transaction) => <button key={transaction._id} type="button" className="w-full rounded-xl border p-3 text-left" onClick={() => { setSelectedTransaction(transaction); setIsDetailOpen(true); }}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-semibold">{transaction.client?.name || '-'}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(transaction.transactionDate)} · {transaction.transactionType}</p></div><span className="flex shrink-0 items-center gap-1 text-sm font-semibold">{getDirectionIcon(transaction.direction)}{formatCurrency(transaction.amount)}</span></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">Reference<b className="mt-1 block break-all text-sm text-foreground">{transaction.referenceNo || '-'}</b></span><span className="text-muted-foreground">Balance<b className="mt-1 block text-sm text-foreground">{transaction.clientBalanceAfter !== undefined ? formatCurrency(transaction.clientBalanceAfter) : '-'}</b></span><span className="col-span-2 break-words text-muted-foreground">{transaction.description || '-'}</span><span className="col-span-2">{getReconciliationStatusBadge(transaction.reconciliationStatus)}</span></div></button>)}
+                      {transactions.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{t('arReconciliation.noTransactions', 'No transactions found')}</p>}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block"><Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t('arReconciliation.date', 'Date')}</TableHead>
@@ -738,7 +757,7 @@ const ARReconciliationPage: React.FC = () => {
                           ))
                         )}
                       </TableBody>
-                    </Table>
+                    </Table></div>
 
                     {/* Pagination */}
                     {pagination.pages > 1 && (
@@ -899,7 +918,11 @@ const ARReconciliationPage: React.FC = () => {
                 )}
 
                 {!verificationResult.verified && verificationResult.discrepancies?.length > 0 && (
-                  <div className="max-h-96 overflow-auto">
+                  <>
+                  <div className="max-h-96 space-y-3 overflow-auto xl:hidden">
+                    {verificationResult.discrepancies.map((disc: any) => <article key={disc.id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><span className="font-medium capitalize">{disc.type}</span><span className={`text-sm font-semibold ${disc.difference > 0 ? 'text-red-600' : 'text-green-600'}`}>{disc.difference > 0 ? '+' : ''}{formatCurrency(disc.difference)}</span></div><p className="mt-1 break-all text-sm text-muted-foreground">{disc.reference || disc.name || disc.id}</p><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span>Ledger<b className="mt-1 block text-sm">{formatCurrency(disc.ledgerBalance)}</b></span><span>Actual<b className="mt-1 block text-sm">{formatCurrency(disc.actualBalance)}</b></span></div></article>)}
+                  </div>
+                  <div className="hidden max-h-96 overflow-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -925,6 +948,7 @@ const ARReconciliationPage: React.FC = () => {
                       </TableBody>
                     </Table>
                   </div>
+                  </>
                 )}
 
                 <div className="flex justify-end gap-2">

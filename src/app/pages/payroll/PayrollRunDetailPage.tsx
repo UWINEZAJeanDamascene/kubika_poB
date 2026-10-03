@@ -906,7 +906,7 @@ export default function PayrollRunDetailPage() {
                       <Calendar className="h-4 w-4 text-slate-400" />
                       Pay Period & Payment Date
                     </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                       <div className="space-y-1">
                         <Label className="text-slate-600 dark:text-slate-300">Pay Period Start</Label>
                         <Input
@@ -1498,7 +1498,7 @@ export default function PayrollRunDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
                   <div className="flex items-center gap-2 mb-1">
                     <CreditCard className="h-3.5 w-3.5 text-blue-500" />

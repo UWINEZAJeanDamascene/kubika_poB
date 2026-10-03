@@ -518,7 +518,7 @@ export default function PayrollDetailPage() {
 
         {record.payment?.status === 'paid' && <Card className="border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/60 dark:bg-emerald-950/20"><CardContent className="flex flex-wrap items-center justify-between gap-2 p-4"><div><p className="font-semibold text-emerald-800 dark:text-emerald-300">Payment recorded</p><p className="text-sm text-slate-600 dark:text-slate-400">{record.payment.paymentMethod || 'Payment'} · {record.payment.paymentDate ? new Date(record.payment.paymentDate).toLocaleDateString() : 'Date unavailable'} · Ref: {record.payment.reference || '—'}</p></div><Badge>Paid</Badge></CardContent></Card>}
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="overflow-hidden border-slate-200/80 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <CardContent className="p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Gross Salary</p>
@@ -581,7 +581,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   <div className="space-y-1">
                     <Label>{t('payroll.form.firstName')} *</Label>
                     <Input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} />
@@ -669,7 +669,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1">
                     <Label>{t('payroll.form.basicSalary')} *</Label>
                     <Input type="number" min="0" value={editForm.basicSalary || ''} onChange={(e) => setEditForm({ ...editForm, basicSalary: parseFloat(e.target.value) || 0 })} />
@@ -726,7 +726,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-0.5">
                     <p className="text-xs text-muted-foreground">{t('payroll.form.grossSalaryCalc')}</p>
                     <p className="text-lg font-bold">{formatCurrency(calculations.grossSalary)}</p>
@@ -773,7 +773,7 @@ export default function PayrollDetailPage() {
           /* View Mode */
           <div className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium flex items-center gap-2 dark:text-slate-200">
@@ -829,7 +829,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="text-xs text-muted-foreground dark:text-slate-400">Full Name</p>
                     <p className="font-medium dark:text-white">{record.employee.firstName} {record.employee.lastName}</p>
@@ -886,7 +886,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="text-xs text-muted-foreground dark:text-slate-400">Basic Salary</p>
                     <p className="font-medium dark:text-white">{formatCurrency(record.salary.basicSalary)}</p>
@@ -943,7 +943,7 @@ export default function PayrollDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <p className="text-xs text-muted-foreground dark:text-slate-400">PAYE</p>
                     <p className="font-medium text-red-600 dark:text-red-400">{formatCurrency(record.deductions.paye)}</p>

@@ -418,7 +418,11 @@ export default function ARDashboardPage() {
                         <p className="text-sm">No outstanding receivables</p>
                       </div>
                     ) : (
-                      <Table>
+                      <>
+                      <div className="space-y-3 p-3 xl:hidden">
+                        {clientSummary.map((cs) => <article key={cs._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{cs.client?.name || 'Unknown'}</p>{cs.client?.code && <p className="text-xs text-muted-foreground">{cs.client.code}</p>}</div><Button variant="outline" size="sm" className="min-h-10 shrink-0" onClick={() => openClientStatement(cs.client)}><FileText className="mr-1.5 h-4 w-4"/>Statement</Button></div><div className="mt-3 flex items-center justify-between border-t pt-3 text-sm"><span className="text-muted-foreground">{cs.invoiceCount} invoices</span><b>{formatMoney(cs.totalOutstanding)}</b></div></article>)}
+                      </div>
+                      <div className="hidden overflow-x-auto xl:block"><Table>
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
                             <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Customer</TableHead>
@@ -451,7 +455,8 @@ export default function ARDashboardPage() {
                             </TableRow>
                           ))}
                         </TableBody>
-                      </Table>
+                      </Table></div>
+                      </>
                     )}
                   </CardContent>
                 </Card>
@@ -490,7 +495,11 @@ export default function ARDashboardPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {agingData.map((bucket) => <article key={bucket.client?._id || bucket.client?.name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-center justify-between gap-2"><p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{bucket.client?.name || 'Unknown'}</p><Button variant="outline" size="sm" className="min-h-10 shrink-0" onClick={() => openClientStatement(bucket.client)}><FileText className="mr-1.5 h-4 w-4"/>Statement</Button></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs sm:grid-cols-3"><span className="text-muted-foreground">Current<b className="mt-1 block text-sm text-foreground">{formatMoney(bucket.current)}</b></span><span className="text-muted-foreground">1–30 days<b className="mt-1 block text-sm text-foreground">{formatMoney(bucket['1-30'])}</b></span><span className="text-muted-foreground">31–60 days<b className="mt-1 block text-sm text-foreground">{formatMoney(bucket['31-60'])}</b></span><span className="text-muted-foreground">61–90 days<b className="mt-1 block text-sm text-foreground">{formatMoney(bucket['61-90'])}</b></span><span className="text-muted-foreground">90+ days<b className="mt-1 block text-sm text-rose-600">{formatMoney(bucket['90+'])}</b></span><span className="text-muted-foreground">Total<b className="mt-1 block text-sm font-semibold text-foreground">{formatMoney(bucket.totalBalance)}</b></span></div></article>)}
+                      {agingData.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No outstanding receivables</p>}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -575,7 +584,10 @@ export default function ARDashboardPage() {
                       </div>
                     ) : (
                       <>
-                        <div className="overflow-x-auto">
+                        <div className="space-y-3 p-3 xl:hidden">
+                          {outstandingInvoices.map((inv) => <article key={inv._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all text-sm font-semibold text-slate-900 dark:text-white">{inv.invoiceNumber || inv.referenceNo}</p><p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">{inv.client?.name || 'Unknown'}</p></div><span className={`shrink-0 rounded-full border px-2 py-1 text-xs ${getStatusStyle(inv.status)}`}>{getStatusLabel(inv.status)}</span></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">Invoice date<b className="mt-1 block text-sm text-foreground">{inv.invoiceDate ? new Date(inv.invoiceDate).toLocaleDateString() : '-'}</b></span><span className="text-muted-foreground">Due date<b className="mt-1 block text-sm text-foreground">{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : '-'}</b></span><span className="text-muted-foreground">Total<b className="mt-1 block text-sm text-foreground">{formatMoney(parseFloat(inv.balance?.toString() || '0') + parseFloat(inv.amountOutstanding?.toString() || '0'))}</b></span><span className="text-muted-foreground">Outstanding<b className="mt-1 block text-sm font-semibold text-foreground">{formatMoney(parseFloat(inv.amountOutstanding?.toString() || '0'))}</b></span></div></article>)}
+                        </div>
+                        <div className="hidden overflow-x-auto xl:block">
                           <Table>
                             <TableHeader>
                               <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -667,7 +679,10 @@ export default function ARDashboardPage() {
                       </div>
                     ) : (
                       <>
-                        <div className="overflow-x-auto">
+                        <div className="space-y-3 p-3 xl:hidden">
+                          {transactions.map((tx) => <article key={tx._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold text-slate-900 dark:text-white">{tx.client?.name || 'Unknown'}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{tx.transactionDate ? new Date(tx.transactionDate).toLocaleDateString() : '-'} · {getTransactionLabel(tx.transactionType)}</p></div><span className="shrink-0 text-sm font-semibold">{formatMoney(tx.amount)}</span></div><div className="mt-3 border-t pt-3 text-xs"><p className="break-words text-slate-600 dark:text-slate-300">{tx.description || '-'}</p><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="break-all text-muted-foreground">{tx.referenceNo || tx.invoice?.referenceNo || tx.invoice?.invoiceNumber || '-'}</span><span className="inline-flex items-center gap-1 rounded-full border px-2 py-1">{tx.direction === 'increase' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}{tx.direction === 'increase' ? 'Increases AR' : 'Reduces AR'}</span></div></div></article>)}
+                        </div>
+                        <div className="hidden overflow-x-auto xl:block">
                           <Table>
                             <TableHeader>
                               <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -740,7 +755,7 @@ export default function ARDashboardPage() {
               </DialogHeader>
               {loadingStatement ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {Array.from({ length: 3 }).map((_, i) => (
                       <Skeleton key={i} className="h-24 rounded-lg" />
                     ))}
@@ -749,7 +764,7 @@ export default function ARDashboardPage() {
                 </div>
               ) : clientStatement ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <Card className="overflow-hidden border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
                       <CardContent className="p-4">
                         <p className="text-xs text-slate-500 dark:text-slate-400">Total Invoiced</p>
@@ -769,7 +784,10 @@ export default function ARDashboardPage() {
                       </CardContent>
                     </Card>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 xl:hidden">
+                    {(clientStatement.transactions || []).map((tx: any, idx: number) => <article key={idx} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all text-sm font-semibold">{tx.reference || '-'}</p><p className="mt-1 text-xs text-muted-foreground">{tx.date ? new Date(tx.date).toLocaleDateString() : '-'}</p></div><b className="shrink-0 text-sm">{formatMoney(tx.runningBalance || 0)}</b></div><p className="mt-2 break-words text-sm text-muted-foreground">{tx.description || '-'}</p><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span>Debit<b className="mt-1 block text-sm text-blue-600">{tx.debit ? formatMoney(tx.debit) : '-'}</b></span><span>Credit<b className="mt-1 block text-sm text-emerald-600">{tx.credit ? formatMoney(tx.credit) : '-'}</b></span></div></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">

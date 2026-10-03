@@ -135,7 +135,7 @@ export default function TimesheetFormPage() {
           <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle className="text-base">Work Entries</CardTitle><p className="mt-1 text-xs text-slate-500">Approved task hours are costed from the employee salary effective on the work date, using 173.33 standard hours per month.</p></div><span className="text-sm text-slate-500">Total: {totalHours.toFixed(1)} hrs</span></CardHeader>
           <CardContent className="space-y-3">
             {lines.map((line, i) => (
-              <div key={i} className="grid gap-3 sm:grid-cols-6 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900">
+              <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900">
                 <div className="space-y-1 sm:col-span-1">
                   <Label className="text-xs">Date</Label>
                   <Input type="date" value={line.date} onChange={(e) => updateLine(i, "date", e.target.value)} />

@@ -1069,7 +1069,7 @@ export default function LiabilityFormPage() {
                 </CardHeader>
                 <CardContent className="p-5">
                   {/* Metric Cards */}
-                  <div className="grid gap-4 md:grid-cols-3 mb-6">
+                  <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
                         <Banknote className="h-3.5 w-3.5" />

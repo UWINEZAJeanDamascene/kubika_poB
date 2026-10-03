@@ -706,7 +706,7 @@ export default function ExpenseDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <div>
                   <Label className="text-xs font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">Created By</Label>
                   {expense.createdBy ? (

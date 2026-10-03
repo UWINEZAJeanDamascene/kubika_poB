@@ -446,7 +446,14 @@ export default function ARReceiptCreatePage() {
                       </div>
                     </CardHeader>
                     <CardContent className="p-0">
-                      <div className="overflow-x-auto">
+                      <div className="space-y-3 p-3 xl:hidden">
+                        {invoices.map((invoice) => {
+                          const balance = parseFloat(invoice.balance || invoice.amountOutstanding || "0");
+                          const allocated = allocations.find((a) => a.invoice === invoice._id)?.amount || 0;
+                          return <article key={invoice._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-700"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-medium">{invoice.invoiceNumber}</p><p className="break-all text-xs text-muted-foreground">{invoice.referenceNo || '-'}</p></div><span className="shrink-0 text-right text-sm font-semibold">{formatCurrency(balance)}</span></div><p className="mt-1 text-xs text-muted-foreground">{t("arReceipt.dueDate", "Due Date")}: {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "-"}</p><div className="mt-3"><Label className="text-xs">{t("arReceipt.allocate", "Allocate")}</Label><Input type="number" min="0" max={balance} className="mt-1 min-h-11 text-right" value={allocated || ""} onChange={(e) => handleAllocationChange(invoice._id, parseFloat(e.target.value) || 0)} /></div></article>;
+                        })}
+                      </div>
+                      <div className="hidden overflow-x-auto xl:block">
                         <Table>
                           <TableHeader>
                             <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">

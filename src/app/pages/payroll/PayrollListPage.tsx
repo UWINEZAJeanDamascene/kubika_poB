@@ -1191,7 +1191,7 @@ export default function PayrollListPage() {
 
           <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
             <CardContent className="p-4">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-6">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6">
                 <div className="relative md:col-span-2">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input
@@ -1611,7 +1611,7 @@ export default function PayrollListPage() {
                     <Badge variant="outline" className="ml-2 text-xs font-normal dark:border-slate-600 dark:text-slate-300">Read-only</Badge>
                   )}
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   <div className="space-y-1">
                     <Label className="dark:text-slate-200">{t("payroll.form.firstName")} *</Label>
                     <Input
@@ -1826,7 +1826,7 @@ export default function PayrollListPage() {
                   <DollarSign className="h-4 w-4" />{" "}
                   {t("payroll.form.salaryInformation")}
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1">
                     <Label className="dark:text-slate-200">{t("payroll.form.basicSalary")} *</Label>
                     <Input
@@ -1895,7 +1895,7 @@ export default function PayrollListPage() {
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 dark:text-white">
                   <TrendingUp className="h-4 w-4" /> Additional Income
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1">
                     <Label className="dark:text-slate-200">Overtime</Label>
                     <Input
@@ -1952,7 +1952,7 @@ export default function PayrollListPage() {
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2 dark:text-white">
                   <TrendingDown className="h-4 w-4" /> Other Deductions
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1">
                     <Label className="dark:text-slate-200">Health Insurance</Label>
                     <Input
@@ -1996,7 +1996,7 @@ export default function PayrollListPage() {
                   <Calculator className="h-4 w-4" />{" "}
                   {t("payroll.form.calculatedFields")}
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-0.5">
                     <p className="text-xs text-muted-foreground dark:text-slate-400">
                       {t("payroll.form.grossSalaryCalc")}
@@ -2326,7 +2326,7 @@ export default function PayrollListPage() {
                     </CardHeader>
                     <CardContent className="space-y-3 pt-2">
                       {tsFormLines.map((line, i) => (
-                        <div key={i} className="grid gap-3 sm:grid-cols-6 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900 dark:border-slate-700">
+                        <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900 dark:border-slate-700">
                           <div className="space-y-1 sm:col-span-1">
                             <Label className="text-xs text-slate-600 dark:text-slate-400">Date</Label>
                             <Input type="date" value={line.date} onChange={(e) => tsUpdateLine(i, "date", e.target.value)} className="dark:bg-slate-800 dark:text-white dark:border-slate-700" />

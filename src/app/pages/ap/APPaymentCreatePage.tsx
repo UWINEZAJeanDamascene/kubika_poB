@@ -501,7 +501,15 @@ export default function APPaymentCreatePage() {
                       )}
                     </p>
                   ) : (
-                    <Table>
+                    <div className="space-y-3 xl:hidden">
+                      {allocations.map((allocation, index) => (
+                        <article key={index} className="space-y-3 rounded-xl border p-3">
+                          <div><Label>{t("apPayment.grn", "GRN")}</Label><Select value={allocation.grn} onValueChange={(value) => handleAllocationChange(index, "grn", value)}><SelectTrigger className="mt-1 min-h-11"><SelectValue placeholder={t("apPayment.selectGRN", "Select GRN")} /></SelectTrigger><SelectContent>{grns.map((grn) => <SelectItem key={grn._id} value={grn._id}>{grn.referenceNo} - {parseFloat(grn.balance || grn.totalAmount).toFixed(2)}</SelectItem>)}</SelectContent></Select></div>
+                          <div className="grid grid-cols-[1fr_auto] items-end gap-3"><div className="grid grid-cols-2 gap-3"><div><Label className="text-xs">{t("apPayment.balance", "Balance")}</Label><p className="mt-2 text-sm font-medium">{allocation.grn ? getGRNBalance(allocation.grn).toFixed(2) : "-"}</p></div><div><Label>{t("apPayment.allocatedAmount", "Allocated Amount")}</Label><Input className="mt-1 min-h-11" type="number" step="0.01" min="0" max={allocation.grn ? getGRNBalance(allocation.grn) : undefined} value={allocation.amount} onChange={(e) => handleAllocationChange(index, "amount", parseFloat(e.target.value) || 0)} /></div></div><Button type="button" variant="outline" size="icon" className="min-h-11 min-w-11" onClick={() => handleRemoveAllocation(index)} aria-label={t("apPayment.removeAllocation", "Remove allocation")}><Trash2 className="h-4 w-4 text-red-500" /></Button></div>
+                        </article>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block"><Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t("apPayment.grn", "GRN")}</TableHead>
@@ -582,7 +590,7 @@ export default function APPaymentCreatePage() {
                           </TableRow>
                         ))}
                       </TableBody>
-                    </Table>
+                    </Table></div>
                   )}
                 </CardContent>
               </Card>

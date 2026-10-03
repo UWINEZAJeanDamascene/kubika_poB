@@ -409,7 +409,11 @@ export default function APDashboardPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="p-0">
-                    <div className="overflow-x-auto">
+                    <div className="space-y-3 p-3 xl:hidden">
+                      {agingData.map((bucket) => <article key={bucket.supplier?._id || bucket.supplier?.name} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-center justify-between gap-2"><p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{bucket.supplier?.name || 'Unknown'}</p><Button variant="outline" size="sm" className="min-h-10 shrink-0" onClick={() => openSupplierStatement(bucket.supplier)}><FileText className="mr-1.5 h-4 w-4"/>Statement</Button></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs sm:grid-cols-3"><span className="text-muted-foreground">Current<b className="mt-1 block text-sm text-foreground">{formatMoney(bucket.current)}</b></span><span className="text-muted-foreground">1–30 days<b className="mt-1 block text-sm text-foreground">{formatMoney(bucket['1-30'])}</b></span><span className="text-muted-foreground">31–60 days<b className="mt-1 block text-sm text-foreground">{formatMoney(bucket['31-60'])}</b></span><span className="text-muted-foreground">61–90 days<b className="mt-1 block text-sm text-foreground">{formatMoney(bucket['61-90'])}</b></span><span className="text-muted-foreground">90+ days<b className="mt-1 block text-sm text-rose-600">{formatMoney(bucket['90+'])}</b></span><span className="text-muted-foreground">Total<b className="mt-1 block text-sm font-semibold text-foreground">{formatMoney(bucket.totalBalance)}</b></span></div></article>)}
+                      {agingData.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">No outstanding payables</p>}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block">
                       <Table>
                         <TableHeader>
                           <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -494,7 +498,10 @@ export default function APDashboardPage() {
                       </div>
                     ) : (
                       <>
-                        <div className="overflow-x-auto">
+                        <div className="space-y-3 p-3 xl:hidden">
+                          {outstandingPayables.map((grn: any) => <article key={grn._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all text-sm font-semibold text-slate-900 dark:text-white">{grn.reference || grn.referenceNo || grn.grnNumber}</p><p className="mt-1 break-words text-sm text-slate-600 dark:text-slate-300">{grn.supplier?.name || 'Unknown'}</p></div><span className={`shrink-0 rounded-full border px-2 py-1 text-xs ${getStatusStyle(grn.paymentStatus || grn.status)}`}>{getStatusLabel(grn.paymentStatus || grn.status)}</span></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">Received<b className="mt-1 block text-sm text-foreground">{grn.receivedDate ? new Date(grn.receivedDate).toLocaleDateString() : '-'}</b></span><span className="text-muted-foreground">Total<b className="mt-1 block text-sm text-foreground">{formatMoney(grn.totalAmount)}</b></span><span className="text-muted-foreground">Paid<b className="mt-1 block text-sm text-foreground">{formatMoney(grn.amountPaid)}</b></span><span className="text-muted-foreground">Balance<b className="mt-1 block text-sm font-semibold text-foreground">{formatMoney(grn.balance)}</b></span></div></article>)}
+                        </div>
+                        <div className="hidden overflow-x-auto xl:block">
                           <Table>
                             <TableHeader>
                               <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -576,7 +583,10 @@ export default function APDashboardPage() {
                       </div>
                     ) : (
                       <>
-                        <div className="overflow-x-auto">
+                        <div className="space-y-3 p-3 xl:hidden">
+                          {transactions.map((tx) => <article key={tx._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-sm font-semibold text-slate-900 dark:text-white">{tx.supplier?.name || 'Unknown'}</p><p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{tx.transactionDate ? new Date(tx.transactionDate).toLocaleDateString() : '-'} · {getTransactionLabel(tx.transactionType)}</p></div><span className="shrink-0 text-sm font-semibold">{formatMoney(tx.amount)}</span></div><div className="mt-3 border-t pt-3 text-xs"><p className="break-words text-slate-600 dark:text-slate-300">{tx.description || '-'}</p><div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="break-all text-muted-foreground">{tx.referenceNo || '-'}</span><span className="inline-flex items-center gap-1 rounded-full border px-2 py-1">{tx.direction === 'increase' ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}{tx.direction === 'increase' ? 'Increases AP' : 'Reduces AP'}</span></div></div></article>)}
+                        </div>
+                        <div className="hidden overflow-x-auto xl:block">
                           <Table>
                             <TableHeader>
                               <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
@@ -649,7 +659,7 @@ export default function APDashboardPage() {
               </DialogHeader>
               {loadingStatement ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     {Array.from({ length: 3 }).map((_, i) => (
                       <Skeleton key={i} className="h-24 rounded-lg" />
                     ))}
@@ -658,7 +668,7 @@ export default function APDashboardPage() {
                 </div>
               ) : supplierStatement ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <Card className="overflow-hidden border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
                       <CardContent className="p-4">
                         <p className="text-xs text-slate-500 dark:text-slate-400">Total GRNs</p>
@@ -678,7 +688,10 @@ export default function APDashboardPage() {
                       </CardContent>
                     </Card>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 xl:hidden">
+                    {(supplierStatement.grns || []).map((grn: any, idx: number) => <article key={idx} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-all text-sm font-semibold">{grn.reference || '-'}</p><p className="mt-1 text-xs text-muted-foreground">{grn.date ? new Date(grn.date).toLocaleDateString() : '-'}</p></div><b className="shrink-0 text-sm">{formatMoney(grn.balance || 0)}</b></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span>Total<b className="mt-1 block text-sm">{formatMoney(grn.total || 0)}</b></span><span>Paid<b className="mt-1 block text-sm text-emerald-600">{formatMoney(grn.paid || 0)}</b></span></div></article>)}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">

@@ -981,7 +981,7 @@ export default function BudgetDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-8">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-8">
                       <div className="md:col-span-2">
                         <Label className="text-xs">
                           {t("budgets.account", "Account")} *

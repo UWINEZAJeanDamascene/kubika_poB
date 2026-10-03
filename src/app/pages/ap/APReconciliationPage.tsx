@@ -340,7 +340,7 @@ export default function APReconciliationPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
+          <TabsList className="flex h-auto w-full justify-start gap-1 overflow-x-auto">
             <TabsTrigger value="dashboard"><Activity className="w-4 h-4 mr-2" />{t('apReconciliation.dashboard', 'Dashboard')}</TabsTrigger>
             <TabsTrigger value="payables"><TrendingUp className="w-4 h-4 mr-2" />{t('apReconciliation.payables', 'Payables')}</TabsTrigger>
             <TabsTrigger value="aging"><Clock className="w-4 h-4 mr-2" />{t('apReconciliation.aging', 'Aging')}</TabsTrigger>
@@ -361,7 +361,7 @@ export default function APReconciliationPage() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                   <Card>
                     <CardHeader className="pb-2">
                       <CardDescription>{t('apReconciliation.totalTransactions', 'Total Transactions')}</CardDescription>
@@ -395,7 +395,10 @@ export default function APReconciliationPage() {
                     <CardTitle>{t('apReconciliation.recentActivity', 'Recent Activity')}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Table>
+                    <div className="space-y-3 xl:hidden">
+                      {dashboardData.recentActivity?.slice(0, 5).map((tx: APTransaction) => <button key={tx._id} type="button" className="w-full rounded-xl border p-3 text-left" onClick={() => { setSelectedTransaction(tx); setIsDetailOpen(true); }}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-semibold">{tx.supplier?.name || '-'}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(tx.transactionDate)} · {tx.transactionType}</p></div><span className={`shrink-0 text-sm font-semibold ${tx.direction === 'increase' ? 'text-red-600' : 'text-green-600'}`}>{tx.direction === 'increase' ? '+' : '-'}{formatCurrency(tx.amount)}</span></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-3"><span className="min-w-0 break-words text-xs text-muted-foreground">{tx.description || '-'}</span>{getReconciliationStatusBadge(tx.reconciliationStatus)}</div></button>)}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block"><Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t('apReconciliation.date', 'Date')}</TableHead>
@@ -422,7 +425,7 @@ export default function APReconciliationPage() {
                           </TableRow>
                         ))}
                       </TableBody>
-                    </Table>
+                    </Table></div>
                   </CardContent>
                 </Card>
               </>
@@ -439,7 +442,12 @@ export default function APReconciliationPage() {
                 {loading.payables ? (
                   <div className="flex justify-center py-8"><RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" /></div>
                 ) : (
-                  <Table>
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {payables.map((grn) => <button key={grn._id} type="button" className="w-full rounded-xl border p-3 text-left" onClick={() => navigate(`/grns/${grn._id}`)}><div className="flex items-start justify-between gap-3"><span className="break-all font-medium">{grn.referenceNo || grn.grnNumber || '-'}</span><Badge variant={grn.paymentStatus === 'paid' ? 'default' : grn.paymentStatus === 'partially_paid' ? 'secondary' : 'outline'}>{grn.paymentStatus}</Badge></div><p className="mt-1 break-words text-sm text-muted-foreground">{grn.supplier?.name || '-'}</p><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">{t('apReconciliation.date', 'Date')}<b className="mt-1 block text-sm text-foreground">{formatDate(grn.receivedDate)}</b></span><span className="text-muted-foreground">{t('apReconciliation.total', 'Total')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(grn.totalAmount)}</b></span><span className="text-muted-foreground">{t('apReconciliation.paid', 'Paid')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(grn.amountPaid)}</b></span><span className="text-muted-foreground">{t('apReconciliation.balance', 'Balance')}<b className="mt-1 block text-sm font-semibold text-blue-600">{formatCurrency(grn.balance)}</b></span></div></button>)}
+                    {payables.length === 0 && !loading.payables && <p className="py-6 text-center text-sm text-muted-foreground">{t('apReconciliation.noPayables', 'No outstanding payables')}</p>}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block"><Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead>{t('apReconciliation.grnNumber', 'GRN #')}</TableHead>
@@ -468,7 +476,8 @@ export default function APReconciliationPage() {
                         ))
                       )}
                     </TableBody>
-                  </Table>
+                  </Table></div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -608,7 +617,12 @@ export default function APReconciliationPage() {
                     <p className="text-sm mt-2">{t('apAging.selectFilters', 'Select filters and generate the report')}</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
+                  <>
+                  <div className="space-y-3 xl:hidden">
+                    {agingData.map((row) => <article key={row.supplier._id} className="rounded-xl border p-3"><div className="flex items-center justify-between gap-2"><span className="break-words font-semibold">{row.supplier.name}</span><Button variant="outline" size="sm" className="min-h-10 shrink-0" onClick={() => navigate(`/ap-reconciliation/suppliers/${row.supplier._id}/statement`)}>Statement<ChevronRight className="ml-1 h-4 w-4" /></Button></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs sm:grid-cols-3"><span className="text-muted-foreground">{t('apAging.notYetDue', 'Not Yet Due')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(parseFloat(row.current || '0'))}</b></span><span className="text-muted-foreground">{t('apAging.days1_30', '1-30 Days')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(parseFloat(row['1-30'] || '0'))}</b></span><span className="text-muted-foreground">{t('apAging.days31_60', '31-60 Days')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(parseFloat(row['31-60'] || '0'))}</b></span><span className="text-muted-foreground">{t('apAging.days61_90', '61-90 Days')}<b className="mt-1 block text-sm text-foreground">{formatCurrency(parseFloat(row['61-90'] || '0'))}</b></span><span className="text-muted-foreground">{t('apAging.days90Plus', '90+ Days')}<b className="mt-1 block text-sm text-red-600">{formatCurrency(parseFloat(row['90+'] || '0'))}</b></span><span className="text-muted-foreground">{t('apAging.total', 'Total')}<b className="mt-1 block text-sm font-semibold text-foreground">{formatCurrency(row.totalBalance)}</b></span></div></article>)}
+                    {(() => { const totals = calculateAgingTotals(); return <article className="rounded-xl bg-muted/40 p-3"><b>{t('apAging.total', 'Total')}</b><div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-3"><span>Not yet due<b className="mt-1 block">{formatCurrency(totals.notYetDue)}</b></span><span>1-30 days<b className="mt-1 block">{formatCurrency(totals.days1_30)}</b></span><span>31-60 days<b className="mt-1 block">{formatCurrency(totals.days31_60)}</b></span><span>61-90 days<b className="mt-1 block">{formatCurrency(totals.days61_90)}</b></span><span>90+ days<b className="mt-1 block">{formatCurrency(totals.days90Plus)}</b></span><span>Total<b className="mt-1 block">{formatCurrency(totals.total)}</b></span></div></article>; })()}
+                  </div>
+                  <div className="hidden overflow-x-auto xl:block">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -662,6 +676,7 @@ export default function APReconciliationPage() {
                       </TableBody>
                     </Table>
                   </div>
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -671,7 +686,7 @@ export default function APReconciliationPage() {
           <TabsContent value="transactions" className="space-y-6">
             <Card>
               <CardContent className="pt-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
                   <Select value={filters.transactionType || 'all'} onValueChange={(v) => setFilters(p => ({ ...p, transactionType: v === 'all' ? '' : v, page: 1 }))}>
                     <SelectTrigger><SelectValue placeholder={t('apReconciliation.allTypes', 'All Types')} /></SelectTrigger>
                     <SelectContent>
@@ -703,7 +718,11 @@ export default function APReconciliationPage() {
                   <div className="flex justify-center py-8"><RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" /></div>
                 ) : (
                   <>
-                    <Table>
+                    <div className="space-y-3 xl:hidden">
+                      {transactions.map((tx) => <button key={tx._id} type="button" className="w-full rounded-xl border p-3 text-left" onClick={() => { setSelectedTransaction(tx); setIsDetailOpen(true); }}><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-semibold">{tx.supplier?.name || '-'}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(tx.transactionDate)} · {tx.transactionType}</p></div><span className={`shrink-0 text-sm font-semibold ${tx.direction === 'increase' ? 'text-red-600' : 'text-green-600'}`}>{tx.direction === 'increase' ? '+' : '-'}{formatCurrency(tx.amount)}</span></div><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 text-xs"><span className="text-muted-foreground">Reference<b className="mt-1 block break-all text-sm text-foreground">{tx.referenceNo || '-'}</b></span><span className="text-muted-foreground">Balance<b className="mt-1 block text-sm text-foreground">{formatCurrency(tx.supplierBalanceAfter)}</b></span><span className="col-span-2">{getReconciliationStatusBadge(tx.reconciliationStatus)}</span></div></button>)}
+                      {transactions.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">{t('apReconciliation.noTransactions', 'No transactions found')}</p>}
+                    </div>
+                    <div className="hidden overflow-x-auto xl:block"><Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>{t('apReconciliation.date', 'Date')}</TableHead>
@@ -736,7 +755,7 @@ export default function APReconciliationPage() {
                           ))
                         )}
                       </TableBody>
-                    </Table>
+                    </Table></div>
                     {pagination.pages > 1 && (
                       <div className="flex justify-center items-center gap-2 mt-6">
                         <Button variant="outline" size="sm" disabled={filters.page === 1} onClick={() => setFilters(p => ({ ...p, page: p.page - 1 }))}>{t('common.previous', 'Previous')}</Button>
