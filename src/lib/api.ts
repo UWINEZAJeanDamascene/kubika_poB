@@ -2942,6 +2942,10 @@ export const deliveryNotesApi = {
 // Access control & security API (roles, 2FA, IP whitelist endpoints)
 export const accessApi = {
   getRoles: () => request<{ success: boolean; data: unknown }>("/access/roles"),
+  getPermissionCatalog: () =>
+    request<{ success: boolean; data: Array<{ resource: string; label: string; actions: string[] }> }>(
+      "/access/roles/permission-catalog",
+    ),
   createRole: (data: {
     name: string;
     description?: string;

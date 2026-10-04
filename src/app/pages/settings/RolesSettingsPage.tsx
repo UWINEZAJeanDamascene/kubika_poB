@@ -52,20 +52,13 @@ interface Role {
   permissions: Permission[];
 }
 
-const ALL_RESOURCES = [
-  'products', 'stock', 'clients', 'suppliers', 'warehouses',
-  'sales_invoices', 'quotations', 'delivery_notes', 'credit_notes',
-  'purchase_orders', 'grn', 'purchase_returns',
-  'journal_entries', 'chart_of_accounts', 'periods', 'bank_accounts',
-  'ar_receipts', 'ap_payments', 'payroll', 'expenses',
-  'assets', 'budgets', 'projects', 'reports', 'users', 'roles',
-  'stock_transfers', 'stock_audits', 'loans', 'petty_cash',
-  'fixed_assets', 'tax', 'notifications', 'settings'
-];
+interface PermissionResource {
+  resource: string;
+  label: string;
+  actions: string[];
+}
 
-const ALL_ACTIONS = ['read', 'create', 'update', 'delete', 'approve', 'post', 'reverse', 'confirm', 'send', 'convert', 'close', 'reopen', 'depreciate', 'dispose', 'pay', 'remit', 'export', 'file', 'admin'];
-
-const resourceLabel = (r: string) => r.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+const resourceLabel = (r: string) => r === '*' ? 'All Resources' : r.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 
 const actionLabel = (a: string) => a.charAt(0).toUpperCase() + a.slice(1);
 
@@ -135,9 +128,10 @@ function getRoleTypeBadge(isSystem: boolean) {
 
 export default function RolesSettingsPage() {
   const [roles, setRoles] = useState<Role[]>([]);
+  const [permissionCatalog, setPermissionCatalog] = useState<PermissionResource[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | 'view' | null>(null);
+  const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | 'view' | 'customize' | null>(null);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -145,12 +139,41 @@ export default function RolesSettingsPage() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
+  const allActions = Array.from(new Set(permissionCatalog.flatMap((item) => item.actions))).sort();
+
+  const mergePermissionCatalog = (catalog: PermissionResource[], roleRows: Role[]) => {
+    const byResource = new Map<string, PermissionResource>();
+    for (const item of catalog) {
+      byResource.set(item.resource, { ...item, actions: [...new Set(item.actions)] });
+    }
+    // Keep legacy/custom permissions editable even when their resource no
+    // longer appears on an active route. New routes register automatically.
+    for (const role of roleRows) {
+      for (const permission of role.permissions || []) {
+        if (!permission.resource || permission.resource === '*') continue;
+        const existing = byResource.get(permission.resource);
+        const actions = [...new Set([...(existing?.actions || []), ...(permission.actions || []).filter((action) => action !== '*')])].sort();
+        byResource.set(permission.resource, {
+          resource: permission.resource,
+          label: existing?.label || resourceLabel(permission.resource),
+          actions,
+        });
+      }
+    }
+    return Array.from(byResource.values()).sort((a, b) => a.label.localeCompare(b.label));
+  };
 
   const fetchRoles = async () => {
     setLoading(true);
     try {
-      const response = await accessApi.getRoles() as any;
-      setRoles(response.data || []);
+      const [rolesResponse, catalogResponse] = await Promise.all([
+        accessApi.getRoles(),
+        accessApi.getPermissionCatalog(),
+      ]);
+      const roleRows = ((rolesResponse as any).data || []) as Role[];
+      const catalogRows = ((catalogResponse as any).data || []) as PermissionResource[];
+      setRoles(roleRows);
+      setPermissionCatalog(mergePermissionCatalog(catalogRows, roleRows));
     } catch (err: any) {
       toast.error(err.message || 'Failed to load roles');
     } finally {
@@ -188,6 +211,37 @@ export default function RolesSettingsPage() {
     setDrawerMode('edit');
   };
 
+  const openCustomize = (role: Role) => {
+    const baseName = `${role.name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')}_custom`;
+    let candidate = baseName;
+    let suffix = 2;
+    while (roles.some((existing) => existing.name.toLowerCase() === candidate.toLowerCase())) {
+      candidate = `${baseName}_${suffix++}`;
+    }
+    setSelectedRole(role);
+    setFormName(candidate);
+    setFormDescription(`Company-specific customization based on the ${role.name.replace(/_/g, ' ')} system role.`);
+    // Expand system wildcard grants into the live backend catalog. Saving a
+    // company copy should never preserve an invisible wildcard grant.
+    const expanded = new Map<string, Set<string>>();
+    for (const permission of role.permissions) {
+      const resources = permission.resource === '*'
+        ? permissionCatalog
+        : permissionCatalog.filter((item) => item.resource === permission.resource);
+      for (const definition of resources) {
+        const resource = definition.resource;
+        const actions = permission.actions.includes('*')
+          ? definition.actions
+          : permission.actions.filter((action) => definition.actions.includes(action));
+        const current = expanded.get(resource) || new Set<string>();
+        actions.forEach((action) => current.add(action));
+        expanded.set(resource, current);
+      }
+    }
+    setFormPermissions(Array.from(expanded, ([resource, actions]) => ({ resource, actions: Array.from(actions) })));
+    setDrawerMode('customize');
+  };
+
   const openView = (role: Role) => {
     setSelectedRole(role);
     setDrawerMode('view');
@@ -195,21 +249,13 @@ export default function RolesSettingsPage() {
 
   const togglePermission = (resource: string, action: string) => {
     setFormPermissions(prev => {
-      const copy = [...prev];
-      const existing = copy.find(p => p.resource === resource);
-      if (existing) {
-        if (existing.actions.includes(action)) {
-          existing.actions = existing.actions.filter(a => a !== action);
-          if (existing.actions.length === 0) {
-            return copy.filter(p => p.resource !== resource);
-          }
-        } else {
-          existing.actions.push(action);
-        }
-        return copy;
-      } else {
-        return [...copy, { resource, actions: [action] }];
-      }
+      const existing = prev.find((permission) => permission.resource === resource);
+      const actions = new Set(existing?.actions || []);
+      if (actions.has(action)) actions.delete(action);
+      else actions.add(action);
+      const next = prev.filter((permission) => permission.resource !== resource);
+      if (actions.size) next.push({ resource, actions: Array.from(actions) });
+      return next;
     });
   };
 
@@ -219,7 +265,9 @@ export default function RolesSettingsPage() {
     try {
       const permissionStrings = formPermissions.flatMap(p => p.actions.map(a => `${p.resource}:${a}`));
       await accessApi.createRole({ name: formName, description: formDescription, permissions: permissionStrings });
-      toast.success('Role created');
+      toast.success(drawerMode === 'customize'
+        ? 'Custom role created. Assign users to this role in User Management.'
+        : 'Role created');
       closeDrawer();
       fetchRoles();
     } catch (err: any) {
@@ -481,7 +529,17 @@ export default function RolesSettingsPage() {
                         <Eye className="h-3.5 w-3.5" />
                         View
                       </Button>
-                      {!role.is_system_role && (
+                      {role.is_system_role ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-8 flex-1 gap-1 text-xs dark:border-slate-700 dark:text-slate-200"
+                          onClick={() => openCustomize(role)}
+                        >
+                          <Wrench className="h-3.5 w-3.5" />
+                          Customize
+                        </Button>
+                      ) : (
                         <Button
                           variant="outline"
                           size="sm"
@@ -587,7 +645,7 @@ export default function RolesSettingsPage() {
               )}
 
               {/* Create / Edit */}
-              {(drawerMode === 'create' || drawerMode === 'edit') && (
+              {(drawerMode === 'create' || drawerMode === 'edit' || drawerMode === 'customize') && (
                 <>
                   <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800">
                     <div>
@@ -597,12 +655,14 @@ export default function RolesSettingsPage() {
                         ) : (
                           <Edit2 className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                         )}
-                        {drawerMode === 'create' ? 'Create Role' : 'Edit Role'}
+                        {drawerMode === 'customize' ? 'Customize System Role' : drawerMode === 'create' ? 'Create Role' : 'Edit Role'}
                       </h2>
                       <p className="text-sm text-slate-500 dark:text-slate-400">
-                        {drawerMode === 'create'
-                          ? 'Define a new custom role with specific permissions'
-                          : `Editing: ${selectedRole?.name}`}
+                        {drawerMode === 'customize'
+                          ? `Create a company-specific copy of ${selectedRole?.name}. The built-in role stays unchanged.`
+                          : drawerMode === 'create'
+                            ? 'Define a new custom role with specific permissions'
+                            : `Editing: ${selectedRole?.name}`}
                       </p>
                     </div>
                     <Button
@@ -615,6 +675,11 @@ export default function RolesSettingsPage() {
                     </Button>
                   </div>
                   <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {drawerMode === 'customize' && (
+                      <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                        Users assigned to the built-in role will remain on it. After creating this copy, assign the intended users to the new custom role in User Management.
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -645,66 +710,73 @@ export default function RolesSettingsPage() {
                         Permissions
                       </Label>
                       <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
-                        <div className="space-y-3 p-3 xl:hidden">
-                          {ALL_RESOURCES.map((resource) => {
-                            const perm = formPermissions.find((p) => p.resource === resource);
-                            return <article key={resource} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><h4 className="font-medium text-slate-900 dark:text-white">{resourceLabel(resource)}</h4><div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-3">{ALL_ACTIONS.map((action) => <label key={action} className="flex min-h-11 items-center gap-2 rounded-md px-2 text-sm"><Checkbox checked={perm?.actions.includes(action) || false} onCheckedChange={() => togglePermission(resource, action)} className="h-4 w-4"/><span>{actionLabel(action)}</span></label>)}</div></article>;
-                          })}
-                        </div>
-                        <div className="hidden overflow-x-auto xl:block">
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="hover:bg-transparent dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                                <TableHead className="text-slate-500 dark:text-slate-400 min-w-[160px]">
-                                  Resource
-                                </TableHead>
-                                {ALL_ACTIONS.map((a) => (
-                                  <TableHead
-                                    key={a}
-                                    className="text-center text-slate-500 dark:text-slate-400 w-16 text-xs"
-                                  >
-                                    {actionLabel(a)}
-                                  </TableHead>
-                                ))}
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {ALL_RESOURCES.map((resource) => {
+                        {!permissionCatalog.length ? (
+                          <div className="p-5 text-sm text-amber-700 dark:text-amber-300">
+                            Permission resources could not be loaded. Refresh the page before creating or editing a role.
+                          </div>
+                        ) : (
+                          <>
+                            <div className="space-y-3 p-3 xl:hidden">
+                              {permissionCatalog.map(({ resource, actions }) => {
                                 const perm = formPermissions.find((p) => p.resource === resource);
                                 return (
-                                  <TableRow
-                                    key={resource}
-                                    className="dark:border-slate-800"
-                                  >
-                                    <TableCell className="text-sm font-medium text-slate-900 dark:text-slate-200">
-                                      {resourceLabel(resource)}
-                                    </TableCell>
-                                    {ALL_ACTIONS.map((action) => {
-                                      const checked = perm?.actions.includes(action) || false;
-                                      return (
-                                        <TableCell key={action} className="text-center">
-                                          <Checkbox
-                                            checked={checked}
-                                            onCheckedChange={() =>
-                                              togglePermission(resource, action)
-                                            }
-                                            className="h-4 w-4"
-                                          />
-                                        </TableCell>
-                                      );
-                                    })}
-                                  </TableRow>
+                                  <article key={resource} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                                    <h4 className="font-medium text-slate-900 dark:text-white">{resourceLabel(resource)}</h4>
+                                    <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-3">
+                                      {actions.map((action) => (
+                                        <label key={action} className="flex min-h-11 items-center gap-2 rounded-md px-2 text-sm">
+                                          <Checkbox checked={perm?.actions.includes(action) || false} onCheckedChange={() => togglePermission(resource, action)} className="h-4 w-4" />
+                                          <span>{actionLabel(action)}</span>
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </article>
                                 );
                               })}
-                            </TableBody>
-                          </Table>
-                        </div>
+                            </div>
+                            <div className="hidden overflow-x-auto xl:block">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="hover:bg-transparent dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                                    <TableHead className="text-slate-500 dark:text-slate-400 min-w-[160px]">Resource</TableHead>
+                                    {allActions.map((action) => (
+                                      <TableHead key={action} className="text-center text-slate-500 dark:text-slate-400 w-16 text-xs">
+                                        {actionLabel(action)}
+                                      </TableHead>
+                                    ))}
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {permissionCatalog.map(({ resource, actions }) => {
+                                    const perm = formPermissions.find((p) => p.resource === resource);
+                                    return (
+                                      <TableRow key={resource} className="dark:border-slate-800">
+                                        <TableCell className="text-sm font-medium text-slate-900 dark:text-slate-200">{resourceLabel(resource)}</TableCell>
+                                        {allActions.map((action) => (
+                                          <TableCell key={action} className="text-center">
+                                            {actions.includes(action) ? (
+                                              <Checkbox
+                                                checked={perm?.actions.includes(action) || false}
+                                                onCheckedChange={() => togglePermission(resource, action)}
+                                                className="h-4 w-4"
+                                              />
+                                            ) : <span className="text-slate-300 dark:text-slate-700" aria-hidden="true">—</span>}
+                                          </TableCell>
+                                        ))}
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </>
+                        )}
                       </Card>
                     </div>
                   </div>
                   <div className="p-6 border-t border-slate-200 dark:border-slate-800">
                     <Button
-                      onClick={drawerMode === 'create' ? handleCreate : handleUpdate}
+                      onClick={drawerMode === 'edit' ? handleUpdate : handleCreate}
                       className="w-full gap-2 bg-blue-600 hover:bg-blue-700"
                       disabled={
                         actionLoading === 'create' || actionLoading === 'update'
@@ -715,7 +787,7 @@ export default function RolesSettingsPage() {
                       ) : (
                         <Save className="h-4 w-4" />
                       )}
-                      {drawerMode === 'create' ? 'Create Role' : 'Save Changes'}
+                      {drawerMode === 'customize' ? 'Create Custom Role' : drawerMode === 'create' ? 'Create Role' : 'Save Changes'}
                     </Button>
                   </div>
                 </>
