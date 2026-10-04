@@ -2485,12 +2485,13 @@ export const salesLegacyApi = {
       method: "DELETE",
     }),
   // Create direct sale (invoice + payment in one)
-  createDirectSale: (data: SalesLegacyRequest, sendEmail?: boolean) =>
-    request<{ success: boolean; message: string; data: unknown; changeDue: number }>(
+  createDirectSale: (data: SalesLegacyRequest, sendEmail?: boolean, idempotencyKey?: string) =>
+    request<{ success: boolean; message: string; data: unknown; changeDue: number; replayed?: boolean }>(
       "/sales-legacy/direct-sale",
       {
         method: "POST",
         body: { ...data, sendEmail },
+        headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
       },
     ),
 

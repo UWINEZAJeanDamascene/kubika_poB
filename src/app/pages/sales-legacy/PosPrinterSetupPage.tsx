@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { ArrowLeft, Bluetooth, Cable, Check, ChevronRight, CircleHelp, Info, Network, Printer, ShieldCheck } from 'lucide-react';
 import { Layout } from '@/app/layout/Layout';
@@ -6,6 +6,23 @@ import { Button } from '@/app/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { useAuthStore } from '@/store/authStore';
 import { useCompanyStore } from '@/store/companyStore';
+import { getPosDeviceConfig, updatePosDeviceConfig } from './posDeviceBridge';
+
+type SerialPrinterPort = {
+  open: (options: { baudRate: number }) => Promise<void>;
+  close: () => Promise<void>;
+  getInfo: () => { usbVendorId?: number; usbProductId?: number };
+  writable: WritableStream<Uint8Array> | null;
+};
+
+type WebSerialManager = {
+  getPorts: () => Promise<SerialPrinterPort[]>;
+  requestPort: () => Promise<SerialPrinterPort>;
+};
+
+function getWebSerial(): WebSerialManager | undefined {
+  return (navigator as Navigator & { serial?: WebSerialManager }).serial;
+}
 
 const connectionOptions = [
   {
@@ -39,10 +56,112 @@ export default function PosPrinterSetupPage() {
   const company = useCompanyStore((state) => state.company);
   const storageKey = `kubika:pos-paper-width:${companyId}`;
   const [paperWidth, setPaperWidth] = useState<'58' | '80'>(() => localStorage.getItem(storageKey) === '58' ? '58' : '80');
+  const [serialSupported, setSerialSupported] = useState(false);
+  const [authorizedSerialPorts, setAuthorizedSerialPorts] = useState(0);
+  const [serialPort, setSerialPort] = useState<SerialPrinterPort | null>(null);
+  const [baudRate, setBaudRate] = useState<'9600' | '19200' | '38400' | '57600' | '115200'>('9600');
+  const [autoKickDrawer, setAutoKickDrawer] = useState(() => getPosDeviceConfig(companyId).autoKickCashDrawer);
+  const [deviceMessage, setDeviceMessage] = useState('');
+  const [deviceBusy, setDeviceBusy] = useState(false);
+  const serialPortRef = useRef<SerialPrinterPort | null>(null);
+
+  useEffect(() => {
+    const serial = getWebSerial();
+    setSerialSupported(Boolean(serial) && window.isSecureContext);
+    if (serial && window.isSecureContext) {
+      void serial.getPorts().then((ports) => setAuthorizedSerialPorts(ports.length)).catch(() => undefined);
+    }
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(storageKey, paperWidth);
   }, [paperWidth, storageKey]);
+
+  useEffect(() => () => {
+    const port = serialPortRef.current;
+    if (port) void port.close().catch(() => undefined);
+  }, []);
+
+  const connectSerialPrinter = useCallback(async () => {
+    const serial = getWebSerial();
+    if (!serial || !window.isSecureContext) {
+      setDeviceMessage('Direct USB/serial access needs a supported Chromium browser over HTTPS. Use Print test slip for the standard system print dialog.');
+      return;
+    }
+    setDeviceBusy(true);
+    try {
+      const port = await serial.requestPort();
+      await port.open({ baudRate: Number(baudRate) });
+      const info = port.getInfo();
+      updatePosDeviceConfig(companyId, {
+        baudRate: Number(baudRate),
+        usbVendorId: info.usbVendorId,
+        usbProductId: info.usbProductId,
+      });
+      serialPortRef.current = port;
+      setSerialPort(port);
+      setAuthorizedSerialPorts((count) => Math.max(count, 1));
+      setDeviceMessage(`Printer connected at ${baudRate} baud. Confirm your device manual uses this setting before sending data.`);
+    } catch (error) {
+      setDeviceMessage(error instanceof Error ? error.message : 'Could not connect to the selected serial device.');
+    } finally {
+      setDeviceBusy(false);
+    }
+  }, [baudRate, companyId]);
+
+  const writeSerialBytes = useCallback(async (bytes: Uint8Array) => {
+    if (!serialPort?.writable) throw new Error('The serial printer is not connected.');
+    const writer = serialPort.writable.getWriter();
+    try {
+      await writer.write(bytes);
+    } finally {
+      writer.releaseLock();
+    }
+  }, [serialPort]);
+
+  const printSerialTest = useCallback(async () => {
+    if (!serialPort) return;
+    setDeviceBusy(true);
+    try {
+      const text = new TextEncoder().encode(`${company?.name || 'KUBIKA POS'}\nPRINTER CONNECTION TEST\nTEST SLIP - NOT A FISCAL RECEIPT\nPaper: ${paperWidth} mm\n0123456789 ABCDEFG abcdefg\nRWF - Rwanda\n\n\n`);
+      const bytes = new Uint8Array([0x1b, 0x40, 0x1b, 0x61, 0x01, ...text, 0x1d, 0x56, 0x00]);
+      await writeSerialBytes(bytes);
+      setDeviceMessage('Test data sent to the serial printer. Check the printer output.');
+    } catch (error) {
+      setDeviceMessage(error instanceof Error ? error.message : 'Could not send the test slip.');
+    } finally {
+      setDeviceBusy(false);
+    }
+  }, [company?.name, paperWidth, serialPort, writeSerialBytes]);
+
+  const kickCashDrawer = useCallback(async () => {
+    if (!serialPort || !window.confirm('Send the drawer-open pulse now? The connected cash drawer may open immediately.')) return;
+    setDeviceBusy(true);
+    try {
+      // ESC/POS drawer kick: pulse pin 2, 50 ms on / 500 ms off.
+      await writeSerialBytes(new Uint8Array([0x1b, 0x70, 0x00, 0x19, 0xfa]));
+      setDeviceMessage('Drawer pulse sent. The drawer must be attached to a compatible printer drawer port.');
+    } catch (error) {
+      setDeviceMessage(error instanceof Error ? error.message : 'Could not send the drawer pulse.');
+    } finally {
+      setDeviceBusy(false);
+    }
+  }, [serialPort, writeSerialBytes]);
+
+  const disconnectSerialPrinter = useCallback(async () => {
+    if (!serialPort) return;
+    setDeviceBusy(true);
+    try {
+      await serialPort.close();
+      serialPortRef.current = null;
+      setSerialPort(null);
+      setDeviceMessage('Serial printer disconnected.');
+    } catch (error) {
+      setDeviceMessage(error instanceof Error ? error.message : 'Could not disconnect the serial printer.');
+    } finally {
+      setDeviceBusy(false);
+    }
+  }, [serialPort]);
 
   return (
     <Layout>
@@ -99,6 +218,70 @@ export default function PosPrinterSetupPage() {
               <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-cyan-100 text-cyan-700 dark:bg-cyan-950/70 dark:text-cyan-300"><ShieldCheck className="h-5 w-5" /></div>
               <div><p className="text-sm font-semibold text-slate-900 dark:text-white">Private to this device</p><p className="mt-0.5 text-xs leading-5 text-slate-500 dark:text-slate-400">Printer discovery stays in your system settings.</p></div>
             </div>
+          </div>
+        </section>
+
+        <section className="printer-setup-chrome rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-slate-950 dark:text-white">Direct thermal printer and cash drawer</h2>
+                <span className="rounded-full bg-cyan-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-cyan-800 dark:bg-cyan-950/70 dark:text-cyan-300">Serial devices</span>
+              </div>
+              <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-400">On supported Chromium browsers, connect an ESC/POS printer exposed as a serial port. A compatible cash drawer can be pulsed through the printer’s drawer port.</p>
+            </div>
+            {serialSupported && (
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={baudRate} onValueChange={(value: typeof baudRate) => setBaudRate(value)} disabled={Boolean(serialPort) || deviceBusy}>
+                  <SelectTrigger className="h-10 w-36 rounded-lg"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {(['9600', '19200', '38400', '57600', '115200'] as const).map((rate) => <SelectItem key={rate} value={rate}>{rate} baud</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {serialPort ? (
+                  <Button variant="outline" onClick={() => void disconnectSerialPrinter()} disabled={deviceBusy}>Disconnect</Button>
+                ) : (
+                  <Button onClick={() => void connectSerialPrinter()} disabled={deviceBusy}>{deviceBusy ? 'Connecting…' : 'Connect serial printer'}</Button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-950/50">
+            {!serialSupported ? (
+              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">Direct serial access is unavailable in this browser or page context. You can still use the system print dialog above. For direct ESC/POS control, use a supported Chromium browser over HTTPS with a serial-capable printer.</p>
+            ) : (
+              <>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className={`h-2.5 w-2.5 rounded-full ${serialPort ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                    <span className="font-medium text-slate-900 dark:text-white">{serialPort ? 'Serial printer connected' : 'No serial printer connected'}</span>
+                    {!serialPort && authorizedSerialPorts > 0 && <span className="text-xs text-slate-500 dark:text-slate-400">{authorizedSerialPorts} previously authorized device</span>}
+                  </div>
+                {getPosDeviceConfig(companyId).usbVendorId != null && getPosDeviceConfig(companyId).usbProductId != null && (
+                  <label className="mt-4 flex cursor-pointer items-start gap-3 border-t border-slate-200 pt-4 text-sm dark:border-slate-800">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 accent-cyan-600"
+                      checked={autoKickDrawer}
+                      onChange={(event) => {
+                        const enabled = event.target.checked;
+                        setAutoKickDrawer(enabled);
+                        updatePosDeviceConfig(companyId, { autoKickCashDrawer: enabled });
+                      }}
+                    />
+                    <span><span className="font-medium text-slate-900 dark:text-white">Open drawer automatically after cash sales</span><span className="mt-1 block text-xs leading-5 text-slate-500 dark:text-slate-400">Only uses the authorized printer saved on this device. It will not open for card, transfer, or unpaid sales.</span></span>
+                  </label>
+                )}
+                  <div className="flex flex-wrap gap-2">
+                    <Button size="sm" variant="outline" onClick={() => void printSerialTest()} disabled={!serialPort || deviceBusy}><Printer className="mr-2 h-4 w-4" />Send test slip</Button>
+                    <Button size="sm" variant="outline" onClick={() => void kickCashDrawer()} disabled={!serialPort || deviceBusy}>Open cash drawer</Button>
+                  </div>
+                </div>
+                {deviceMessage && <p role="status" className="mt-3 text-xs leading-5 text-slate-600 dark:text-slate-300">{deviceMessage}</p>}
+              </>
+            )}
+            <p className="mt-3 border-t border-slate-200 pt-3 text-xs leading-5 text-slate-500 dark:border-slate-800 dark:text-slate-400">Device support varies by printer model, browser, operating system, and serial settings. The drawer action sends the standard ESC/POS pulse on pin 2; it will not work with every printer or drawer. Connect only trusted devices.</p>
           </div>
         </section>
 

@@ -453,7 +453,7 @@ const salesNav: NavSection = {
       nameKey: "nav.posPrinterSetup",
       href: "/pos/printer-setup",
       icon: Printer,
-      permission: "sales_invoices:read",
+      permission: "sales_invoices:create",
       featureKey: "sales",
       moduleNames: ["POS", "Invoices"],
     },

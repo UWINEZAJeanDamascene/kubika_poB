@@ -55,9 +55,16 @@ import { useTranslation } from 'react-i18next';
 import { EBMStatusBadge } from '@/app/components/EBMStatusBadge';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/authStore';
+import { getPosDeviceConfig, kickDrawerAfterCashSale } from './posDeviceBridge';
 import { useAuth } from '@/contexts/AuthContext';
 import { TRANSACTIONAL_STALE_TIME } from '@/lib/hooks/useListQuery';
 import { useClientPicker } from '@/lib/hooks/useEntities';
+import {
+  deletePendingPosSale,
+  loadPendingPosSale,
+  saveOrLoadPendingPosSale,
+  type PendingPosSaleAttempt,
+} from './posPendingSaleStore';
 
 interface CartItem extends PosProduct {
   cartQuantity: number;
@@ -150,6 +157,14 @@ export default function SalesLegacyPage() {
   const { t } = useTranslation();
   const { hasPermission } = useAuth();
   const navigate = useNavigate();
+  const activeCompanyId = useAuthStore((state) => state.activeCompanyId);
+  const activeUserId = useAuthStore((state) => state.user?._id || state.user?.id || 'unknown');
+  const companyId = activeCompanyId || 'workspace';
+  const pendingSaleStorageKey = `kubika:pos-pending-sale:${companyId}:${activeUserId}`;
+  const [pendingSaleAttempt, setPendingSaleAttempt] = useState<PendingPosSaleAttempt | null>(null);
+  const [pendingSaleLoaded, setPendingSaleLoaded] = useState(false);
+  const [pendingSaleLoadFailed, setPendingSaleLoadFailed] = useState(false);
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine);
   const appFormatCurrency = useFormatCurrency();
   const formatCurrency = useCallback((amount: number | any, overrideCurrency?: string) => {
     return appFormatCurrency(toNumericAmount(amount), overrideCurrency);
@@ -182,9 +197,41 @@ export default function SalesLegacyPage() {
   const scanFlushTimerRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
   const tillKey = ['pos', 'active-till'] as const;
-  const activeCompanyId = useAuthStore((state) => state.activeCompanyId);
   const heldSalesKey = useMemo(() => ['pos', 'held-sales', activeCompanyId] as const, [activeCompanyId]);
   const migratedLocalHeldSales = useRef(false);
+
+  useEffect(() => {
+    const updateOnline = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', updateOnline);
+    window.addEventListener('offline', updateOnline);
+    return () => {
+      window.removeEventListener('online', updateOnline);
+      window.removeEventListener('offline', updateOnline);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPendingSaleLoaded(false);
+    setPendingSaleLoadFailed(false);
+    setPendingSaleAttempt(null);
+    void loadPendingPosSale(pendingSaleStorageKey)
+      .then((attempt) => {
+        if (!cancelled) setPendingSaleAttempt(attempt);
+      })
+      .catch((error) => {
+        console.error('Could not load saved POS checkout:', error);
+        if (!cancelled) {
+          setPendingSaleLoadFailed(true);
+          toast.error('Could not check saved checkout status. Refresh or check this device before starting a sale.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setPendingSaleLoaded(true);
+      });
+    return () => { cancelled = true; };
+  }, [pendingSaleStorageKey]);
+
   const heldSalesQuery = useQuery({
     queryKey: heldSalesKey,
     enabled: Boolean(activeCompanyId),
@@ -435,6 +482,10 @@ export default function SalesLegacyPage() {
   
   // Cart operations
   const addToCart = (product: PosProduct) => {
+    if (pendingSaleAttempt) {
+      toast.error('Resolve the pending checkout before editing the cart.');
+      return;
+    }
     if (product.currentStock <= 0) {
       toast.error(`${product.name} is out of stock`);
       return;
@@ -465,6 +516,7 @@ export default function SalesLegacyPage() {
   };
   
   const updateQuantity = (productId: string, delta: number) => {
+    if (pendingSaleAttempt) return;
     setCart(prev => prev.map(item => {
       if (item._id === productId) {
         const newQty = Math.max(1, item.cartQuantity + delta);
@@ -479,27 +531,38 @@ export default function SalesLegacyPage() {
   };
   
   const updatePrice = (productId: string, price: number) => {
+    if (pendingSaleAttempt) return;
     setCart(prev => prev.map(item => 
       item._id === productId ? { ...item, cartUnitPrice: Math.max(0, price) } : item
     ));
   };
   
   const updateDiscount = (productId: string, discount: number) => {
+    if (pendingSaleAttempt) return;
     setCart(prev => prev.map(item => 
       item._id === productId ? { ...item, cartDiscountPct: Math.max(0, Math.min(100, discount)) } : item
     ));
   };
   
   const removeFromCart = (productId: string) => {
+    if (pendingSaleAttempt) return;
     setCart(prev => prev.filter(item => item._id !== productId));
   };
   
-  const clearCart = () => {
+  const clearCart = (force = false) => {
+    if (pendingSaleAttempt && !force) {
+      toast.error('Resolve the pending checkout before clearing the cart.');
+      return;
+    }
     setCart([]);
     setPaymentAmount(0);
   };
 
   const holdSale = async () => {
+    if (pendingSaleAttempt) {
+      toast.error('Resolve the pending checkout before holding a different sale.');
+      return false;
+    }
     if (cart.length === 0) {
       toast.error('Add items before holding a sale');
       return false;
@@ -536,6 +599,10 @@ export default function SalesLegacyPage() {
   };
 
   const recallSale = async (heldSale: HeldSale) => {
+    if (pendingSaleAttempt) {
+      toast.error('Resolve the pending checkout before recalling a held sale.');
+      return;
+    }
     if (cart.length > 0) {
       const savedCurrentSale = await holdSale();
       if (!savedCurrentSale) return;
@@ -758,8 +825,8 @@ export default function SalesLegacyPage() {
   // server remains authoritative: failed sales restore this exact snapshot and
   // every settlement revalidates the live product/stock/invoice queries.
   const saleMutation = useMutation({
-    mutationFn: async ({ requestData, shouldSendEmail }: { requestData: any; shouldSendEmail: boolean }) =>
-      salesLegacyApi.createDirectSale(requestData, shouldSendEmail),
+    mutationFn: async ({ requestData, shouldSendEmail, idempotencyKey }: { requestData: any; shouldSendEmail: boolean; idempotencyKey: string }) =>
+      salesLegacyApi.createDirectSale(requestData, shouldSendEmail, idempotencyKey),
     onMutate: async ({ requestData }) => {
       const selectedWarehouseProducts = {
         predicate: (query: any) => query.queryKey[0] === 'pos'
@@ -820,7 +887,15 @@ export default function SalesLegacyPage() {
   }, [cartCalculations.grandTotal]);
 
   // Why checkout is unavailable, so a disabled button is never a dead end.
-  const checkoutBlockedReason = cart.length === 0
+  const checkoutBlockedReason = pendingSaleLoadFailed
+    ? 'Saved checkout status is unavailable on this device. Resolve browser storage before starting another sale.'
+    : !pendingSaleLoaded
+    ? 'Checking this device for a saved checkout'
+    : pendingSaleAttempt
+    ? !isOnline
+      ? 'This saved checkout is still pending. Reconnect before retrying; it has not been confirmed.'
+      : null
+    : cart.length === 0
     ? 'Add at least one product to the cart'
     : !selectedWarehouseId
       ? 'Select a warehouse'
@@ -832,6 +907,10 @@ export default function SalesLegacyPage() {
             ? 'Only cash payments can be above the sale total'
           : paymentAmount > 0
               && ['bank_transfer', 'cheque', 'mobile_money'].includes(paymentMethod)
+              && !paymentReference.trim()
+                ? 'Enter the transfer, mobile-money, or cheque reference after verifying receipt'
+          : paymentAmount > 0
+              && ['bank_transfer', 'cheque', 'mobile_money'].includes(paymentMethod)
               && (bankAccountsQuery.isPending || bankAccountsQuery.isError || bankAccounts.length === 0 || !bankAccountId)
                 ? bankAccountsQuery.isPending
                   ? 'Loading payment accounts'
@@ -841,31 +920,37 @@ export default function SalesLegacyPage() {
                 : null;
   
   const handleSubmit = async () => {
-    // Validation
-    if (cart.length === 0) {
-      toast.error('Please add items to cart');
+    if (pendingSaleLoadFailed) {
+      toast.error('Saved checkout status is unavailable. No new sale was sent.');
       return;
     }
-    
-    if (!selectedWarehouseId) {
-      toast.error('Please select a warehouse');
+    if (!pendingSaleLoaded) {
+      toast.error('Checking this device for an unfinished checkout. Please wait a moment.');
       return;
     }
-    
-    try {
+    let attempt = pendingSaleAttempt;
+    if (!attempt) {
+      if (cart.length === 0) {
+        toast.error('Please add items to the cart');
+        return;
+      }
+      if (!selectedWarehouseId) {
+        toast.error('Please select a warehouse');
+        return;
+      }
+
       const selectedClient = clients.find(c => c._id === selectedClientId);
-      
       const requestData = {
         clientId: selectedClientId !== 'walk-in' ? selectedClientId : undefined,
         clientInfo: selectedClientId === 'walk-in' && walkInName ? {
           name: walkInName,
-          contact: {}
+          contact: {},
         } : selectedClient ? {
           name: selectedClient.name,
-          contact: selectedClient.contact || {}
+          contact: selectedClient.contact || {},
         } : {
           name: 'Walk-in Customer',
-          contact: {}
+          contact: {},
         },
         items: cart.map(item => ({
           productId: item._id,
@@ -875,7 +960,7 @@ export default function SalesLegacyPage() {
           taxRate: item.taxRate,
           taxCode: item.taxCode,
           description: item.name,
-          unit: item.unit
+          unit: item.unit,
         })),
         warehouseId: selectedWarehouseId,
         paymentMethod,
@@ -890,39 +975,93 @@ export default function SalesLegacyPage() {
           status: tillSession.status,
         } : undefined,
       };
-      
-      const response = await saleMutation.mutateAsync({ requestData, shouldSendEmail: sendEmail });
-      
-      if (response.success) {
-        const changeDue = Number(response.changeDue) || 0;
-        toast.success(changeDue > 0
+      const proposedAttempt: PendingPosSaleAttempt = {
+        id: pendingSaleStorageKey,
+        key: crypto.randomUUID(),
+        requestData,
+        shouldSendEmail: sendEmail,
+        createdAt: new Date().toISOString(),
+      };
+      try {
+        attempt = await saveOrLoadPendingPosSale(proposedAttempt);
+        setPendingSaleAttempt(attempt);
+      } catch (error) {
+        console.error('Could not save pending POS checkout:', error);
+        toast.error('This device could not securely save the checkout. No sale was sent. Check browser storage and retry.');
+        return;
+      }
+    }
+
+    if (!navigator.onLine) {
+      setIsOnline(false);
+      toast.error('Checkout saved as pending on this device. No sale, payment, or stock change has been recorded. Reconnect and retry this saved sale.');
+      return;
+    }
+
+    try {
+      const response = await saleMutation.mutateAsync({
+        requestData: attempt.requestData,
+        shouldSendEmail: attempt.shouldSendEmail,
+        idempotencyKey: attempt.key,
+      });
+
+      if (!response.success) throw new Error(response.message || 'Failed to complete sale');
+      await deletePendingPosSale(pendingSaleStorageKey);
+      setPendingSaleAttempt(null);
+
+      const wasReplayed = response.replayed === true;
+      const salePaymentMethod = attempt.requestData.paymentMethod;
+      const salePaymentAmount = Number(attempt.requestData.paymentAmount) || 0;
+      const changeDue = Number(response.changeDue) || 0;
+      if (!wasReplayed && salePaymentMethod === 'cash' && salePaymentAmount > 0 && getPosDeviceConfig(companyId).autoKickCashDrawer) {
+        try {
+          const opened = await kickDrawerAfterCashSale(companyId);
+          if (!opened) toast.warning('Sale completed, but the drawer did not open. Check the connected printer and drawer.');
+        } catch {
+          toast.warning('Sale completed, but the drawer pulse failed. Check the connected printer and drawer.');
+        }
+      }
+      toast.success(wasReplayed
+        ? 'This sale was already completed. No duplicate sale was created.'
+        : changeDue > 0
           ? `Sale completed. Change due: ${formatCurrency(changeDue)}`
           : 'Sale completed successfully!');
-        const saleLog = JSON.parse(localStorage.getItem('pos-sale-log') || '[]');
+      const invoiceId = response.data && (response.data as any)._id;
+      const saleLog = JSON.parse(localStorage.getItem('pos-sale-log') || '[]');
+      if (invoiceId && !saleLog.some((entry: any) => entry.invoiceId === invoiceId)) {
         saleLog.push({
-          invoiceId: response.data && (response.data as any)._id,
+          invoiceId,
           completedAt: new Date().toISOString(),
-          paymentMethod,
-          total: cartCalculations.grandTotal,
+          paymentMethod: salePaymentMethod,
+          total: Number(response.data && (response.data as any).grandTotal) || cartCalculations.grandTotal,
         });
         localStorage.setItem('pos-sale-log', JSON.stringify(saleLog));
-        
-        // Reset form
-        clearCart();
-        setNotes('');
-        setPaymentReference('');
-        setWalkInName('');
-        setSelectedClientId('walk-in');
-        // Show the fiscal receipt and hand off to the device's print service.
-        if (response.data && (response.data as any)._id) {
-          navigate(`/pos/receipt/${(response.data as any)._id}?print=1`);
-        }
-      } else {
-        toast.error(response.message || 'Failed to complete sale');
       }
+
+      clearCart(true);
+      setNotes('');
+      setPaymentReference('');
+      setWalkInName('');
+      setSelectedClientId('walk-in');
+      if (invoiceId) navigate(`/pos/receipt/${invoiceId}${wasReplayed ? '' : '?print=1'}`);
     } catch (error: any) {
       console.error('Sale error:', error);
-      toast.error(error?.message || 'Failed to complete sale');
+      const status = Number(error?.status || error?.response?.status) || 0;
+      const uncertain = !status || status === 408 || status >= 500
+        || ['REQUEST_TIMEOUT', 'REQUEST_CANCELLED', 'POS_IDEMPOTENCY_KEY_CONFLICT', 'POS_SALE_STILL_PROCESSING', 'POS_IDEMPOTENT_SALE_UNAVAILABLE'].includes(error?.code);
+      if (!uncertain) {
+        try {
+          await deletePendingPosSale(pendingSaleStorageKey);
+          setPendingSaleAttempt(null);
+        } catch (storageError) {
+          console.error('Could not clear rejected POS checkout:', storageError);
+          toast.error('The sale was rejected, but its saved checkout could not be cleared. Retry the saved checkout to verify its status.');
+          return;
+        }
+      }
+      toast.error(uncertain
+        ? 'We could not confirm the checkout result. The saved sale is not marked complete. Reconnect and retry this same sale to safely resolve it.'
+        : (error?.message || 'The sale was not completed. Correct the issue and try again.'));
     }
   };
   
@@ -1478,6 +1617,12 @@ export default function SalesLegacyPage() {
                     </p>
                   )}
 
+                  {paymentAmount > 0 && ['bank_transfer', 'mobile_money', 'cheque'].includes(paymentMethod) && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+                      Verify the payment in your bank, mobile-money, or cheque records before completing this sale. KUBIKA records your confirmation but does not verify it with the provider.
+                    </div>
+                  )}
+
                   {(paymentMethod === 'bank_transfer' || paymentMethod === 'cheque' || paymentMethod === 'mobile_money') && (
                     <div>
                       <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">Bank Account</label>
@@ -1508,9 +1653,10 @@ export default function SalesLegacyPage() {
                   </div>
 
                   <Input
-                    placeholder="Payment reference (optional)"
+                    placeholder={paymentAmount > 0 && ['bank_transfer', 'mobile_money', 'cheque'].includes(paymentMethod) ? 'Transaction / cheque reference (required)' : 'Payment reference (optional)'}
                     value={paymentReference}
                     onChange={(e) => setPaymentReference(e.target.value)}
+                    required={paymentAmount > 0 && ['bank_transfer', 'mobile_money', 'cheque'].includes(paymentMethod)}
                     className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700"
                   />
 
@@ -1570,6 +1716,12 @@ export default function SalesLegacyPage() {
                     </Label>
                   </div>
 
+                  {pendingSaleAttempt && (
+                    <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-100">
+                      <strong>Checkout pending confirmation.</strong> This exact sale is saved on this device for this cashier. It has not been marked complete here. Reconnect and retry it to safely resolve the result; do not start another sale until then.
+                    </div>
+                  )}
+
                   <Button
                     className="mt-3 h-12 w-full bg-indigo-600 text-base font-semibold hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500"
                     onClick={handleSubmit}
@@ -1584,7 +1736,7 @@ export default function SalesLegacyPage() {
                     ) : (
                       <>
                         <Calculator className="mr-2 h-5 w-5" />
-                        Complete Sale
+                        {pendingSaleAttempt ? 'Retry saved sale' : 'Complete Sale'}
                       </>
                     )}
                   </Button>

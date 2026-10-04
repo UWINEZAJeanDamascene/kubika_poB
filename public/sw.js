@@ -92,6 +92,8 @@ async function removeQueuedNonReplayableRequests() {
         const pathname = new URL(item.url).pathname;
         return pathname.startsWith('/api/auth/')
           || pathname === '/api/performance/client'
+          || pathname.endsWith('/api/sales-legacy/direct-sale')
+          || pathname.endsWith('/api/pos/sale')
           || pathname.startsWith('/socket.io/');
       })
       .map((item) => removeFromQueue(item.id))
@@ -169,6 +171,14 @@ self.addEventListener('fetch', (event) => {
       fetch(request.clone(), { credentials: 'omit', mode: 'cors' })
         .catch(() => new Response(null, { status: 204 }))
     );
+    return;
+  }
+
+  // POS checkout is never replayed by the generic offline queue. It changes
+  // stock, accounting, fiscal state, and tender records; only the POS client
+  // may retry it with its original idempotency key and exact payload.
+  if (request.method === 'POST'
+    && (url.pathname.endsWith('/api/sales-legacy/direct-sale') || url.pathname.endsWith('/api/pos/sale'))) {
     return;
   }
 

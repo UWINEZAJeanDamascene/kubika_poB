@@ -901,7 +901,7 @@ function AppRoutes() {
           <Route
             path="/pos/printer-setup"
             element={
-              <ProtectedRoute permissions={["sales_invoices:read"]}>
+              <ProtectedRoute permissions={["sales_invoices:create"]}>
                 <ErrorBoundary><PosPrinterSetupPage /></ErrorBoundary>
               </ProtectedRoute>
             }
