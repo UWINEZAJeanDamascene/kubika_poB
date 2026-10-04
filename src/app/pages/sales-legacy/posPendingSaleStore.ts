@@ -84,3 +84,24 @@ export async function deletePendingPosSale(id: string): Promise<void> {
     };
   });
 }
+
+/** Persist an approval grant on the already saved immutable checkout payload. */
+export async function updatePendingPosSale(attempt: PendingPosSaleAttempt): Promise<void> {
+  const db = await openPendingDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put(attempt);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error || new Error('Could not update the saved POS checkout.'));
+    };
+    tx.onabort = () => {
+      db.close();
+      reject(tx.error || new Error('Could not update the saved POS checkout.'));
+    };
+  });
+}

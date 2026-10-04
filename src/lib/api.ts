@@ -2371,10 +2371,10 @@ export const invoicesApi = {
       `/sales-invoices/${id}/payment`,
       { method: "POST", body: data },
     ),
-  cancel: (id: string, reason?: string) =>
+  cancel: (id: string, reason?: string, posManagerApprovalId?: string) =>
     request<{ success: boolean; data: unknown }>(
       `/sales-invoices/${id}/cancel`,
-      { method: "PUT", body: { reason } },
+      { method: "PUT", body: { reason, posManagerApprovalId } },
     ),
   saveReceiptMetadata: (
     id: string,
@@ -2527,17 +2527,30 @@ export const posReceiptApi = {
 };
 
 export const tillApi = {
-  open: (openingFloat: number) =>
+  open: (openingFloat: number, register: { registerId: string; registerName: string; openingNotes?: string }) =>
     request<{ success: boolean; data: any }>("/tills/open", {
       method: "POST",
-      body: { openingFloat },
+      body: { openingFloat, ...register },
     }),
-  getActive: () => request<{ success: boolean; data: any }>("/tills/active"),
-  close: (closingCount?: number) =>
-    request<{ success: boolean; data: any }>("/tills/close", {
+  getActive: (registerId: string) => request<{ success: boolean; data: any }>("/tills/active", { params: { registerId } }),
+  getRecentShifts: (limit = 25) => request<{ success: boolean; data: any[] }>("/tills/shifts", { params: { limit } }),
+  getManagerApprovalHistory: () => request<{ success: boolean; data: any[] }>("/tills/manager-approvals/history"),
+  close: (closingCount: number, data: { registerId: string; registerName: string; closeNotes: string; handoverToEmail?: string }) =>
+    request<{ success: boolean; data: any; reconciliation?: { expectedCash: number; closingCount: number; variance: number } }>("/tills/close", {
       method: "POST",
-      body: { closingCount },
+      body: { closingCount, ...data },
     }),
+  requestManagerApproval: (data: {
+    action: 'discount' | 'void' | 'refund';
+    payload: Record<string, unknown>;
+    subjectId?: string;
+    managerEmail: string;
+    managerPassword: string;
+    managerOtp?: string;
+  }) => request<{ success: boolean; data: { approvalId: string; action: string; expiresAt: string; managerName: string } }>(
+    '/tills/manager-approvals',
+    { method: 'POST', body: data },
+  ),
 };
 
 // Recurring Invoices API
@@ -2650,7 +2663,7 @@ export const creditNotesApi = {
       method: "PUT",
       body: data,
     }),
-  confirm: (id: string, sendEmailOrOptions?: boolean | { sendEmail?: boolean; refundRsnCd?: string }) => {
+  confirm: (id: string, sendEmailOrOptions?: boolean | { sendEmail?: boolean; refundRsnCd?: string; posManagerApprovalId?: string }) => {
     const body = typeof sendEmailOrOptions === "object"
       ? sendEmailOrOptions
       : { sendEmail: sendEmailOrOptions };

@@ -14,6 +14,8 @@ type PosDeviceConfig = {
   usbVendorId?: number;
   usbProductId?: number;
   autoKickCashDrawer: boolean;
+  registerId: string;
+  registerName: string;
 };
 
 const configKey = (companyId: string) => `kubika:pos-device:${companyId}`;
@@ -25,14 +27,24 @@ function getSerialManager(): WebSerialManager | undefined {
 export function getPosDeviceConfig(companyId: string): PosDeviceConfig {
   try {
     const config = JSON.parse(localStorage.getItem(configKey(companyId)) || '{}');
+    const registerId = typeof config.registerId === 'string' && /^[a-zA-Z0-9:_-]{1,80}$/.test(config.registerId)
+      ? config.registerId
+      : `reg-${crypto.randomUUID()}`;
+    const registerName = typeof config.registerName === 'string' && config.registerName.trim()
+      ? config.registerName.trim().slice(0, 120)
+      : `Register ${registerId.slice(-4).toUpperCase()}`;
+    if (!config.registerId) localStorage.setItem(configKey(companyId), JSON.stringify({ ...config, registerId, registerName }));
     return {
       baudRate: Number(config.baudRate) || 9600,
       usbVendorId: Number.isInteger(config.usbVendorId) ? config.usbVendorId : undefined,
       usbProductId: Number.isInteger(config.usbProductId) ? config.usbProductId : undefined,
       autoKickCashDrawer: config.autoKickCashDrawer === true,
+      registerId,
+      registerName,
     };
   } catch {
-    return { baudRate: 9600, autoKickCashDrawer: false };
+    const registerId = `reg-${crypto.randomUUID()}`;
+    return { baudRate: 9600, autoKickCashDrawer: false, registerId, registerName: `Register ${registerId.slice(-4).toUpperCase()}` };
   }
 }
 

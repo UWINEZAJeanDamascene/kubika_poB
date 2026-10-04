@@ -63,6 +63,7 @@ import {
   deletePendingPosSale,
   loadPendingPosSale,
   saveOrLoadPendingPosSale,
+  updatePendingPosSale,
   type PendingPosSaleAttempt,
 } from './posPendingSaleStore';
 
@@ -106,10 +107,24 @@ interface HeldSale {
 
 interface TillSession {
   _id?: string;
+  openedById?: string;
   openedAt: string;
   openingFloat: number;
   closingCount?: number;
+  expectedCash?: number;
+  cashVariance?: number;
+  registerId?: string;
+  registerName?: string;
   status: 'open' | 'closed';
+}
+
+type PosApprovalAction = 'discount' | 'void' | 'refund';
+interface PosApprovalPrompt {
+  action: PosApprovalAction;
+  payload: Record<string, unknown>;
+  subjectId?: string;
+  detail: string;
+  resolve: (approvalId: string | null) => void;
 }
 
 interface PosInvoice {
@@ -187,7 +202,15 @@ export default function SalesLegacyPage() {
   const [bankAccountId, setBankAccountId] = useState<string>('');
   const [tillLoading, setTillLoading] = useState(false);
   const [openingFloatInput, setOpeningFloatInput] = useState('');
+  const [openingNotesInput, setOpeningNotesInput] = useState('');
   const [closingCountInput, setClosingCountInput] = useState('');
+  const [closeNotesInput, setCloseNotesInput] = useState('');
+  const [handoverToEmail, setHandoverToEmail] = useState('');
+  const [approvalPrompt, setApprovalPrompt] = useState<PosApprovalPrompt | null>(null);
+  const [approvalManagerEmail, setApprovalManagerEmail] = useState('');
+  const [approvalManagerPassword, setApprovalManagerPassword] = useState('');
+  const [approvalManagerOtp, setApprovalManagerOtp] = useState('');
+  const [approvalLoading, setApprovalLoading] = useState(false);
   const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
   const [posEbmStatusFilter, setPosEbmStatusFilter] = useState('all');
   const [qrDialogOpen, setQrDialogOpen] = useState(false);
@@ -196,7 +219,8 @@ export default function SalesLegacyPage() {
   const lastScanKeyAtRef = useRef(0);
   const scanFlushTimerRef = useRef<number | null>(null);
   const queryClient = useQueryClient();
-  const tillKey = ['pos', 'active-till'] as const;
+  const posRegister = useMemo(() => getPosDeviceConfig(companyId), [companyId]);
+  const tillKey = ['pos', 'active-till', companyId, posRegister.registerId] as const;
   const heldSalesKey = useMemo(() => ['pos', 'held-sales', activeCompanyId] as const, [activeCompanyId]);
   const migratedLocalHeldSales = useRef(false);
 
@@ -336,16 +360,49 @@ export default function SalesLegacyPage() {
   const tillQuery = useQuery({
     queryKey: tillKey,
     queryFn: async (): Promise<TillSession | null> => {
-      const response = await tillApi.getActive();
+      const response = await tillApi.getActive(posRegister.registerId);
       if (!response.success) throw new Error('Failed to load till session');
       const active = response.data as any;
       return active?.status === 'open'
-        ? { _id: active._id, openedAt: active.openedAt, openingFloat: toNumericAmount(active.openingFloat), closingCount: active.closingCount, status: active.status }
+        ? {
+          _id: active._id,
+          openedById: active.openedById || active.openedBy?._id || active.openedBy,
+          openedAt: active.openedAt,
+          openingFloat: toNumericAmount(active.openingFloat),
+          expectedCash: toNumericAmount(active.expectedCash ?? active.openingFloat),
+          closingCount: active.closingCount,
+          cashVariance: active.cashVariance,
+          registerId: active.registerId,
+          registerName: active.registerName,
+          status: active.status,
+        }
         : null;
     },
+    enabled: Boolean(activeCompanyId),
     staleTime: TRANSACTIONAL_STALE_TIME,
   });
   const tillSession = tillQuery.data ?? null;
+  const tillOwnedByCurrentCashier = !tillSession?.openedById || String(tillSession.openedById) === String(activeUserId);
+  const tillShiftsQuery = useQuery({
+    queryKey: ['pos', 'till-shifts', companyId],
+    enabled: Boolean(activeCompanyId) && hasPermission('sales_invoices', 'approve'),
+    queryFn: async () => {
+      const response = await tillApi.getRecentShifts(12);
+      if (!response.success) throw new Error('Could not load cashier shift reconciliations');
+      return response.data;
+    },
+    staleTime: 30_000,
+  });
+  const tillApprovalsQuery = useQuery({
+    queryKey: ['pos', 'manager-approvals', companyId],
+    enabled: Boolean(activeCompanyId) && hasPermission('sales_invoices', 'approve'),
+    queryFn: async () => {
+      const response = await tillApi.getManagerApprovalHistory();
+      if (!response.success) throw new Error('Could not load POS manager approvals');
+      return response.data;
+    },
+    staleTime: 30_000,
+  });
 
   const recentInvoicesQuery = useQuery({
     queryKey: ['invoices', 'pos-recent', posEbmStatusFilter],
@@ -638,16 +695,24 @@ export default function SalesLegacyPage() {
     }
     setTillLoading(true);
     try {
-      const response = await tillApi.open(openingFloat);
+      const response = await tillApi.open(openingFloat, {
+        registerId: posRegister.registerId,
+        registerName: posRegister.registerName,
+        openingNotes: openingNotesInput.trim() || undefined,
+      });
       if (response.success) {
         const data = response.data as any;
         queryClient.setQueryData(tillKey, {
           _id: data._id,
           openedAt: data.openedAt,
           openingFloat: toNumericAmount(data.openingFloat),
+          expectedCash: toNumericAmount(data.expectedCash ?? data.openingFloat),
+          registerId: data.registerId,
+          registerName: data.registerName,
           closingCount: data.closingCount,
           status: data.status,
         });
+        void queryClient.invalidateQueries({ queryKey: ['pos', 'till-shifts', companyId] });
         toast.success('Till opened');
       } else {
         toast.error((response as any).message || 'Failed to open till');
@@ -658,23 +723,43 @@ export default function SalesLegacyPage() {
     } finally {
       setTillLoading(false);
       setOpeningFloatInput('');
+      setOpeningNotesInput('');
     }
   };
 
   const closeTill = async () => {
     if (!tillSession) return;
+    if (!closingCountInput.trim()) {
+      toast.error('Enter the counted cash before closing the shift.');
+      return;
+    }
     const closingCount = Number(closingCountInput);
     if (!Number.isFinite(closingCount) || closingCount < 0) {
       toast.error('Enter a valid closing count');
       return;
     }
+    const variance = Math.round((closingCount - Number(tillSession.expectedCash ?? tillSession.openingFloat)) * 100) / 100;
+    if (variance !== 0 && closeNotesInput.trim().length < 5) {
+      toast.error('Add a short explanation for the cash overage or shortage before closing.');
+      return;
+    }
     setTillLoading(true);
     try {
-      const response = await tillApi.close(closingCount);
+      const response = await tillApi.close(closingCount, {
+        registerId: posRegister.registerId,
+        registerName: posRegister.registerName,
+        closeNotes: closeNotesInput.trim(),
+        handoverToEmail: handoverToEmail.trim() || undefined,
+      });
       if (response.success) {
         queryClient.setQueryData(tillKey, null);
+        void queryClient.invalidateQueries({ queryKey: ['pos', 'till-shifts', companyId] });
         setClosingCountInput('');
-        toast.success('Till closed');
+        setCloseNotesInput('');
+        setHandoverToEmail('');
+        const variance = Number(response.reconciliation?.variance) || 0;
+        if (variance !== 0) toast.warning(`Till closed with a ${formatCurrency(Math.abs(variance))} ${variance > 0 ? 'overage' : 'shortage'}. Record the variance explanation for the shift review.`);
+        else toast.success(handoverToEmail.trim() ? 'Till closed and shift handed over' : 'Till closed and reconciled');
       } else {
         toast.error((response as any).message || 'Failed to close till');
       }
@@ -690,10 +775,71 @@ export default function SalesLegacyPage() {
     setInvoiceDialogOpen(true);
   };
 
-  const voidInvoice = async (invoice: PosInvoice) => {
-    const reason = window.prompt('Reason for voiding this sale') || 'POS manager void';
+  const requestPosManagerApproval = (
+    action: PosApprovalAction,
+    payload: Record<string, unknown>,
+    detail: string,
+    subjectId?: string,
+  ) => new Promise<string | null>((resolve) => {
+    setApprovalManagerEmail('');
+    setApprovalManagerPassword('');
+    setApprovalManagerOtp('');
+    setApprovalPrompt({ action, payload, detail, subjectId, resolve });
+  });
+
+  const submitPosManagerApproval = async () => {
+    if (!approvalPrompt || approvalLoading) return;
+    if (!approvalManagerEmail.trim() || !approvalManagerPassword) {
+      toast.error('Enter the approving manager’s workspace email and password.');
+      return;
+    }
+    setApprovalLoading(true);
     try {
-      const response = await invoicesApi.cancel(invoice._id, reason);
+      const response = await tillApi.requestManagerApproval({
+        action: approvalPrompt.action,
+        payload: approvalPrompt.payload,
+        subjectId: approvalPrompt.subjectId,
+        managerEmail: approvalManagerEmail.trim(),
+        managerPassword: approvalManagerPassword,
+        managerOtp: approvalManagerOtp.trim() || undefined,
+      });
+      const approvalId = response.data.approvalId;
+      approvalPrompt.resolve(approvalId);
+      setApprovalPrompt(null);
+      setApprovalManagerPassword('');
+      setApprovalManagerOtp('');
+      void queryClient.invalidateQueries({ queryKey: ['pos', 'manager-approvals', companyId] });
+      toast.success(`Approved by ${response.data.managerName}. This approval is single-use and expires shortly.`);
+    } catch (error: any) {
+      toast.error(error?.message || 'Manager approval could not be verified.');
+    } finally {
+      setApprovalLoading(false);
+    }
+  };
+
+  const cancelPosManagerApproval = () => {
+    approvalPrompt?.resolve(null);
+    setApprovalPrompt(null);
+    setApprovalManagerEmail('');
+    setApprovalManagerPassword('');
+    setApprovalManagerOtp('');
+  };
+
+  const voidInvoice = async (invoice: PosInvoice) => {
+    const reason = window.prompt('Enter a reason for voiding this sale')?.trim();
+    if (!reason || reason.length < 5) {
+      toast.error('Enter a clear reason before requesting a void approval.');
+      return;
+    }
+    try {
+      const posManagerApprovalId = await requestPosManagerApproval(
+        'void',
+        { invoiceId: invoice._id, reason },
+        `Void invoice ${invoice.invoiceNumber || invoice.referenceNo || invoice._id}`,
+        invoice._id,
+      );
+      if (!posManagerApprovalId) return;
+      const response = await invoicesApi.cancel(invoice._id, reason, posManagerApprovalId);
       if (response.success) {
         toast.success('Sale voided with reversal');
         await queryClient.invalidateQueries({ queryKey: ['invoices'] });
@@ -733,13 +879,28 @@ export default function SalesLegacyPage() {
         type: 'goods_return',
         reason: 'POS refund',
         notes: 'Refund created from POS invoice actions',
+        posOrigin: true,
         currencyCode: invoice.currencyCode || 'RWF',
         lines,
       });
 
       const creditNote = response.data as any;
       if (response.success && creditNote?._id) {
-        await creditNotesApi.confirm(creditNote._id);
+        const posManagerApprovalId = await requestPosManagerApproval(
+          'refund',
+          {
+            invoiceId: invoice._id,
+            creditNoteId: creditNote._id,
+            refundAmount: Number(creditNote.totalAmount ?? creditNote.grandTotal ?? 0),
+          },
+          `Approve refund credit note ${creditNote.creditNoteNumber || creditNote._id}`,
+          creditNote._id,
+        );
+        if (!posManagerApprovalId) {
+          toast.warning('The refund is saved as a draft. A different manager must approve it before it affects stock or accounts.');
+          return;
+        }
+        await creditNotesApi.confirm(creditNote._id, { posManagerApprovalId });
         toast.success('Refund credit note created and confirmed');
         navigate(`/credit-notes/${creditNote._id}`);
       }
@@ -878,6 +1039,7 @@ export default function SalesLegacyPage() {
       queryClient.invalidateQueries({ queryKey: ['bank-transactions'] }),
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] }),
       queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: tillKey }),
     ]),
   });
   
@@ -901,6 +1063,8 @@ export default function SalesLegacyPage() {
       ? 'Select a warehouse'
       : !tillSession
         ? 'Open the till before recording a sale'
+        : !tillOwnedByCurrentCashier
+          ? 'This register belongs to another cashier’s active shift. Wait for handover before checkout.'
         : paymentAmount < 0 || !Number.isFinite(paymentAmount)
           ? 'Enter a valid non-negative payment amount'
           : paymentAmount > cartCalculations.grandTotal && paymentMethod !== 'cash'
@@ -941,6 +1105,7 @@ export default function SalesLegacyPage() {
 
       const selectedClient = clients.find(c => c._id === selectedClientId);
       const requestData = {
+        displayTotal: cartCalculations.grandTotal,
         clientId: selectedClientId !== 'walk-in' ? selectedClientId : undefined,
         clientInfo: selectedClientId === 'walk-in' && walkInName ? {
           name: walkInName,
@@ -956,6 +1121,7 @@ export default function SalesLegacyPage() {
           productId: item._id,
           quantity: item.cartQuantity,
           unitPrice: item.cartUnitPrice,
+          catalogUnitPrice: item.sellingPrice,
           discountPct: item.cartDiscountPct,
           taxRate: item.taxRate,
           taxCode: item.taxCode,
@@ -968,8 +1134,9 @@ export default function SalesLegacyPage() {
         paymentReference,
         notes,
         bankAccountId: (paymentMethod === 'bank_transfer' || paymentMethod === 'cheque' || paymentMethod === 'mobile_money') && bankAccountId ? bankAccountId : undefined,
+        registerId: posRegister.registerId,
         tillSession: tillSession ? {
-          id: tillSession.openedAt,
+          id: tillSession._id,
           openedAt: tillSession.openedAt,
           openingFloat: Number(tillSession.openingFloat) || 0,
           status: tillSession.status,
@@ -996,6 +1163,42 @@ export default function SalesLegacyPage() {
       setIsOnline(false);
       toast.error('Checkout saved as pending on this device. No sale, payment, or stock change has been recorded. Reconnect and retry this saved sale.');
       return;
+    }
+
+    const approvalPayload = { ...attempt.requestData, sendEmail: attempt.shouldSendEmail };
+    delete (approvalPayload as any).managerApprovalId;
+    const approvalLines = Array.isArray(approvalPayload.items) ? approvalPayload.items : [];
+    const needsDiscountApproval = approvalLines.some((item: any) =>
+      Number(item.discountPct) > 0
+      || (Number.isFinite(Number(item.catalogUnitPrice)) && Math.abs(Number(item.unitPrice) - Number(item.catalogUnitPrice)) > 0.000001),
+    );
+    if (needsDiscountApproval && !(attempt.requestData as any).managerApprovalId) {
+      const overriddenLines = approvalLines.filter((item: any) => Number(item.discountPct) > 0
+        || Math.abs(Number(item.unitPrice) - Number(item.catalogUnitPrice)) > 0.000001).length;
+      const approvalDetail = approvalLines
+        .filter((item: any) => Number(item.discountPct) > 0 || Math.abs(Number(item.unitPrice) - Number(item.catalogUnitPrice)) > 0.000001)
+        .slice(0, 4)
+        .map((item: any) => {
+          const pct = Number(item.discountPct) || 0;
+          const priceChanged = Math.abs(Number(item.unitPrice) - Number(item.catalogUnitPrice)) > 0.000001;
+          return `${item.description || 'Item'} × ${item.quantity}${pct ? `: ${pct}% discount` : ''}${priceChanged ? `: price ${formatCurrency(Number(item.unitPrice))} (catalog ${formatCurrency(Number(item.catalogUnitPrice))})` : ''}`;
+        })
+        .join('; ');
+      const approvalId = await requestPosManagerApproval(
+        'discount',
+        approvalPayload,
+        `${approvalDetail}${overriddenLines > 4 ? `; +${overriddenLines - 4} more line(s)` : ''}. Sale total ${formatCurrency(Number(attempt.requestData.displayTotal) || cartCalculations.grandTotal)}.`,
+      );
+      if (!approvalId) return;
+      attempt = { ...attempt, requestData: { ...approvalPayload, managerApprovalId: approvalId } };
+      try {
+        await updatePendingPosSale(attempt);
+        setPendingSaleAttempt(attempt);
+      } catch (error) {
+        console.error('Could not persist manager approval on checkout:', error);
+        toast.error('The approval could not be saved with this checkout. No sale was sent; request approval again.');
+        return;
+      }
     }
 
     try {
@@ -1291,7 +1494,7 @@ export default function SalesLegacyPage() {
                 </CardContent>
               </Card>
 
-              {(heldSales.length > 0 || tillSession || heldSalesQuery.isError) && (
+              {(heldSales.length > 0 || tillSession || heldSalesQuery.isError || (tillShiftsQuery.data?.length ?? 0) > 0 || (tillApprovalsQuery.data?.length ?? 0) > 0) && (
                 <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardContent className="space-y-3 p-5">
                     {heldSalesQuery.isError && (
@@ -1300,24 +1503,91 @@ export default function SalesLegacyPage() {
                         <Button variant="outline" size="sm" onClick={() => void heldSalesQuery.refetch()}>Retry</Button>
                       </div>
                     )}
-                    {tillSession && (
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
-                        <span className="font-medium text-emerald-800 dark:text-emerald-200">
-                          Till open from {new Date(tillSession.openedAt).toLocaleTimeString()} · float {formatCurrency(tillSession.openingFloat)}
-                        </span>
-                        <div className="flex gap-2">
+                    {tillSession && !tillOwnedByCurrentCashier && (
+                      <div role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                        This register is in an active shift for another cashier. Sales are locked until that cashier closes or hands over the till.
+                      </div>
+                    )}
+                    {tillSession && tillOwnedByCurrentCashier && (
+                      <div className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/30">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-medium text-emerald-800 dark:text-emerald-200">
+                            {tillSession.registerName || 'Register'} · Shift opened {new Date(tillSession.openedAt).toLocaleTimeString()}
+                          </span>
+                          <span className="text-xs text-emerald-700 dark:text-emerald-300">
+                            Opening float {formatCurrency(tillSession.openingFloat)} · Expected cash {formatCurrency(tillSession.expectedCash ?? tillSession.openingFloat)}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
                           <Input
                             type="number"
-                            placeholder="Closing count"
+                            min="0"
+                            step="0.01"
+                            placeholder="Counted cash"
                             value={closingCountInput}
                             onChange={(e) => setClosingCountInput(e.target.value)}
-                            className="h-9 w-36 bg-white dark:bg-slate-900"
+                            className="h-9 w-44 bg-white dark:bg-slate-900"
                             disabled={tillLoading}
+                          />
+                          <Input
+                            type="email"
+                            placeholder="Next cashier email (optional)"
+                            value={handoverToEmail}
+                            onChange={(e) => setHandoverToEmail(e.target.value)}
+                            className="h-9 min-w-48 flex-1 bg-white dark:bg-slate-900"
+                            disabled={tillLoading}
+                          />
+                          <Input
+                            type="text"
+                            placeholder="Variance note (required if cash differs)"
+                            value={closeNotesInput}
+                            onChange={(e) => setCloseNotesInput(e.target.value)}
+                            className="h-9 min-w-52 flex-1 bg-white dark:bg-slate-900"
+                            disabled={tillLoading}
+                            maxLength={500}
                           />
                           <Button variant="outline" size="sm" onClick={closeTill} className="h-9 gap-2" disabled={tillLoading}>
                             {tillLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorClosed className="h-4 w-4" />}
                             Close Till
                           </Button>
+                        </div>
+                      </div>
+                    )}
+                    {tillShiftsQuery.data && tillShiftsQuery.data.length > 0 && (
+                      <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+                        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                          <span>Recent shift reconciliations</span>
+                          <span>Cashier · Register · Expected · Counted · Difference</span>
+                        </div>
+                        <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                          {tillShiftsQuery.data.slice(0, 6).map((shift: any) => {
+                            const variance = Number(shift.cashVariance) || 0;
+                            return (
+                              <div key={shift._id} className="grid gap-1 px-3 py-2 text-xs sm:grid-cols-[1.3fr_1fr_1fr_1fr_1fr] sm:items-center">
+                                <span className="font-medium text-slate-800 dark:text-slate-100">{shift.cashier?.name || shift.openedBy?.name || 'Cashier'} · {shift.registerName || 'Register'}</span>
+                                <span className="text-slate-500 dark:text-slate-400">Expected {formatCurrency(Number(shift.expectedCash) || Number(shift.openingFloat) || 0)}</span>
+                                <span className="text-slate-500 dark:text-slate-400">Counted {shift.closingCount == null ? 'Open shift' : formatCurrency(Number(shift.closingCount))}</span>
+                                <span className={variance === 0 ? 'text-emerald-600 dark:text-emerald-400' : 'font-semibold text-amber-700 dark:text-amber-300'}>{shift.closingCount == null ? '—' : `${variance > 0 ? '+' : ''}${formatCurrency(variance)}`}</span>
+                                <span className="truncate text-slate-500 dark:text-slate-400">{shift.closeNotes || (shift.handoverToId ? 'Shift handed over' : shift.status)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                    {tillApprovalsQuery.data && tillApprovalsQuery.data.length > 0 && (
+                      <div className="rounded-lg border border-slate-200 dark:border-slate-800">
+                        <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">Recent manager approvals</div>
+                        <div className="grid gap-2 p-3 sm:grid-cols-2">
+                          {tillApprovalsQuery.data.slice(0, 6).map((approval: any) => (
+                            <div key={approval.id} className="flex items-start justify-between gap-3 rounded-md bg-slate-50 px-3 py-2 text-xs dark:bg-slate-900/70">
+                              <div className="min-w-0">
+                                <p className="font-medium capitalize text-slate-800 dark:text-slate-100">{approval.action} · {approval.cashier?.name || 'Cashier'}</p>
+                                <p className="text-slate-500 dark:text-slate-400">Approved by {approval.manager?.name || 'Manager'}</p>
+                              </div>
+                              <span className={approval.usedAt ? 'shrink-0 text-emerald-600 dark:text-emerald-400' : 'shrink-0 text-amber-700 dark:text-amber-300'}>{approval.usedAt ? 'Used' : new Date(approval.expiresAt) > new Date() ? 'Available' : 'Expired'}</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}
@@ -1445,6 +1715,14 @@ export default function SalesLegacyPage() {
                       value={openingFloatInput}
                       onChange={(e) => setOpeningFloatInput(e.target.value)}
                       className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Manager note if opening cash differs from handover"
+                      value={openingNotesInput}
+                      onChange={(e) => setOpeningNotesInput(e.target.value)}
+                      className="h-10 bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700"
+                      maxLength={500}
                     />
                     <Button onClick={openTill} className="w-full gap-2 bg-emerald-600 hover:bg-emerald-700" disabled={tillLoading}>
                       {tillLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <DoorOpen className="h-4 w-4" />}
@@ -1751,6 +2029,66 @@ export default function SalesLegacyPage() {
           </div>
         </div>
       </div>
+      <Dialog open={Boolean(approvalPrompt)} onOpenChange={(open) => { if (!open && !approvalLoading) cancelPosManagerApproval(); }}>
+        <DialogContent className="max-w-md border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+          <DialogHeader>
+            <DialogTitle className="dark:text-white">Manager approval required</DialogTitle>
+            <DialogDescription>
+              A different authorized manager must verify their workspace credentials. This approval applies only to the action shown and can be used once.
+            </DialogDescription>
+          </DialogHeader>
+          {approvalPrompt && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                <span className="font-semibold capitalize">{approvalPrompt.action}:</span> {approvalPrompt.detail}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pos-manager-email" className="dark:text-slate-200">Manager workspace email</Label>
+                <Input
+                  id="pos-manager-email"
+                  type="email"
+                  autoComplete="username"
+                  value={approvalManagerEmail}
+                  onChange={(event) => setApprovalManagerEmail(event.target.value)}
+                  disabled={approvalLoading}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pos-manager-password" className="dark:text-slate-200">Manager password</Label>
+                <Input
+                  id="pos-manager-password"
+                  type="password"
+                  autoComplete="current-password"
+                  value={approvalManagerPassword}
+                  onChange={(event) => setApprovalManagerPassword(event.target.value)}
+                  disabled={approvalLoading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pos-manager-otp" className="dark:text-slate-200">Authenticator code (if enabled)</Label>
+                <Input
+                  id="pos-manager-otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  value={approvalManagerOtp}
+                  onChange={(event) => setApprovalManagerOtp(event.target.value.replace(/\D/g, '').slice(0, 8))}
+                  disabled={approvalLoading}
+                  maxLength={8}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={cancelPosManagerApproval} disabled={approvalLoading}>Cancel</Button>
+                <Button onClick={() => void submitPosManagerApproval()} disabled={approvalLoading} className="bg-indigo-600 text-white hover:bg-indigo-700">
+                  {approvalLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Verify manager
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       <Dialog open={qrDialogOpen} onOpenChange={setQrDialogOpen}>
         <DialogContent className="dark:border-slate-800 dark:bg-slate-950">
           <DialogHeader>
@@ -1811,10 +2149,10 @@ export default function SalesLegacyPage() {
                     <Button variant="outline" size="sm" onClick={() => navigate(`/invoices/${invoice._id}`)}>
                       Open
                     </Button>
-                    {hasPermission('sales_invoices:delete') && <Button variant="outline" size="sm" onClick={() => voidInvoice(invoice)} disabled={invoice.status === 'cancelled'}>
+                    {hasPermission('sales_invoices:create') && <Button variant="outline" size="sm" onClick={() => voidInvoice(invoice)} disabled={invoice.status === 'cancelled' || invoice.status === 'fully_paid'} title={invoice.status === 'fully_paid' ? 'Use a manager approved credit note for paid sales.' : undefined}>
                       Void
                     </Button>}
-                    {hasPermission('credit_notes:approve') && <Button variant="outline" size="sm" onClick={() => refundInvoice(invoice)} disabled={invoice.status === 'cancelled'}>
+                    {hasPermission('credit_notes:create') && <Button variant="outline" size="sm" onClick={() => refundInvoice(invoice)} disabled={invoice.status === 'cancelled'}>
                       Refund
                     </Button>}
                   </div>

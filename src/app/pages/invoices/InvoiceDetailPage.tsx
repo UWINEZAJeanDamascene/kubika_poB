@@ -483,6 +483,10 @@ export default function InvoiceDetailPage() {
     }).join('');
     const company = (invoice as any).company?.name || (invoice as any).companyName || 'KUBIKA SYSTEM';
     const receiptNumber = invoice.referenceNo || invoice.invoiceNumber || invoice._id;
+    const fiscal = invoice.ebm;
+    const fiscalReceipt = fiscal?.ebmStatus === 'submitted'
+      ? `<section class="fiscal"><h2>RRA EBM fiscal receipt</h2><p>Fiscal receipt no: ${escapeHtml(fiscal.rcptNo || fiscal.curRcptNo || '-')}</p><p>Receipt date: ${escapeHtml(fiscal.rcptDt || fiscal.submittedAt || '-')}</p><p>SDC ID: ${escapeHtml(fiscal.sdcId || '-')}</p><p>MRC no: ${escapeHtml(fiscal.mrcNo || '-')}</p><p>Total receipt no: ${escapeHtml(fiscal.totRcptNo || '-')}</p><p>Report no: ${escapeHtml(fiscal.rptNo || '-')}</p><p class="fiscal-data">Internal data: ${escapeHtml(fiscal.intrlData || '-')}</p><p class="fiscal-data">Receipt signature (QR data): ${escapeHtml(fiscal.rcptSign || '-')}</p></section>`
+      : `<section class="fiscal pending"><h2>Fiscal receipt status: ${escapeHtml(fiscal?.ebmStatus || 'not submitted')}</h2><p>This document does not yet contain an RRA-certified receipt.</p>${fiscal?.lastError ? `<p>${escapeHtml(fiscal.lastError)}</p>` : ''}</section>`;
 
     printWindow.document.open();
     printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Receipt ${escapeHtml(receiptNumber)}</title><style>
@@ -494,8 +498,9 @@ export default function InvoiceDetailPage() {
       td small { display:block; color:#444; } .amount { text-align:right; white-space:nowrap; }
       .totals { border-top: 1px dashed #555; margin-top: 8px; padding-top: 7px; }
       .total { font-weight:700; font-size:15px; } footer { text-align:center; border-top:1px dashed #555; margin-top:12px; padding-top:9px; }
+      .fiscal { border-top:1px dashed #555; margin-top:10px; padding-top:8px; font-size:10px; } .fiscal h2 { font-size:11px; margin:0 0 5px; } .fiscal-data { overflow-wrap:anywhere; word-break:break-all; } .pending { color:#555; }
       @media screen { body { max-width: 74mm; margin: 16px auto; padding: 8px; box-shadow: 0 1px 12px #bbb; } }
-    </style></head><body><header><h1>${escapeHtml(company)}</h1><p>Sales receipt</p><p>${escapeHtml(receiptNumber)}</p><p>${escapeHtml(new Date(invoice.invoiceDate).toLocaleString())}</p><p>Customer: ${escapeHtml(invoice.client?.name || 'Walk-in customer')}</p></header><table>${receiptLines}</table><section class="totals"><p>Subtotal <span style="float:right">${money(subtotalAmount)}</span></p><p>Tax <span style="float:right">${money(taxAmount)}</span></p><p class="total">Total <span style="float:right">${money(totalAmount)}</span></p><p>Paid <span style="float:right">${money(paidAmount)}</span></p><p>Balance <span style="float:right">${money(outstandingAmount)}</span></p></section><footer><p>Thank you for your business</p></footer></body></html>`);
+    </style></head><body><header><h1>${escapeHtml(company)}</h1><p>Sales receipt</p><p>${escapeHtml(receiptNumber)}</p><p>${escapeHtml(new Date(invoice.invoiceDate).toLocaleString())}</p><p>Customer: ${escapeHtml(invoice.client?.name || 'Walk-in customer')}</p></header><table>${receiptLines}</table><section class="totals"><p>Subtotal <span style="float:right">${money(subtotalAmount)}</span></p><p>Tax <span style="float:right">${money(taxAmount)}</span></p><p class="total">Total <span style="float:right">${money(totalAmount)}</span></p><p>Paid <span style="float:right">${money(paidAmount)}</span></p><p>Balance <span style="float:right">${money(outstandingAmount)}</span></p></section>${fiscalReceipt}<footer><p>Thank you for your business</p></footer></body></html>`);
     printWindow.document.close();
     window.setTimeout(() => {
       if (!printWindow.closed) {
