@@ -56,6 +56,7 @@ import {
   HelpCircle,
   ChevronDown,
   Check,
+  Printer,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTranslation } from "react-i18next";
@@ -444,6 +445,14 @@ const salesNav: NavSection = {
       nameKey: "nav.pos",
       href: "/sales-legacy",
       icon: Receipt,
+      permission: "sales_invoices:read",
+      featureKey: "sales",
+      moduleNames: ["POS", "Invoices"],
+    },
+    {
+      nameKey: "nav.posPrinterSetup",
+      href: "/pos/printer-setup",
+      icon: Printer,
       permission: "sales_invoices:read",
       featureKey: "sales",
       moduleNames: ["POS", "Invoices"],

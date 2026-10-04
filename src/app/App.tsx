@@ -199,6 +199,8 @@ const InvoiceDetailPage = lazy(
 const SalesLegacyPage = lazy(
   () => import("./pages/sales-legacy/SalesLegacyPage"),
 );
+const PosReceiptPage = lazy(() => import("./pages/sales-legacy/PosReceiptPage"));
+const PosPrinterSetupPage = lazy(() => import("./pages/sales-legacy/PosPrinterSetupPage"));
 const DeliveryNotesListPage = lazy(
   () => import("./pages/delivery-notes/DeliveryNotesListPage"),
 );
@@ -886,6 +888,22 @@ function AppRoutes() {
               <ErrorBoundary>
                 <SalesLegacyPage />
               </ErrorBoundary>
+            }
+          />
+          <Route
+            path="/pos/receipt/:invoiceId"
+            element={
+              <ProtectedRoute permissions={["sales_invoices:read"]}>
+                <ErrorBoundary><PosReceiptPage /></ErrorBoundary>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pos/printer-setup"
+            element={
+              <ProtectedRoute permissions={["sales_invoices:read"]}>
+                <ErrorBoundary><PosPrinterSetupPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
 

@@ -47,6 +47,7 @@ import {
   DoorClosed,
   ChevronLeft,
   ChevronRight,
+  Printer,
 } from 'lucide-react';
 import { salesLegacyApi, warehouseApi, PosProduct, bankAccountsApi, invoicesApi, creditNotesApi, tillApi } from '@/lib/api';
 import { useFormatCurrency } from '@/lib/currencyUtils';
@@ -912,9 +913,9 @@ export default function SalesLegacyPage() {
         setPaymentReference('');
         setWalkInName('');
         setSelectedClientId('walk-in');
-        // Navigate to invoice or show receipt
+        // Show the fiscal receipt and hand off to the device's print service.
         if (response.data && (response.data as any)._id) {
-          navigate(`/invoices/${(response.data as any)._id}`);
+          navigate(`/pos/receipt/${(response.data as any)._id}?print=1`);
         }
       } else {
         toast.error(response.message || 'Failed to complete sale');
@@ -963,6 +964,15 @@ export default function SalesLegacyPage() {
                   )}
                 </div>
                 <div className="mt-5 flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/pos/printer-setup')}
+                    className="h-10 gap-2 dark:border-slate-700 dark:text-slate-200"
+                  >
+                    <Printer className="h-4 w-4" />
+                    Printer setup
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -1643,6 +1653,9 @@ export default function SalesLegacyPage() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => navigate(`/pos/receipt/${invoice._id}`)}>
+                      <Printer className="mr-1 h-4 w-4" /> Print
+                    </Button>
                     <Button variant="outline" size="sm" onClick={() => navigate(`/invoices/${invoice._id}`)}>
                       Open
                     </Button>

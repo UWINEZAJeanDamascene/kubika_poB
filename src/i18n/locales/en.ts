@@ -53,6 +53,7 @@ const en = {
     financeDashboard: "Finance Dashboard",
     financeShort: "Finance",
     pos: "Point of Sale",
+    posPrinterSetup: "POS Printer Setup",
     products: "Products",
     salesOrders: "Sales Orders",
     pickPacks: "Pick & Pack",

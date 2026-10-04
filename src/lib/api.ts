@@ -2520,6 +2520,11 @@ export const salesLegacyApi = {
     }>(`/sales-legacy/receipt/${invoiceId}`),
 };
 
+export const posReceiptApi = {
+  get: (invoiceId: string) =>
+    request<{ success: boolean; data: Record<string, any> }>(`/pos/sale/${invoiceId}/receipt`),
+};
+
 export const tillApi = {
   open: (openingFloat: number) =>
     request<{ success: boolean; data: any }>("/tills/open", {
