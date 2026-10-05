@@ -816,14 +816,14 @@ function AppRoutes() {
           <Route
             path="/ebm/control-center"
             element={
-              <ProtectedRoute permission="purchase_orders:read">
+              <ProtectedRoute permission="ebm:read" roles={["admin", "stock_manager"]}>
                 <EBMControlCenterPage />
               </ProtectedRoute>
             }
           />
           <Route
             path="/ebm/unmatched-purchases"
-            element={<UnmatchedPurchasesPage />}
+            element={<ProtectedRoute permission="ebm:read" roles={["admin", "stock_manager"]}><UnmatchedPurchasesPage /></ProtectedRoute>}
           />
           <Route path="/ebm/retry-queue" element={<Navigate to="/ebm/control-center?tab=retry" replace />} />
           <Route path="/ebm/compliance" element={<Navigate to="/ebm/control-center?tab=compliance" replace />} />
@@ -1008,7 +1008,7 @@ function AppRoutes() {
           <Route path="/credit-notes/:id" element={<CreditNoteDetailPage />} />
           <Route
             path="/recurring-invoices"
-            element={<RecurringInvoicesListPage />}
+            element={<ProtectedRoute permission="recurring_invoices:read"><RecurringInvoicesListPage /></ProtectedRoute>}
           />
           <Route
             path="/recurring-invoices/new"
@@ -1343,9 +1343,9 @@ function AppRoutes() {
               </ErrorBoundary>
             }
           />
-          <Route path="/imports" element={<SmartImportPage />} />
-          <Route path="/imports/:entityType" element={<SmartImportPage />} />
-          <Route path="/audit-trail" element={<AuditTrailPage />} />
+          <Route path="/imports" element={<ProtectedRoute permission="imports:read"><SmartImportPage /></ProtectedRoute>} />
+          <Route path="/imports/:entityType" element={<ProtectedRoute permission="imports:read"><SmartImportPage /></ProtectedRoute>} />
+          <Route path="/audit-trail" element={<ProtectedRoute permission="audit_trail:read"><AuditTrailPage /></ProtectedRoute>} />
           {/* Platform Owner routes - separate layout, no company context */}
           <Route
             path="/platform-admin"

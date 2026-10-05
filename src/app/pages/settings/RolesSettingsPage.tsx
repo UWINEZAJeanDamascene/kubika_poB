@@ -59,25 +59,59 @@ interface PermissionResource {
 }
 
 const RESOURCE_LABELS: Record<string, string> = {
-  account_mappings: 'Account Mappings',
-  ap_payments: 'Accounts Payable',
-  ar_receipts: 'Accounts Receivable',
-  asset_categories: 'Asset Categories',
+  account_mappings: 'Chart of Accounts / Mappings',
+  accounting: 'Journal Entries / Accounting',
+  ap_payments: 'Accounts Payable / Payments',
+  ap_reconciliation: 'Accounts Payable / Reconciliation',
+  ar_receipts: 'Accounts Receivable / Receipts',
+  ar_reconciliation: 'Accounts Receivable / Reconciliation',
+  asset_categories: 'Fixed Assets / Categories',
+  audit_logs: 'Audit Trail / System Logs',
+  bank_reconciliation: 'Bank Accounts / Reconciliation',
+  batches: 'Batches',
   chart_of_accounts: 'Chart of Accounts',
   credit_notes: 'Credit Notes',
+  deferred_revenue: 'Expenses / Deferred Revenue',
   delivery_notes: 'Delivery Notes',
-  employee_advances: 'Employee Advances',
-  exchange_rates: 'Exchange Rates',
+  ebm: 'EBM Control Center',
+  employee_advances: 'Employees / Advances',
+  exchange_rates: 'Currencies & Rates / Exchange Rates',
   fixed_assets: 'Fixed Assets',
-  gl_financials: 'General Ledger',
+  gl_financials: 'Reports Center / General Ledger',
+  grn: 'Goods Received',
+  ai_forecasts: 'Reports & Insights / AI Forecasts',
+  ai_reports: 'Reports & Insights / AI Reports',
+  ai_observability: 'Reports & Insights / AI Monitoring',
+  imports: 'Bulk Import',
+  interest: 'Liabilities / Interest',
+  loans: 'Liabilities',
+  clients: 'Customers',
+  opening_balances: 'Chart of Accounts / Opening Balances',
+  periods: 'Accounting Periods',
   point_of_sale: 'Point of Sale',
-  purchase_orders: 'Purchase Orders',
+  pick_packs: 'Pick & Pack',
+  payroll: 'Payroll / Payroll Processing / Exceptions',
+  payroll_runs: 'Payroll Processing',
+  reports: 'Reports Center / Linked Reports',
+  prepaid_expenses: 'Expenses / Prepaid Expenses',
+  purchase_orders: 'Purchase Orders & Purchases',
   purchase_returns: 'Purchase Returns',
   recurring_invoices: 'Recurring Invoices',
-  sales_invoices: 'Sales Invoices',
+  sales_invoices: 'Invoices',
   sales_orders: 'Sales Orders',
+  serial_numbers: 'Stock Levels & Movements / Serial Numbers',
+  stock: 'Stock Levels / Movements',
   stock_audits: 'Stock Audits',
   stock_transfers: 'Stock Transfers',
+  tills: 'Point of Sale / Tills',
+  timesheets: 'Employees / Timesheets',
+  currencies: 'Currencies & Rates',
+  notifications: 'Notifications & Notification Settings',
+  settings: 'Company Settings',
+  users: 'User Management',
+  roles: 'Roles',
+  taxes: 'Taxes',
+  tax: 'Taxes',
 };
 
 const RESOURCE_GROUPS: Record<string, string> = {
@@ -91,21 +125,28 @@ const RESOURCE_GROUPS: Record<string, string> = {
   accounting: 'Finance Control', account_mappings: 'Finance Control', chart_of_accounts: 'Finance Control', journal_entries: 'Finance Control',
   bank_accounts: 'Finance Control', bank_reconciliation: 'Finance Control', petty_cash: 'Finance Control', expenses: 'Finance Control',
   fixed_assets: 'Finance Control', asset_categories: 'Finance Control', loans: 'Finance Control', exchange_rates: 'Finance Control', taxes: 'Finance Control', tax: 'Finance Control',
+  deferred_revenue: 'Finance Control', prepaid_expenses: 'Finance Control', interest: 'Finance Control',
   budgets: 'Project & Budget Management', projects: 'Project & Budget Management',
   periods: 'Reports & Insights', reports: 'Reports & Insights', gl_financials: 'Reports & Insights',
   payroll: 'Payroll Management', payroll_runs: 'Payroll Management', employees: 'Payroll Management',
   employee_advances: 'Payroll Management', timesheets: 'Payroll Management',
-  ai_reports: 'AI Intelligence', ai_forecasts: 'AI Intelligence', ai_observability: 'AI Intelligence',
+  ai_reports: 'Reports & Insights', ai_forecasts: 'Reports & Insights', ai_observability: 'Reports & Insights',
   users: 'System Control', roles: 'System Control', departments: 'System Control',
   settings: 'System Control', currencies: 'System Control', notifications: 'System Control', audit_trail: 'System Control',
   audit_logs: 'System Control', imports: 'System Control', exports: 'System Control',
-  opening_balances: 'System Control',
+  opening_balances: 'Finance Control',
 };
 
 const RESOURCE_GROUP_ORDER = [
-  'Inventory Core', 'Supply Chain', 'Sales & Revenue', 'Finance Control', 'Project & Budget Management',
-  'Payroll Management', 'Reports & Insights', 'AI Intelligence', 'System Control', 'Other Modules',
+  'Inventory Core', 'Sales & Revenue', 'Supply Chain', 'Finance Control', 'Project & Budget Management',
+  'Payroll Management', 'Reports & Insights', 'System Control', 'Other Modules',
 ];
+
+const RESOURCE_ALIASES: Record<string, string> = {
+  payroll_runs: 'payroll',
+};
+
+const canonicalResource = (resource: string) => RESOURCE_ALIASES[resource] || resource;
 
 const resourceLabel = (resource: string) => resource === '*'
   ? 'All Resources'
@@ -200,18 +241,26 @@ export default function RolesSettingsPage() {
   const mergePermissionCatalog = (catalog: PermissionResource[], roleRows: Role[]) => {
     const byResource = new Map<string, PermissionResource>();
     for (const item of catalog) {
-      byResource.set(item.resource, { ...item, actions: [...new Set(item.actions)] });
+      const resource = canonicalResource(item.resource);
+      const existing = byResource.get(resource);
+      byResource.set(resource, {
+        ...item,
+        resource,
+        label: existing?.label || resourceLabel(resource),
+        actions: [...new Set([...(existing?.actions || []), ...item.actions])],
+      });
     }
     // Keep legacy/custom permissions editable even when their resource no
     // longer appears on an active route. New routes register automatically.
     for (const role of roleRows) {
       for (const permission of role.permissions || []) {
         if (!permission.resource || permission.resource === '*') continue;
-        const existing = byResource.get(permission.resource);
+        const resource = canonicalResource(permission.resource);
+        const existing = byResource.get(resource);
         const actions = [...new Set([...(existing?.actions || []), ...(permission.actions || []).filter((action) => action !== '*')])].sort();
-        byResource.set(permission.resource, {
-          resource: permission.resource,
-          label: existing?.label || resourceLabel(permission.resource),
+        byResource.set(resource, {
+          resource,
+          label: existing?.label || resourceLabel(resource),
           actions,
         });
       }
@@ -266,7 +315,15 @@ export default function RolesSettingsPage() {
     setSelectedRole(role);
     setFormName(role.name);
     setFormDescription(role.description || '');
-    setFormPermissions(JSON.parse(JSON.stringify(role.permissions)));
+    const normalized = new Map<string, Set<string>>();
+    for (const permission of role.permissions || []) {
+      if (!permission.resource || permission.resource === '*') continue;
+      const resource = canonicalResource(permission.resource);
+      const actions = normalized.get(resource) || new Set<string>();
+      permission.actions.filter((action) => action !== '*').forEach((action) => actions.add(action));
+      normalized.set(resource, actions);
+    }
+    setFormPermissions(Array.from(normalized, ([resource, actions]) => ({ resource, actions: Array.from(actions) })));
     setDrawerMode('edit');
   };
 
@@ -286,7 +343,7 @@ export default function RolesSettingsPage() {
     for (const permission of role.permissions) {
       const resources = permission.resource === '*'
         ? permissionCatalog
-        : permissionCatalog.filter((item) => item.resource === permission.resource);
+        : permissionCatalog.filter((item) => item.resource === canonicalResource(permission.resource));
       for (const definition of resources) {
         const resource = definition.resource;
         const actions = permission.actions.includes('*')
@@ -768,6 +825,9 @@ export default function RolesSettingsPage() {
                       <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 block">
                         Permissions
                       </Label>
+                      <p className="mb-3 text-xs text-slate-500 dark:text-slate-400">
+                        Grouped to match the sidebar. Related pages can share one backend permission, so those links are shown together.
+                      </p>
                       <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
                         {!permissionCatalog.length ? (
                           <div className="p-5 text-sm text-amber-700 dark:text-amber-300">
@@ -802,7 +862,7 @@ export default function RolesSettingsPage() {
                               <Table>
                                 <TableHeader>
                                   <TableRow className="hover:bg-transparent dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
-                                    <TableHead className="text-slate-500 dark:text-slate-400 min-w-[160px]">Resource</TableHead>
+                                    <TableHead className="text-slate-500 dark:text-slate-400 min-w-[220px]">Sidebar module / permission area</TableHead>
                                     {allActions.map((action) => (
                                       <TableHead key={action} className="text-center text-slate-500 dark:text-slate-400 w-16 text-xs">
                                         {actionLabel(action)}
