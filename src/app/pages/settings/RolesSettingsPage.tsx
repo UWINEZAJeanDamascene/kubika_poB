@@ -79,9 +79,9 @@ const RESOURCE_LABELS: Record<string, string> = {
   fixed_assets: 'Fixed Assets',
   gl_financials: 'Reports Center / General Ledger',
   grn: 'Goods Received',
-  ai_forecasts: 'Reports & Insights / AI Forecasts',
-  ai_reports: 'Reports & Insights / AI Reports',
-  ai_observability: 'Reports & Insights / AI Monitoring',
+  ai_forecasts: 'AI Forecasts',
+  ai_reports: 'AI Reports',
+  ai_observability: 'AI Monitoring',
   imports: 'Bulk Import',
   interest: 'Liabilities / Interest',
   loans: 'Liabilities',
@@ -92,7 +92,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   pick_packs: 'Pick & Pack',
   payroll: 'Payroll / Payroll Processing / Exceptions',
   payroll_runs: 'Payroll Processing',
-  reports: 'Reports Center / Linked Reports',
+  reports: 'Reports Center',
   prepaid_expenses: 'Expenses / Prepaid Expenses',
   purchase_orders: 'Purchase Orders & Purchases',
   purchase_returns: 'Purchase Returns',
@@ -130,7 +130,7 @@ const RESOURCE_GROUPS: Record<string, string> = {
   periods: 'Reports & Insights', reports: 'Reports & Insights', gl_financials: 'Reports & Insights',
   payroll: 'Payroll Management', payroll_runs: 'Payroll Management', employees: 'Payroll Management',
   employee_advances: 'Payroll Management', timesheets: 'Payroll Management',
-  ai_reports: 'Reports & Insights', ai_forecasts: 'Reports & Insights', ai_observability: 'Reports & Insights',
+  ai_reports: 'AI Intelligence', ai_forecasts: 'AI Intelligence', ai_observability: 'AI Intelligence',
   users: 'System Control', roles: 'System Control', departments: 'System Control',
   settings: 'System Control', currencies: 'System Control', notifications: 'System Control', audit_trail: 'System Control',
   audit_logs: 'System Control', imports: 'System Control', exports: 'System Control',
@@ -139,7 +139,7 @@ const RESOURCE_GROUPS: Record<string, string> = {
 
 const RESOURCE_GROUP_ORDER = [
   'Inventory Core', 'Sales & Revenue', 'Supply Chain', 'Finance Control', 'Project & Budget Management',
-  'Payroll Management', 'Reports & Insights', 'System Control', 'Other Modules',
+  'Payroll Management', 'Reports & Insights', 'AI Intelligence', 'System Control', 'Other Modules',
 ];
 
 const RESOURCE_ALIASES: Record<string, string> = {
@@ -258,6 +258,9 @@ export default function RolesSettingsPage() {
         const resource = canonicalResource(permission.resource);
         const existing = byResource.get(resource);
         const actions = [...new Set([...(existing?.actions || []), ...(permission.actions || []).filter((action) => action !== '*')])].sort();
+        // Roles can contain stale resource entries with no action grants.
+        // Showing these as rows creates unusable lines of dashes in the matrix.
+        if (!actions.length) continue;
         byResource.set(resource, {
           resource,
           label: existing?.label || resourceLabel(resource),
