@@ -240,10 +240,6 @@ export default function RolesSettingsPage() {
   const [formName, setFormName] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
-  const allActions = Array.from(new Set(permissionCatalog.flatMap((item) => item.actions))).sort();
-  const groupedPermissionCatalog = RESOURCE_GROUP_ORDER
-    .map((group) => ({ group, resources: permissionCatalog.filter((item) => resourceGroup(item.resource) === group) }))
-    .filter(({ resources }) => resources.length > 0);
 
   const mergePermissionCatalog = (catalog: PermissionResource[], roleRows: Role[]) => {
     const byResource = new Map<string, PermissionResource>();
@@ -257,8 +253,9 @@ export default function RolesSettingsPage() {
         actions: [...new Set([...(existing?.actions || []), ...item.actions])],
       });
     }
-    // Keep legacy/custom permissions editable even when their resource no
-    // longer appears on an active route. New routes register automatically.
+    // Existing legacy grants are only merged into the editor for that role.
+    // They must never become selectable for new roles just because a system
+    // or custom role already contains them.
     for (const role of roleRows) {
       for (const permission of role.permissions || []) {
         if (!permission.resource || permission.resource === '*') continue;
@@ -281,6 +278,14 @@ export default function RolesSettingsPage() {
     );
   };
 
+  const editorCatalog = drawerMode === 'edit' && selectedRole
+    ? mergePermissionCatalog(permissionCatalog, [selectedRole])
+    : permissionCatalog;
+  const allActions = Array.from(new Set(editorCatalog.flatMap((item) => item.actions))).sort();
+  const groupedPermissionCatalog = RESOURCE_GROUP_ORDER
+    .map((group) => ({ group, resources: editorCatalog.filter((item) => resourceGroup(item.resource) === group) }))
+    .filter(({ resources }) => resources.length > 0);
+
   const fetchRoles = async () => {
     setLoading(true);
     try {
@@ -291,7 +296,9 @@ export default function RolesSettingsPage() {
       const roleRows = ((rolesResponse as any).data || []) as Role[];
       const catalogRows = ((catalogResponse as any).data || []) as PermissionResource[];
       setRoles(roleRows);
-      setPermissionCatalog(mergePermissionCatalog(catalogRows, roleRows));
+      // The server catalog is the only source of grants selectable for new
+      // roles. System-role and other-role grants can be legacy or deprecated.
+      setPermissionCatalog(mergePermissionCatalog(catalogRows, []));
     } catch (err: any) {
       toast.error(err.message || 'Failed to load roles');
     } finally {
@@ -839,7 +846,7 @@ export default function RolesSettingsPage() {
                         Grouped to match the sidebar. Related pages can share one backend permission, so those links are shown together.
                       </p>
                       <Card className="border-slate-200 dark:border-slate-800 overflow-hidden">
-                        {!permissionCatalog.length ? (
+                        {!editorCatalog.length ? (
                           <div className="p-5 text-sm text-amber-700 dark:text-amber-300">
                             Permission resources could not be loaded. Refresh the page before creating or editing a role.
                           </div>
@@ -886,10 +893,10 @@ export default function RolesSettingsPage() {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {permissionCatalog.map(({ resource, actions }, index) => {
+                                  {editorCatalog.map(({ resource, actions }, index) => {
                                     const perm = formPermissions.find((p) => p.resource === resource);
                                     const group = resourceGroup(resource);
-                                    const previousGroup = index > 0 ? resourceGroup(permissionCatalog[index - 1].resource) : null;
+                                    const previousGroup = index > 0 ? resourceGroup(editorCatalog[index - 1].resource) : null;
                                     return (
                                       <Fragment key={resource}>
                                       {group !== previousGroup && <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:bg-slate-900/70"><TableCell colSpan={allActions.length + 1} className="py-2 text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">{group}</TableCell></TableRow>}
