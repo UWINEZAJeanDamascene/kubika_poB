@@ -280,11 +280,11 @@ export default function PayrollListPage() {
     { value: "other", label: "Other" },
   ];
 
-  // Filters
-  const currentMonth = String(new Date().getMonth() + 1);
-  const currentYear = String(new Date().getFullYear());
-  const [filterMonth, setFilterMonth] = useState<string>(currentMonth);
-  const [filterYear, setFilterYear] = useState<string>(currentYear);
+  // Start with the same unfiltered view used by Clear Filters. Defaulting to
+  // the current month hid existing employee payroll records from prior periods
+  // until users cleared the filters manually.
+  const [filterMonth, setFilterMonth] = useState<string>("");
+  const [filterYear, setFilterYear] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("");
 
   // Dialogs
