@@ -437,11 +437,15 @@ export default function BankAccountsListPage() {
       if (response.success) {
         navigate("/bank-accounts");
       } else {
-        alert((response as any).message || "Failed to save account");
+        toast.error((response as any).message || "Failed to save bank account");
       }
     } catch (error) {
       console.error("[BankAccountsListPage] Failed to save account:", error);
-      alert("Failed to save account. Please try again.");
+      toast.error(
+        error instanceof Error && error.message
+          ? error.message
+          : "Failed to save bank account. Please try again.",
+      );
     } finally {
       setSaving(false);
     }
