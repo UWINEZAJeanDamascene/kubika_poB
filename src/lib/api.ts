@@ -6913,7 +6913,7 @@ export const smartImportsApi = {
   history: (params?: { entityType?: string; from?: string; to?: string }) =>
     request<{ success: boolean; data: any[] }>("/imports/history", { params }),
   deleteHistory: (id: string) =>
-    request<{ success: boolean; data: { deleted: boolean } }>(`/imports/history/${id}`, { method: "DELETE" }),
+    request<{ success: boolean; data: { deleted: boolean } }>(`/imports/history/${id}/delete`, { method: "POST", body: {} }),
   downloadTemplate: (entityType: string) =>
     fetch(`${API_BASE_URL}/imports/download-template/${entityType}`, {
       headers: authHeaders(false),
