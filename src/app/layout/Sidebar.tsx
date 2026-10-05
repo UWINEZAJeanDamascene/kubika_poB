@@ -104,6 +104,7 @@ interface NavItem {
   permission: string;
   featureKey?: string; // maps to backend FEATURE_KEYS for plan-based visibility
   moduleNames?: string[]; // maps to subscription plan display modules for item-level visibility
+  legacyRoles?: string[]; // built-in role access retained while older role grants are migrated
   disabled?: boolean;
 }
 
@@ -298,7 +299,7 @@ const inventoryNav: NavSection = {
       nameKey: "nav.categories",
       href: "/categories",
       icon: FolderTree,
-      permission: "products:read",
+      permission: "categories:read",
       featureKey: "inventory",
       moduleNames: ["Products and categories"],
     },
@@ -445,7 +446,8 @@ const salesNav: NavSection = {
       nameKey: "nav.pos",
       href: "/sales-legacy",
       icon: Receipt,
-      permission: "sales_invoices:read",
+      permission: "point_of_sale:read",
+      legacyRoles: ["admin", "manager", "sales"],
       featureKey: "sales",
       moduleNames: ["POS", "Invoices"],
     },
@@ -453,7 +455,8 @@ const salesNav: NavSection = {
       nameKey: "nav.posPrinterSetup",
       href: "/pos/printer-setup",
       icon: Printer,
-      permission: "sales_invoices:create",
+      permission: "point_of_sale:create",
+      legacyRoles: ["admin", "manager", "sales"],
       featureKey: "sales",
       moduleNames: ["POS", "Invoices"],
     },
@@ -485,7 +488,7 @@ const salesNav: NavSection = {
       nameKey: "nav.pickPacks",
       href: "/pick-packs",
       icon: Package,
-      permission: "stock:read",
+      permission: "pick_packs:read",
       featureKey: "sales",
       moduleNames: ["Pick and pack"],
     },
@@ -622,7 +625,7 @@ const payrollNav: NavSection = {
   icon: DollarSign,
   items: [
     { nameKey: "nav.myPayroll", href: "/my-payroll", icon: FileText, permission: "payroll:self", featureKey: "payroll", moduleNames: ["Payroll runs"] },
-    { nameKey: "nav.employees", href: "/employees", icon: Users, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Employees"] },
+    { nameKey: "nav.employees", href: "/employees", icon: Users, permission: "employees:read", legacyRoles: ["admin", "manager"], featureKey: "payroll", moduleNames: ["Employees"] },
     { nameKey: "nav.payroll", href: "/payroll", icon: DollarSign, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
     { nameKey: "payroll.payrollRuns", href: "/payroll-runs", icon: Play, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
     { nameKey: "Payroll exceptions", href: "/payroll-exceptions", icon: AlertTriangle, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
@@ -726,7 +729,7 @@ const systemNav: NavSection = {
       nameKey: "nav.departments",
       href: "/departments",
       icon: Blocks,
-      permission: "users:read",
+      permission: "departments:read",
     },
     {
       nameKey: "nav.companySettings",
@@ -738,7 +741,7 @@ const systemNav: NavSection = {
       nameKey: "nav.currencySettings",
       href: "/currency-settings",
       icon: Coins,
-      permission: "settings:read",
+      permission: "currencies:update",
     },
     {
       nameKey: "nav.notificationsInbox",
@@ -1015,7 +1018,11 @@ export function Sidebar({
       (item) => hasFeatureAccess(item.featureKey) && hasModuleAccess(item),
     );
   const canAccessNavItem = (item: NavItem) =>
-    item.href === "/my-payroll" || checkPermission(item.permission);
+    item.href === "/my-payroll" || checkPermission(item.permission) || Boolean(item.legacyRoles?.some((role) =>
+      user?.role === role || user?.roles?.some((assigned) =>
+        (typeof assigned === "string" ? assigned : assigned?.name) === role,
+      ),
+    ));
 
   const visibleSections = ALL_SECTIONS
     .map((section) => ({ section, items: filterVisible(section.items) }))

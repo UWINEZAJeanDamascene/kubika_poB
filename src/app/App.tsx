@@ -761,8 +761,8 @@ function AppRoutes() {
           <Route path="/notifications/list" element={<NotificationsPage />} />
           <Route path="/backups" element={<BackupPage />} />
           <Route path="/testimonials" element={<TestimonialsPage />} />
-          <Route path="/departments" element={<DepartmentsPage />} />
-          <Route path="/categories" element={<CategoriesPage />} />
+          <Route path="/departments" element={<ProtectedRoute permission="departments:read"><DepartmentsPage /></ProtectedRoute>} />
+          <Route path="/categories" element={<ProtectedRoute permission="categories:read"><CategoriesPage /></ProtectedRoute>} />
           <Route path="/warehouses" element={<WarehousesPage />} />
           <Route path="/stock-levels" element={<StockLevelsPage />} />
           <Route path="/stock-movements" element={<StockMovementsPage />} />
@@ -885,15 +885,17 @@ function AppRoutes() {
           <Route
             path="/sales-legacy"
             element={
-              <ErrorBoundary>
-                <SalesLegacyPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="point_of_sale:read" roles={["admin", "manager", "sales"]}>
+                <ErrorBoundary>
+                  <SalesLegacyPage />
+                </ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/pos/receipt/:invoiceId"
             element={
-              <ProtectedRoute permissions={["sales_invoices:read"]}>
+              <ProtectedRoute permissions={["point_of_sale:read"]}>
                 <ErrorBoundary><PosReceiptPage /></ErrorBoundary>
               </ProtectedRoute>
             }
@@ -901,7 +903,7 @@ function AppRoutes() {
           <Route
             path="/pos/printer-setup"
             element={
-              <ProtectedRoute permissions={["sales_invoices:create"]}>
+              <ProtectedRoute permissions={["point_of_sale:create"]}>
                 <ErrorBoundary><PosPrinterSetupPage /></ErrorBoundary>
               </ProtectedRoute>
             }
@@ -1400,7 +1402,7 @@ function AppRoutes() {
           <Route
             path="/employees"
             element={
-              <ProtectedRoute permission="payroll:read" roles={["admin", "manager", "hr"]}>
+              <ProtectedRoute permission="employees:read" roles={["admin", "manager", "hr"]}>
                 <ErrorBoundary><EmployeesListPage /></ErrorBoundary>
               </ProtectedRoute>
             }
@@ -1408,7 +1410,7 @@ function AppRoutes() {
           <Route
             path="/employees/new"
             element={
-              <ProtectedRoute permission="payroll:create" roles={["admin", "manager", "hr"]}>
+              <ProtectedRoute permission="employees:create" roles={["admin", "manager", "hr"]}>
                 <ErrorBoundary><EmployeeFormPage /></ErrorBoundary>
               </ProtectedRoute>
             }
@@ -1416,7 +1418,7 @@ function AppRoutes() {
           <Route
             path="/employees/:id"
             element={
-              <ProtectedRoute permission="payroll:read" roles={["admin", "manager", "hr"]}>
+              <ProtectedRoute permission="employees:read" roles={["admin", "manager", "hr"]}>
                 <ErrorBoundary><EmployeeDetailPage /></ErrorBoundary>
               </ProtectedRoute>
             }
@@ -1424,7 +1426,7 @@ function AppRoutes() {
           <Route
             path="/employees/:id/edit"
             element={
-              <ProtectedRoute permissions={["payroll:read", "payroll:update"]} requireAll roles={["admin", "manager", "hr"]}>
+              <ProtectedRoute permissions={["employees:read", "employees:update"]} requireAll roles={["admin", "manager", "hr"]}>
                 <ErrorBoundary><EmployeeFormPage /></ErrorBoundary>
               </ProtectedRoute>
             }
@@ -2087,9 +2089,11 @@ function AppRoutes() {
           <Route
             path="/currency-settings"
             element={
-              <ErrorBoundary>
-                <CurrencySettingsPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="currencies:update">
+                <ErrorBoundary>
+                  <CurrencySettingsPage />
+                </ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route

@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+import { Fragment, useState, useEffect, type ReactNode } from 'react';
 import { accessApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import {
@@ -58,7 +58,60 @@ interface PermissionResource {
   actions: string[];
 }
 
-const resourceLabel = (r: string) => r === '*' ? 'All Resources' : r.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+const RESOURCE_LABELS: Record<string, string> = {
+  account_mappings: 'Account Mappings',
+  ap_payments: 'Accounts Payable',
+  ar_receipts: 'Accounts Receivable',
+  asset_categories: 'Asset Categories',
+  chart_of_accounts: 'Chart of Accounts',
+  credit_notes: 'Credit Notes',
+  delivery_notes: 'Delivery Notes',
+  employee_advances: 'Employee Advances',
+  exchange_rates: 'Exchange Rates',
+  fixed_assets: 'Fixed Assets',
+  gl_financials: 'General Ledger',
+  point_of_sale: 'Point of Sale',
+  purchase_orders: 'Purchase Orders',
+  purchase_returns: 'Purchase Returns',
+  recurring_invoices: 'Recurring Invoices',
+  sales_invoices: 'Sales Invoices',
+  sales_orders: 'Sales Orders',
+  stock_audits: 'Stock Audits',
+  stock_transfers: 'Stock Transfers',
+};
+
+const RESOURCE_GROUPS: Record<string, string> = {
+  products: 'Inventory Core', categories: 'Inventory Core', warehouses: 'Inventory Core', stock: 'Inventory Core',
+  stock_transfers: 'Inventory Core', stock_audits: 'Inventory Core', batches: 'Inventory Core', serial_numbers: 'Inventory Core',
+  suppliers: 'Supply Chain', purchase_orders: 'Supply Chain', purchase_returns: 'Supply Chain', grn: 'Supply Chain',
+  ebm: 'Supply Chain', ap_payments: 'Supply Chain', ap_reconciliation: 'Supply Chain',
+  clients: 'Sales & Revenue', quotations: 'Sales & Revenue', sales_orders: 'Sales & Revenue', sales_invoices: 'Sales & Revenue', point_of_sale: 'Sales & Revenue',
+  tills: 'Sales & Revenue', pick_packs: 'Sales & Revenue', delivery_notes: 'Sales & Revenue', credit_notes: 'Sales & Revenue', recurring_invoices: 'Sales & Revenue',
+  ar_receipts: 'Sales & Revenue', ar_reconciliation: 'Sales & Revenue',
+  accounting: 'Finance Control', account_mappings: 'Finance Control', chart_of_accounts: 'Finance Control', journal_entries: 'Finance Control',
+  bank_accounts: 'Finance Control', bank_reconciliation: 'Finance Control', petty_cash: 'Finance Control', expenses: 'Finance Control',
+  fixed_assets: 'Finance Control', asset_categories: 'Finance Control', loans: 'Finance Control', exchange_rates: 'Finance Control', taxes: 'Finance Control', tax: 'Finance Control',
+  budgets: 'Project & Budget Management', projects: 'Project & Budget Management',
+  periods: 'Reports & Insights', reports: 'Reports & Insights', gl_financials: 'Reports & Insights',
+  payroll: 'Payroll Management', payroll_runs: 'Payroll Management', employees: 'Payroll Management',
+  employee_advances: 'Payroll Management', timesheets: 'Payroll Management',
+  ai_reports: 'AI Intelligence', ai_forecasts: 'AI Intelligence', ai_observability: 'AI Intelligence',
+  users: 'System Control', roles: 'System Control', departments: 'System Control',
+  settings: 'System Control', currencies: 'System Control', notifications: 'System Control', audit_trail: 'System Control',
+  audit_logs: 'System Control', imports: 'System Control', exports: 'System Control',
+  opening_balances: 'System Control',
+};
+
+const RESOURCE_GROUP_ORDER = [
+  'Inventory Core', 'Supply Chain', 'Sales & Revenue', 'Finance Control', 'Project & Budget Management',
+  'Payroll Management', 'Reports & Insights', 'AI Intelligence', 'System Control', 'Other Modules',
+];
+
+const resourceLabel = (resource: string) => resource === '*'
+  ? 'All Resources'
+  : RESOURCE_LABELS[resource] || resource.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+
+const resourceGroup = (resource: string) => RESOURCE_GROUPS[resource] || 'Other Modules';
 
 const actionLabel = (a: string) => a.charAt(0).toUpperCase() + a.slice(1);
 
@@ -140,6 +193,9 @@ export default function RolesSettingsPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formPermissions, setFormPermissions] = useState<Permission[]>([]);
   const allActions = Array.from(new Set(permissionCatalog.flatMap((item) => item.actions))).sort();
+  const groupedPermissionCatalog = RESOURCE_GROUP_ORDER
+    .map((group) => ({ group, resources: permissionCatalog.filter((item) => resourceGroup(item.resource) === group) }))
+    .filter(({ resources }) => resources.length > 0);
 
   const mergePermissionCatalog = (catalog: PermissionResource[], roleRows: Role[]) => {
     const byResource = new Map<string, PermissionResource>();
@@ -160,7 +216,10 @@ export default function RolesSettingsPage() {
         });
       }
     }
-    return Array.from(byResource.values()).sort((a, b) => a.label.localeCompare(b.label));
+    const groupIndex = (resource: string) => RESOURCE_GROUP_ORDER.indexOf(resourceGroup(resource));
+    return Array.from(byResource.values()).sort((a, b) =>
+      groupIndex(a.resource) - groupIndex(b.resource) || a.label.localeCompare(b.label),
+    );
   };
 
   const fetchRoles = async () => {
@@ -717,22 +776,27 @@ export default function RolesSettingsPage() {
                         ) : (
                           <>
                             <div className="space-y-3 p-3 xl:hidden">
-                              {permissionCatalog.map(({ resource, actions }) => {
-                                const perm = formPermissions.find((p) => p.resource === resource);
-                                return (
-                                  <article key={resource} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-                                    <h4 className="font-medium text-slate-900 dark:text-white">{resourceLabel(resource)}</h4>
-                                    <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-3">
-                                      {actions.map((action) => (
-                                        <label key={action} className="flex min-h-11 items-center gap-2 rounded-md px-2 text-sm">
-                                          <Checkbox checked={perm?.actions.includes(action) || false} onCheckedChange={() => togglePermission(resource, action)} className="h-4 w-4" />
-                                          <span>{actionLabel(action)}</span>
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </article>
-                                );
-                              })}
+                              {groupedPermissionCatalog.map(({ group, resources }) => (
+                                <section key={group} className="space-y-2">
+                                  <h3 className="px-1 text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">{group}</h3>
+                                  {resources.map(({ resource, actions }) => {
+                                    const perm = formPermissions.find((p) => p.resource === resource);
+                                    return (
+                                      <article key={resource} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                                        <h4 className="font-medium text-slate-900 dark:text-white">{resourceLabel(resource)}</h4>
+                                        <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-3">
+                                          {actions.map((action) => (
+                                            <label key={action} className="flex min-h-11 items-center gap-2 rounded-md px-2 text-sm">
+                                              <Checkbox checked={perm?.actions.includes(action) || false} onCheckedChange={() => togglePermission(resource, action)} className="h-4 w-4" />
+                                              <span>{actionLabel(action)}</span>
+                                            </label>
+                                          ))}
+                                        </div>
+                                      </article>
+                                    );
+                                  })}
+                                </section>
+                              ))}
                             </div>
                             <div className="hidden overflow-x-auto xl:block">
                               <Table>
@@ -747,9 +811,13 @@ export default function RolesSettingsPage() {
                                   </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                  {permissionCatalog.map(({ resource, actions }) => {
+                                  {permissionCatalog.map(({ resource, actions }, index) => {
                                     const perm = formPermissions.find((p) => p.resource === resource);
+                                    const group = resourceGroup(resource);
+                                    const previousGroup = index > 0 ? resourceGroup(permissionCatalog[index - 1].resource) : null;
                                     return (
+                                      <Fragment key={resource}>
+                                      {group !== previousGroup && <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:bg-slate-900/70"><TableCell colSpan={allActions.length + 1} className="py-2 text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">{group}</TableCell></TableRow>}
                                       <TableRow key={resource} className="dark:border-slate-800">
                                         <TableCell className="text-sm font-medium text-slate-900 dark:text-slate-200">{resourceLabel(resource)}</TableCell>
                                         {allActions.map((action) => (
@@ -764,6 +832,7 @@ export default function RolesSettingsPage() {
                                           </TableCell>
                                         ))}
                                       </TableRow>
+                                      </Fragment>
                                     );
                                   })}
                                 </TableBody>
