@@ -69,6 +69,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   audit_logs: 'Audit Trail / System Logs',
   bank_reconciliation: 'Bank Accounts / Reconciliation',
   batches: 'Batches',
+  budgets: 'Budgets',
   chart_of_accounts: 'Chart of Accounts',
   credit_notes: 'Credit Notes',
   deferred_revenue: 'Expenses / Deferred Revenue',
@@ -90,7 +91,7 @@ const RESOURCE_LABELS: Record<string, string> = {
   periods: 'Accounting Periods',
   point_of_sale: 'Point of Sale',
   pick_packs: 'Pick & Pack',
-  payroll: 'Payroll / Payroll Processing / Exceptions',
+  payroll: 'Payroll',
   payroll_runs: 'Payroll Processing',
   reports: 'Reports Center',
   prepaid_expenses: 'Expenses / Prepaid Expenses',
@@ -135,6 +136,12 @@ const RESOURCE_GROUPS: Record<string, string> = {
   settings: 'System Control', currencies: 'System Control', notifications: 'System Control', audit_trail: 'System Control',
   audit_logs: 'System Control', imports: 'System Control', exports: 'System Control',
   opening_balances: 'Finance Control',
+};
+
+const RESOURCE_SCOPE_DESCRIPTIONS: Record<string, string> = {
+  budgets: 'Also controls Budget Settings',
+  payroll: 'Also controls Payroll Processing and Payroll Exceptions',
+  reports: 'Also controls Profit & Loss, Balance Sheet, Cash Flow, Financial Ratios, and Debt Schedule',
 };
 
 const RESOURCE_GROUP_ORDER = [
@@ -847,6 +854,11 @@ export default function RolesSettingsPage() {
                                     return (
                                       <article key={resource} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                                         <h4 className="font-medium text-slate-900 dark:text-white">{resourceLabel(resource)}</h4>
+                                        {RESOURCE_SCOPE_DESCRIPTIONS[resource] && (
+                                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                            {RESOURCE_SCOPE_DESCRIPTIONS[resource]}
+                                          </p>
+                                        )}
                                         <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3 sm:grid-cols-3">
                                           {actions.map((action) => (
                                             <label key={action} className="flex min-h-11 items-center gap-2 rounded-md px-2 text-sm">
@@ -882,7 +894,14 @@ export default function RolesSettingsPage() {
                                       <Fragment key={resource}>
                                       {group !== previousGroup && <TableRow className="bg-slate-50/70 hover:bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/70 dark:hover:bg-slate-900/70"><TableCell colSpan={allActions.length + 1} className="py-2 text-xs font-semibold uppercase tracking-wide text-cyan-700 dark:text-cyan-300">{group}</TableCell></TableRow>}
                                       <TableRow key={resource} className="dark:border-slate-800">
-                                        <TableCell className="text-sm font-medium text-slate-900 dark:text-slate-200">{resourceLabel(resource)}</TableCell>
+                                        <TableCell className="text-sm font-medium text-slate-900 dark:text-slate-200">
+                                          <div>{resourceLabel(resource)}</div>
+                                          {RESOURCE_SCOPE_DESCRIPTIONS[resource] && (
+                                            <div className="mt-1 text-xs font-normal text-slate-500 dark:text-slate-400">
+                                              {RESOURCE_SCOPE_DESCRIPTIONS[resource]}
+                                            </div>
+                                          )}
+                                        </TableCell>
                                         {allActions.map((action) => (
                                           <TableCell key={action} className="text-center">
                                             {actions.includes(action) ? (
