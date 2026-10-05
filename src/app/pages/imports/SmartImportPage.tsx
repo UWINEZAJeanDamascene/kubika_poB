@@ -12,6 +12,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/app/components/ui/tooltip";
 import { AlertCircle, Check, Download, FileSpreadsheet, Loader2, Save, Trash2, Upload } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/app/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/app/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 
@@ -67,6 +77,8 @@ export default function SmartImportPage() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [progress, setProgress] = useState<any | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [deleteCandidate, setDeleteCandidate] = useState<any | null>(null);
+  const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
 
   useEffect(() => {
     smartImportsApi.getEntityTypes().then((res) => setEntities(res.data)).catch((error) => toast.error(error.message));
@@ -192,6 +204,38 @@ export default function SmartImportPage() {
     if (!res.ok) throw new Error("Download failed");
     downloadBlob(await res.blob(), filename);
   }
+
+  async function deleteImportHistory() {
+    if (!deleteCandidate) return;
+    setDeletingHistoryId(deleteCandidate._id);
+    try {
+      await smartImportsApi.deleteHistory(deleteCandidate._id);
+      setHistory((current) => current.filter((item) => item._id !== deleteCandidate._id));
+      toast.success("Failed import and its reports deleted");
+      setDeleteCandidate(null);
+    } catch (error: any) {
+      toast.error(error.message || "Could not delete import history");
+    } finally {
+      setDeletingHistoryId(null);
+    }
+  }
+
+  const canDeleteImport = (item: any) =>
+    item.status === "failed" || (item.status === "completed_with_errors" && Number(item.errorRows) > 0);
+
+  const renderHistoryDeleteButton = (item: any, compact = false) => canDeleteImport(item) && (
+    <Button
+      size="sm"
+      variant="outline"
+      className={compact ? "min-h-10" : ""}
+      aria-label={`Delete failed import ${item.fileName}`}
+      title="Delete failed import history"
+      onClick={() => setDeleteCandidate(item)}
+    >
+      <Trash2 className="h-4 w-4" />
+      <span className={compact ? "ml-2" : "sr-only"}>Delete</span>
+    </Button>
+  );
 
   return (
     <Layout>
@@ -433,11 +477,11 @@ export default function SmartImportPage() {
             <CardContent className="p-0">
               <div className="border-b px-4 py-3 font-medium">Import History</div>
               <div className="space-y-3 p-3 xl:hidden">
-                {history.slice(0, 8).map((item) => <article key={item._id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words font-medium">{item.fileName}</p><Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{item.status}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-slate-500">Started<b className="mt-1 block text-sm text-foreground">{item.startedAt ? new Date(item.startedAt).toLocaleString() : ""}</b></span><span className="text-slate-500">Rows<b className="mt-1 block text-sm text-foreground">{item.successRows}/{item.totalRows}</b></span></div><div className="mt-3 flex flex-wrap gap-2">{item.resultsReportUrl && <Button size="sm" variant="outline" className="min-h-10" onClick={() => void downloadAuthenticated(smartImportsApi.downloadResultsReportUrl(item._id), "import-results.csv")}>Results</Button>}{item.errorReportUrl && <Button size="sm" variant="outline" className="min-h-10" onClick={() => void downloadAuthenticated(smartImportsApi.downloadErrorReportUrl(item._id), "import-errors.csv")}>Errors</Button>}</div></article>)}
+                {history.slice(0, 8).map((item) => <article key={item._id} className="rounded-xl border p-3"><div className="flex items-start justify-between gap-3"><p className="min-w-0 break-words font-medium">{item.fileName}</p><Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{item.status}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs"><span className="text-slate-500">Started<b className="mt-1 block text-sm text-foreground">{item.startedAt ? new Date(item.startedAt).toLocaleString() : ""}</b></span><span className="text-slate-500">Rows<b className="mt-1 block text-sm text-foreground">{item.successRows}/{item.totalRows}</b></span></div><div className="mt-3 flex flex-wrap gap-2">{item.resultsReportUrl && <Button size="sm" variant="outline" className="min-h-10" onClick={() => void downloadAuthenticated(smartImportsApi.downloadResultsReportUrl(item._id), "import-results.csv")}>Results</Button>}{item.errorReportUrl && <Button size="sm" variant="outline" className="min-h-10" onClick={() => void downloadAuthenticated(smartImportsApi.downloadErrorReportUrl(item._id), "import-errors.csv")}>Errors</Button>}{renderHistoryDeleteButton(item, true)}</div></article>)}
                 {!history.length && <p className="py-6 text-center text-sm text-slate-500">No imports yet for this entity.</p>}
               </div>
               <div className="hidden overflow-x-auto xl:block"><Table>
-                <TableHeader><TableRow><TableHead>File</TableHead><TableHead>Status</TableHead><TableHead>Started</TableHead><TableHead>Rows</TableHead><TableHead>Reports</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>File</TableHead><TableHead>Status</TableHead><TableHead>Started</TableHead><TableHead>Rows</TableHead><TableHead>Reports</TableHead><TableHead className="w-16 text-right">Delete</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {history.slice(0, 8).map((item) => (
                     <TableRow key={item._id}>
@@ -449,14 +493,31 @@ export default function SmartImportPage() {
                         {item.resultsReportUrl && <Button size="sm" variant="outline" onClick={() => void downloadAuthenticated(smartImportsApi.downloadResultsReportUrl(item._id), "import-results.csv")}>Results</Button>}
                         {item.errorReportUrl && <Button size="sm" variant="outline" onClick={() => void downloadAuthenticated(smartImportsApi.downloadErrorReportUrl(item._id), "import-errors.csv")}>Errors</Button>}
                       </TableCell>
+                      <TableCell className="text-right">{renderHistoryDeleteButton(item)}</TableCell>
                     </TableRow>
                   ))}
-                  {!history.length && <TableRow><TableCell colSpan={5} className="py-6 text-center text-sm text-slate-500">No imports yet for this entity.</TableCell></TableRow>}
+                  {!history.length && <TableRow><TableCell colSpan={6} className="py-6 text-center text-sm text-slate-500">No imports yet for this entity.</TableCell></TableRow>}
                 </TableBody>
               </Table></div>
             </CardContent>
           </Card>
         </div>
+        <AlertDialog open={Boolean(deleteCandidate)} onOpenChange={(open) => { if (!open && !deletingHistoryId) setDeleteCandidate(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this failed import?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the import-history record and its generated reports. Any rows that succeeded in a partial import remain in your workspace and must be removed separately if needed.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={Boolean(deletingHistoryId)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction disabled={Boolean(deletingHistoryId)} onClick={(event) => { event.preventDefault(); void deleteImportHistory(); }}>
+                {deletingHistoryId ? "Deleting…" : "Delete import"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </TooltipProvider>
     </Layout>
   );
