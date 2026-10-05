@@ -3,7 +3,6 @@ import { useParams, useNavigate } from "react-router";
 import { useTranslation } from "react-i18next";
 import {
   payrollRunApi,
-  payrollApi,
   chartOfAccountsApi,
   bankAccountsApi,
   PayrollRun,
@@ -165,14 +164,9 @@ export default function PayrollRunDetailPage() {
   const fetchPeriodPayrollRecords = async (month: number, year: number) => {
     setLoadingPeriodRecords(true);
     try {
-      const response = await payrollApi.getAll({
-        month,
-        year,
-        status: "finalised",
-        limit: 500,
-      });
+      const response = await payrollRunApi.getAvailablePeriodRecords(year, month);
       if (response.success) {
-        const records = (response.data || []).filter((record) => !record.payroll_run_id);
+        const records = response.data || [];
         setPeriodPayrollRecords(records);
         setSelectedPayrollIds(new Set(records.map((record) => record._id)));
       }

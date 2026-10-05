@@ -8495,6 +8495,10 @@ export const payrollRunApi = {
         totalNet: number;
       }>;
     }>("/payroll-runs/available-periods"),
+  getAvailablePeriodRecords: (year: number, month: number) =>
+    request<{ success: boolean; data: PayrollRecord[] }>(
+      `/payroll-runs/available-periods/${year}/${month}/records`,
+    ),
 };
 
 // Tax Rate Configuration API
