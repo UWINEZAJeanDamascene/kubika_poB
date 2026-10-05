@@ -406,11 +406,8 @@ export default function BankAccountsListPage() {
     e.preventDefault();
     setSaving(true);
     try {
-      // Prepare data - convert openingBalance to number, but exclude it from updates (backend rule)
-      const { openingBalance, ...updateDataWithoutOpeningBalance } = formData;
-
       const submitData = {
-        ...updateDataWithoutOpeningBalance,
+        ...formData,
         openingBalance: parseFloat(formData.openingBalance) || 0,
         interestRate: parseFloat(formData.interestRate) || 0,
         interestAccountType: formData.interestAccountType,
@@ -424,11 +421,9 @@ export default function BankAccountsListPage() {
 
       let response;
       if (isEditMode && editAccountId) {
-        // For updates, remove openingBalance entirely per backend rules
-        const { openingBalance: ob, ...updateData } = submitData;
         response = await bankAccountsApi.update(
           editAccountId,
-          updateData as any,
+          submitData as any,
         );
       } else {
         // Create new account - include openingBalance
