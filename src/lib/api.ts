@@ -33,6 +33,7 @@ export interface BankAccount {
   currencyCode: string;
   isDefault?: boolean;
   isPrimary?: boolean;
+  ledgerAccountId?: string | null;
   isActive: boolean;
   color?: string;
   notes?: string;

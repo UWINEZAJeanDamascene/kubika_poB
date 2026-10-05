@@ -197,11 +197,25 @@ export default function PayrollRunDetailPage() {
   const fetchDropdownData = async () => {
     try {
       const [accountsRes, bankRes] = await Promise.all([
-        chartOfAccountsApi.getAll(),
-        bankAccountsApi.getAll(),
+        chartOfAccountsApi.getAll({ isActive: true }),
+        bankAccountsApi.getAll({ isActive: true }),
       ]);
-      if (accountsRes.success) setChartAccounts(accountsRes.data || []);
-      if (bankRes.success) setBankAccounts(bankRes.data || []);
+      const accounts = accountsRes.success ? (accountsRes.data || []).filter((account) => account.isActive !== false) : [];
+      const banks = bankRes.success ? (bankRes.data || []).filter((account) => account.isActive) : [];
+      setChartAccounts(accounts);
+      setBankAccounts(banks);
+
+      const accountByCode = (code: string) => accounts.find((account) => String(account.code).trim() === code)?._id || "";
+      const defaultBank = banks.find((account) => account.isDefault || account.isPrimary)
+        || banks.find((account) => String(account.ledgerAccountId || "") === "1100")
+        || (banks.length === 1 ? banks[0] : undefined);
+      setCreateForm((current) => ({
+        ...current,
+        bank_account_id: current.bank_account_id || defaultBank?._id || "",
+        salary_account_id: current.salary_account_id || accountByCode("5400"),
+        tax_payable_account_id: current.tax_payable_account_id || accountByCode("2230"),
+        other_deductions_account_id: current.other_deductions_account_id || accountByCode("2240"),
+      }));
     } catch (error) {
       console.error(
         "[PayrollRunDetailPage] Failed to fetch dropdown data:",
@@ -968,7 +982,7 @@ export default function PayrollRunDetailPage() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-slate-400 dark:text-slate-500">
-                          Account to debit for net salaries
+                          Default active bank account is selected automatically.
                         </p>
                       </div>
                       <div className="space-y-1">
@@ -984,7 +998,7 @@ export default function PayrollRunDetailPage() {
                           </SelectTrigger>
                           <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
                             {chartAccounts
-                              .filter((a) => a.type === "expense" || a.type === "cogs")
+                              .filter((a) => a.code === "5400")
                               .map((a) => (
                                 <SelectItem key={a._id} value={a._id} className="dark:text-slate-200">{a.code} — {a.name}
                                 </SelectItem>
@@ -992,7 +1006,7 @@ export default function PayrollRunDetailPage() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-slate-400 dark:text-slate-500">
-                          e.g. 5400 Salaries & Wages
+                          Automatically mapped to account 5400 — Salaries & Wages.
                         </p>
                       </div>
                       <div className="space-y-1">
@@ -1008,7 +1022,7 @@ export default function PayrollRunDetailPage() {
                           </SelectTrigger>
                           <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
                             {chartAccounts
-                              .filter((a) => a.type === "liability")
+                              .filter((a) => a.code === "2230")
                               .map((a) => (
                                 <SelectItem key={a._id} value={a._id} className="dark:text-slate-200">
                                   {a.code} — {a.name}
@@ -1017,7 +1031,7 @@ export default function PayrollRunDetailPage() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-slate-400 dark:text-slate-500">
-                          e.g. 2230 PAYE Tax Payable
+                          Automatically mapped to account 2230 — PAYE Tax Payable.
                         </p>
                       </div>
                       <div className="space-y-1">
@@ -1037,7 +1051,7 @@ export default function PayrollRunDetailPage() {
                           <SelectContent className="dark:bg-slate-800 dark:border-slate-700">
                             <SelectItem value="_none_" className="dark:text-slate-200">— None —</SelectItem>
                             {chartAccounts
-                              .filter((a) => a.type === "liability")
+                              .filter((a) => a.code === "2240")
                               .map((a) => (
                                 <SelectItem key={a._id} value={a._id} className="dark:text-slate-200">
                                   {a.code} — {a.name}
@@ -1046,7 +1060,7 @@ export default function PayrollRunDetailPage() {
                           </SelectContent>
                         </Select>
                         <p className="text-xs text-slate-400 dark:text-slate-500">
-                          e.g. 2240 RSSB Payable
+                          Automatically mapped to account 2240 — RSSB Payable when available.
                         </p>
                       </div>
                     </div>
