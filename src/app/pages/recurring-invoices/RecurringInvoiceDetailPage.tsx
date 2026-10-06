@@ -61,7 +61,7 @@ interface RecurringInvoiceLine {
 interface RecurringInvoiceRun {
   _id: string;
   runDate: string;
-  status: 'success' | 'failed';
+  status: 'processing' | 'success' | 'failed';
   invoice?: {
     _id: string;
     referenceNo: string;
@@ -632,7 +632,7 @@ export default function RecurringInvoiceDetailPage() {
                   ) : (
                     <>
                     <div className="space-y-3 p-3 xl:hidden">
-                      {runs.map((run) => <article key={run._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><p className="text-sm text-slate-600 dark:text-slate-300">{formatDate(run.runDate)}</p>{run.status === 'success' ? <Badge variant="outline" className="text-emerald-700">Success</Badge> : <Badge variant="outline" className="text-red-700">Failed</Badge>}</div><div className="mt-2 flex items-center justify-between gap-2">{run.invoice ? <Button variant="link" className="h-auto p-0" onClick={() => navigate(`/invoices/${run.invoice?._id}`)}>{run.invoice.referenceNo}</Button> : <span className="text-xs text-slate-500">No invoice</span>}<strong>{run.invoice ? formatCurrency(run.invoice.totalAmount, recurringInvoice.currencyCode) : '-'}</strong></div>{run.errorMessage && <p className="mt-2 break-words text-xs text-red-600">{run.errorMessage}</p>}</article>)}
+                      {runs.map((run) => <article key={run._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><p className="text-sm text-slate-600 dark:text-slate-300">{formatDate(run.runDate)}</p>{run.status === 'success' ? <Badge variant="outline" className="text-emerald-700">Success</Badge> : run.status === 'processing' ? <Badge variant="outline" className="text-blue-700">Processing</Badge> : <Badge variant="outline" className="text-red-700">Failed</Badge>}</div><div className="mt-2 flex items-center justify-between gap-2">{run.invoice ? <Button variant="link" className="h-auto p-0" onClick={() => navigate(`/invoices/${run.invoice?._id}`)}>{run.invoice.referenceNo}</Button> : <span className="text-xs text-slate-500">No invoice</span>}<strong>{run.invoice ? formatCurrency(run.invoice.totalAmount, recurringInvoice.currencyCode) : '-'}</strong></div>{run.errorMessage && <p className="mt-2 break-words text-xs text-red-600">{run.errorMessage}</p>}</article>)}
                     </div>
                     <div className="hidden overflow-x-auto xl:block">
                       <Table>
@@ -655,6 +655,8 @@ export default function RecurringInvoiceDetailPage() {
                                     <CheckCircle className="h-3 w-3" />
                                     Success
                                   </Badge>
+                                ) : run.status === 'processing' ? (
+                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800 text-xs gap-1">Processing</Badge>
                                 ) : (
                                   <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800 text-xs gap-1">
                                     <X className="h-3 w-3" />

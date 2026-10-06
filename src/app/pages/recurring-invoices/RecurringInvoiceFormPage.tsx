@@ -40,6 +40,8 @@ interface Product {
   averageCost?: number;
   cost?: number;
   taxRate?: number;
+  taxCode?: string;
+  unit?: string;
   isStockable?: boolean;
 }
 
@@ -63,6 +65,7 @@ interface LineItem {
   qty: number;
   unitPrice: number;
   taxRate: number;
+  taxCode: string;
   discountPct: number;
   warehouse: Warehouse | null;
   lineSubtotal: number;
@@ -80,6 +83,7 @@ interface RecurringInvoice {
     interval: number;
     dayOfMonth?: number;
     dayOfWeek?: number;
+    dueDays?: number;
   };
   startDate: string;
   endDate?: string;
@@ -124,6 +128,7 @@ export default function RecurringInvoiceFormPage() {
   const [interval, setInterval] = useState(1);
   const [dayOfMonth, setDayOfMonth] = useState<number | undefined>(undefined);
   const [dayOfWeek, setDayOfWeek] = useState<number | undefined>(undefined);
+  const [dueDays, setDueDays] = useState(30);
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState('');
   const [autoConfirm, setAutoConfirm] = useState(false);
@@ -165,6 +170,7 @@ export default function RecurringInvoiceFormPage() {
         setInterval(ri.schedule?.interval || 1);
         setDayOfMonth(ri.schedule?.dayOfMonth);
         setDayOfWeek(ri.schedule?.dayOfWeek);
+        setDueDays(Number(ri.schedule?.dueDays ?? 30));
         setStartDate(ri.startDate ? new Date(ri.startDate).toISOString().split('T')[0] : '');
         setEndDate(ri.endDate ? new Date(ri.endDate).toISOString().split('T')[0] : '');
         setAutoConfirm(ri.autoConfirm || false);
@@ -181,6 +187,7 @@ export default function RecurringInvoiceFormPage() {
             qty: toNumber(line.qty || line.quantity) || 1,
             unitPrice: toNumber(line.unitPrice) || 0,
             taxRate: toNumber(line.taxRate) || 0,
+            taxCode: line.taxCode || line.product?.taxCode || 'A',
             discountPct: toNumber(line.discountPct || line.discount) || 0,
             warehouse: line.warehouse || null,
             lineSubtotal: toNumber(line.lineSubtotal) || 0,
@@ -214,9 +221,9 @@ export default function RecurringInvoiceFormPage() {
     const discountPct = line.discountPct || 0;
     
     const discountedPrice = unitPrice * (1 - discountPct / 100);
-    const lineSubtotal = qty * discountedPrice;
-    const lineTax = lineSubtotal * (taxRate / 100);
-    const lineTotal = lineSubtotal + lineTax;
+    const lineSubtotal = Math.round(qty * discountedPrice * 100) / 100;
+    const lineTax = Math.round(lineSubtotal * (taxRate / 100) * 100) / 100;
+    const lineTotal = Math.round((lineSubtotal + lineTax) * 100) / 100;
     
     return {
       ...line,
@@ -235,6 +242,7 @@ export default function RecurringInvoiceFormPage() {
       qty: 1,
       unitPrice: 0,
       taxRate: 0,
+      taxCode: 'A',
       discountPct: 0,
       warehouse: null,
       lineSubtotal: 0,
@@ -261,6 +269,7 @@ export default function RecurringInvoiceFormPage() {
         updatedLine.productCode = product?.code || '';
         updatedLine.unitPrice = toNumber(product?.unitPrice || product?.averageCost || 0);
         updatedLine.taxRate = toNumber(product?.taxRate || 0);
+        updatedLine.taxCode = product?.taxCode || 'A';
       } else if (field === 'warehouse') {
         const warehouse = warehouses.find(w => w._id === value);
         updatedLine.warehouse = warehouse || null;
@@ -279,9 +288,9 @@ export default function RecurringInvoiceFormPage() {
   };
 
   const calculateTotals = () => {
-    const subtotal = lines.reduce((sum, line) => sum + line.lineSubtotal, 0);
-    const taxAmount = lines.reduce((sum, line) => sum + line.lineTax, 0);
-    const totalAmount = subtotal + taxAmount;
+    const subtotal = Math.round(lines.reduce((sum, line) => sum + line.lineSubtotal, 0) * 100) / 100;
+    const taxAmount = Math.round(lines.reduce((sum, line) => sum + line.lineTax, 0) * 100) / 100;
+    const totalAmount = Math.round((subtotal + taxAmount) * 100) / 100;
     return { subtotal, taxAmount, totalAmount };
   };
 
@@ -308,6 +317,7 @@ export default function RecurringInvoiceFormPage() {
           interval,
           ...(dayOfMonth !== undefined && { dayOfMonth }),
           ...(dayOfWeek !== undefined && { dayOfWeek }),
+          dueDays,
         },
         startDate,
         ...(endDate && { endDate }),
@@ -324,6 +334,8 @@ export default function RecurringInvoiceFormPage() {
           quantity: line.qty,
           unitPrice: line.unitPrice,
           taxRate: line.taxRate,
+          taxCode: line.taxCode,
+          unit: line.product?.unit || undefined,
           discountPct: line.discountPct,
           discount: line.discountPct,
           warehouse: line.warehouse?._id,
@@ -499,17 +511,17 @@ export default function RecurringInvoiceFormPage() {
                         className="mt-1 bg-slate-50 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 dark:text-white"
                       />
                     </div>
-                    {frequency === 'monthly' && (
+                    {(frequency === 'monthly' || frequency === 'quarterly') && (
                       <div>
                         <Label className="text-sm text-slate-700 dark:text-slate-300">{t('recurringInvoices.dayOfMonth', 'Day of Month')} ({t('common.optional', 'optional')})</Label>
                         <Input
                           type="number"
                           min="1"
-                          max="28"
+                          max="31"
                           value={dayOfMonth || ''}
                           onChange={(e) => setDayOfMonth(e.target.value ? parseInt(e.target.value) : undefined)}
                           className="mt-1 bg-slate-50 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 dark:text-white"
-                          placeholder="1-28"
+                          placeholder="1-31"
                         />
                       </div>
                     )}
@@ -535,6 +547,19 @@ export default function RecurringInvoiceFormPage() {
                         </Select>
                       </div>
                     )}
+                  </div>
+
+                  <div>
+                    <Label className="text-sm text-slate-700 dark:text-slate-300">Payment terms (days)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="365"
+                      value={dueDays}
+                      onChange={(e) => setDueDays(Math.max(0, Math.min(365, parseInt(e.target.value, 10) || 0)))}
+                      className="mt-1 bg-slate-50 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 dark:text-white"
+                    />
+                    <p className="mt-1 text-xs text-slate-500">Generated invoices are due this many days after their invoice date.</p>
                   </div>
 
                   <div className="flex items-center space-x-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-900/30">
