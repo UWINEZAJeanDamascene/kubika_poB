@@ -393,7 +393,10 @@ export default function SmartImportPage() {
                     </SelectContent>
                   </Select>
                   <Button variant="outline" onClick={() => setShowErrorsOnly((value) => !value)}>{showErrorsOnly ? "Show all" : "Errors only"}</Button>
-                  <Button onClick={() => void processRows(true)}>Import valid rows only</Button>
+                  <Button onClick={() => void processRows(true)} disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {loading ? "Starting import..." : "Import valid rows only"}
+                  </Button>
                 </div>
               </CardContent></Card>
 
