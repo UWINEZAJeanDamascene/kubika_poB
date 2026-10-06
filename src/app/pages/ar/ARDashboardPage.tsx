@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo} from 'react';
+import { useNavigate } from 'react-router';
 import { arReconciliationApi, arReceiptsApi, clientsApi } from '@/lib/api';
 import { useLiveRefresh } from '@/lib/hooks/useLiveRefresh';
 import { Layout } from '../../layout/Layout';
@@ -101,6 +102,7 @@ interface ARTransaction {
 
 export default function ARDashboardPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
@@ -312,9 +314,17 @@ export default function ARDashboardPage() {
                     <p className="text-sm text-slate-500 dark:text-slate-400">Customer balances, overdue invoices, and receipts</p>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => { loadAging(); loadOutstandingInvoices(1); loadTransactions(1); }} className="gap-1.5 dark:border-slate-700 dark:text-slate-200">
-                  <RotateCcw className="h-4 w-4" /> Refresh
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={() => navigate('/ar-receipts/list')} className="gap-1.5 dark:border-slate-700 dark:text-slate-200">
+                    <Receipt className="h-4 w-4" /> Receipt history
+                  </Button>
+                  <Button size="sm" onClick={() => navigate('/ar-receipts/new')} className="gap-1.5">
+                    <Receipt className="h-4 w-4" /> New receipt
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => { loadAging(); loadOutstandingInvoices(1); loadTransactions(1); }} className="gap-1.5 dark:border-slate-700 dark:text-slate-200">
+                    <RotateCcw className="h-4 w-4" /> Refresh
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

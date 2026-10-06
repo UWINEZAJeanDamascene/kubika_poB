@@ -253,6 +253,9 @@ const PickPackPackPage = lazy(
   () => import("./pages/pick-packs/PickPackPackPage"),
 );
 const ARDashboardPage = lazy(() => import("./pages/ar/ARDashboardPage"));
+const ARReceiptsListPage = lazy(() => import("./pages/ar/ARReceiptsListPage"));
+const ARReceiptCreatePage = lazy(() => import("./pages/ar/ARReceiptCreatePage"));
+const ARReceiptDetailPage = lazy(() => import("./pages/ar/ARReceiptDetailPage"));
 const APDashboardPage = lazy(() => import("./pages/ap/APDashboardPage"));
 const APAgingReportPage = lazy(() => import("./pages/ap/APAgingReportPage"));
 const APReconciliationPage = lazy(
@@ -1407,6 +1410,10 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+          <Route path="/ar-receipts/list" element={<ErrorBoundary><ARReceiptsListPage /></ErrorBoundary>} />
+          <Route path="/ar-receipts/new" element={<ErrorBoundary><ARReceiptCreatePage /></ErrorBoundary>} />
+          <Route path="/ar-receipts/:id/edit" element={<ErrorBoundary><ARReceiptCreatePage /></ErrorBoundary>} />
+          <Route path="/ar-receipts/:id" element={<ErrorBoundary><ARReceiptDetailPage /></ErrorBoundary>} />
           <Route
             path="/employees/new"
             element={

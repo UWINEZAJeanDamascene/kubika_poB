@@ -187,10 +187,10 @@ export default function ARReceiptsListPage() {
         limit: 20,
       };
 
-      if (clientFilter && clientFilter !== 'all') params.client_id = clientFilter;
+      if (clientFilter && clientFilter !== 'all') params.clientId = clientFilter;
       if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
-      if (dateFrom) params.date_from = dateFrom;
-      if (dateTo) params.date_to = dateTo;
+      if (dateFrom) params.startDate = dateFrom;
+      if (dateTo) params.endDate = dateTo;
 
       const response = await arReceiptsApi.getAll(params);
       console.log('[ARReceiptsListPage] API Response:', response);

@@ -80,6 +80,7 @@ interface ARReceiptFormData {
   bankAccount: string;
   amountReceived: number;
   currencyCode: string;
+  exchangeRate: number | null;
   reference: string;
   notes: string;
 }
@@ -112,6 +113,7 @@ export default function ARReceiptCreatePage() {
     bankAccount: "",
     amountReceived: 0,
     currencyCode: "RWF",
+    exchangeRate: 1,
     reference: "",
     notes: "",
   });
@@ -143,13 +145,13 @@ export default function ARReceiptCreatePage() {
       // Get outstanding invoices for this client
       const response = await invoicesApi.getAll({
         clientId: clientId,
-        status: "confirmed", // Only confirmed invoices have outstanding balance
         limit: 100,
       });
       if (response.success && Array.isArray(response.data)) {
-        // Filter to only show invoices with outstanding balance
+        // Include sent invoices and invoices with a partial balance, but never drafts.
         const outstandingInvoices = (response.data as Invoice[]).filter(
-          (inv) => parseFloat(inv.balance || inv.amountOutstanding || "0") > 0,
+          (inv) => ["sent", "confirmed", "partially_paid"].includes((inv as any).status)
+            && parseFloat(inv.balance || inv.amountOutstanding || "0") > 0,
         );
         setInvoices(outstandingInvoices);
       }
@@ -174,6 +176,7 @@ export default function ARReceiptCreatePage() {
           bankAccount: receipt.bankAccount?._id || "",
           amountReceived: parseFloat(receipt.amountReceived) || 0,
           currencyCode: receipt.currencyCode || "RWF",
+          exchangeRate: Number(receipt.exchangeRate) || 1,
           reference: receipt.reference || "",
           notes: receipt.notes || "",
         });
@@ -251,40 +254,33 @@ export default function ARReceiptCreatePage() {
     }
 
     setSaving(true);
+    let savedReceiptId = id;
     try {
       const payload = {
         ...formData,
         bankAccount: formData.bankAccount || undefined,
+        allocations: allocations.map((allocation) => ({ invoiceId: allocation.invoice, amount: allocation.amount })),
       };
-
-      let receiptId = id;
 
       if (isEdit && id) {
         await arReceiptsApi.update(id, payload);
       } else {
         const response = await arReceiptsApi.create(payload);
         if (response.data?._id) {
-          receiptId = response.data._id;
-        }
-      }
-
-      // If there are allocations, apply them
-      if (receiptId && allocations.length > 0) {
-        for (const allocation of allocations) {
-          await arReceiptsApi.allocate(receiptId, {
-            invoiceId: allocation.invoice,
-            amount: allocation.amount,
-          });
+          savedReceiptId = response.data._id;
         }
       }
 
       // If postImmediately is true, post the receipt
-      if (postImmediately && receiptId) {
-        await arReceiptsApi.post(receiptId);
+      if (postImmediately && savedReceiptId) {
+        await arReceiptsApi.post(savedReceiptId);
       }
 
       navigate("/ar-receipts");
     } catch (error: any) {
+      // A draft is already saved if posting failed. Send the user to it so a
+      // retry posts the same receipt instead of creating a duplicate.
+      if (savedReceiptId && !id) navigate(`/ar-receipts/${savedReceiptId}`);
       toast.error(
         error?.response?.data?.error ||
           error?.message ||
@@ -419,7 +415,7 @@ export default function ARReceiptCreatePage() {
                           className="mt-1"
                           value={formData.currencyCode}
                           date={formData.receiptDate}
-                          onChange={(currency) => setFormData((prev) => ({ ...prev, currencyCode: currency }))}
+                          onChange={(currency, rate) => setFormData((prev) => ({ ...prev, currencyCode: currency, exchangeRate: rate }))}
                         />
                       </div>
                       <div className="sm:col-span-2">
