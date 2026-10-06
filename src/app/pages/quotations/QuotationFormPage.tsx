@@ -60,6 +60,8 @@ interface Product {
   name: string;
   sku: string;
   sellingPrice?: number;
+  taxRate?: number;
+  taxCode?: string;
 }
 
 interface Client {
@@ -80,6 +82,7 @@ interface QuotationLine {
   unitPrice: number;
   discountPercent: number;
   taxRate: number;
+  taxCode?: string;
   lineTotal: number;
 }
 
@@ -90,6 +93,7 @@ interface QuotationFormData {
   currency: string;
   exchangeRate: number;
   notes: string;
+  terms: string;
   lines: QuotationLine[];
 }
 
@@ -129,6 +133,7 @@ export default function QuotationFormPage() {
     currency: 'RWF',
     exchangeRate: 1,
     notes: '',
+    terms: '',
     lines: [{ ...emptyLine }]
   });
 
@@ -160,14 +165,16 @@ export default function QuotationFormPage() {
         currency: dup.currency || dup.currencyCode || 'RWF',
         exchangeRate: dup.exchangeRate || 1,
         notes: dup.notes || '',
+        terms: dup.terms || '',
         lines: (dup.lines || []).map((line: any) => ({
           _id: undefined,
           product: typeof line.product === 'object' ? line.product?._id : line.product,
           description: line.description || line.productName || '',
           qty: line.qty || line.quantity || 1,
           unitPrice: line.unitPrice || 0,
-          discountPercent: line.discountPct || line.discountPercent || 0,
+          discountPercent: line.discountPct ?? line.discountPercent ?? 0,
           taxRate: line.taxRate || 0,
+          taxCode: line.taxCode,
           lineTotal: line.lineTotal || 0,
         })) || [{ ...emptyLine }],
       });
@@ -234,6 +241,7 @@ export default function QuotationFormPage() {
           currency: quotation.currency || quotation.currencyCode || 'RWF',
           exchangeRate: quotation.exchangeRate || 1,
           notes: quotation.notes || '',
+          terms: quotation.terms || '',
           lines: quotation.lines && quotation.lines.length > 0 
             ? quotation.lines.map((line: any) => ({
                 _id: line._id,
@@ -243,8 +251,9 @@ export default function QuotationFormPage() {
                 description: line.description || '',
                 qty: line.qty || 1,
                 unitPrice: line.unitPrice || 0,
-                discountPercent: line.discountPercent || 0,
+                discountPercent: line.discountPct ?? line.discountPercent ?? 0,
                 taxRate: line.taxRate || 0,
+                taxCode: line.taxCode,
                 lineTotal: line.lineTotal || 0
               }))
             : [{ ...emptyLine }]
@@ -268,6 +277,8 @@ export default function QuotationFormPage() {
         line.productName = product.name;
         line.productSku = product.sku;
         line.unitPrice = product.sellingPrice || 0;
+        line.taxRate = product.taxRate ?? 0;
+        line.taxCode = product.taxCode;
       }
     } else {
       (line as any)[field] = value;
@@ -347,6 +358,21 @@ export default function QuotationFormPage() {
 
   const handleSave = async (sendImmediately: boolean = false) => {
     if (!formData.client || formData.lines.length === 0) {
+      toast.error(t('quotation.clientAndLinesRequired', 'Choose a customer and add at least one product.'));
+      return;
+    }
+    if (formData.expiryDate && formData.quotationDate && formData.expiryDate < formData.quotationDate) {
+      toast.error(t('quotation.expiryBeforeDate', 'The expiry date cannot be before the quotation date.'));
+      return;
+    }
+    const invalidLine = formData.lines.findIndex((line) =>
+      !line.product || !Number.isFinite(Number(line.qty)) || Number(line.qty) <= 0
+      || !Number.isFinite(Number(line.unitPrice)) || Number(line.unitPrice) < 0
+      || !Number.isFinite(Number(line.discountPercent)) || Number(line.discountPercent) < 0 || Number(line.discountPercent) > 100
+      || !Number.isFinite(Number(line.taxRate)) || Number(line.taxRate) < 0 || Number(line.taxRate) > 100,
+    );
+    if (invalidLine !== -1) {
+      toast.error(t('quotation.invalidLine', 'Check line {{line}}: select a product, use a positive quantity, and keep discount/tax between 0 and 100%.', { line: invalidLine + 1 }));
       return;
     }
 
@@ -359,15 +385,15 @@ export default function QuotationFormPage() {
         currencyCode: formData.currency,
         exchangeRate: formData.exchangeRate,
         notes: formData.notes,
-        // Reset to draft if the original status was rejected (backend only allows editing draft)
-        status: quotation?.status === 'rejected' ? 'draft' : undefined,
+        terms: formData.terms,
         lines: formData.lines.map(line => ({
           product: line.product,
           description: line.description,
           qty: line.qty,
           unitPrice: line.unitPrice,
-          discountPercent: line.discountPercent,
-          taxRate: line.taxRate
+          discountPct: line.discountPercent,
+          taxRate: line.taxRate,
+          taxCode: line.taxCode,
         }))
       };
 
@@ -404,6 +430,7 @@ export default function QuotationFormPage() {
       }
     } catch (error) {
       console.error('Failed to save quotation:', error);
+      toast.error(error instanceof Error ? error.message : t('quotation.saveFailed', 'Could not save quotation. Please review the details and try again.'));
     } finally {
       setSaving(false);
     }
@@ -778,6 +805,16 @@ export default function QuotationFormPage() {
                     onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
                     placeholder={t('quotation.notesPlaceholder', 'Add notes...')}
                     rows={4}
+                    disabled={isViewMode}
+                    className="bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700"
+                  />
+                  <Label className="mb-2 mt-4 block text-sm font-medium text-slate-700 dark:text-slate-300">{t('quotation.terms', 'Commercial terms')}</Label>
+                  <Textarea
+                    value={formData.terms}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, terms: e.target.value }))}
+                    placeholder={t('quotation.termsPlaceholder', 'Payment terms, delivery arrangements, offer validity, and other agreed conditions...')}
+                    rows={4}
+                    disabled={isViewMode}
                     className="bg-white text-slate-900 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-white dark:ring-slate-700"
                   />
                 </CardContent>

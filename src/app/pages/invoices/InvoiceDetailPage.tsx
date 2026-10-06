@@ -85,6 +85,7 @@ interface Invoice {
   amountPaid: number;
   balance: number;
   amountOutstanding?: number;
+  terms?: string;
   notes?: string;
   paymentTerms?: string;
   createdBy?: {
@@ -980,6 +981,17 @@ export default function InvoiceDetailPage() {
                     </div>
                   </div>
 
+                  {invoice.terms && (
+                    <div className="border-t border-slate-100 p-4 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <div className="rounded-lg bg-blue-50 p-1.5 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
+                          <FileText className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Terms &amp; Conditions</span>
+                      </div>
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600 dark:text-slate-400">{invoice.terms}</p>
+                    </div>
+                  )}
                   {invoice.notes && (
                     <div className="border-t border-slate-100 p-4 dark:border-slate-800">
                       <div className="flex items-center gap-2">
