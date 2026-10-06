@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { deferredRevenueApi, type DeferredRevenue } from '@/lib/api';
+import { deferredRevenueApi, clientsApi, type DeferredRevenue } from '@/lib/api';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -33,6 +33,12 @@ interface RecognitionEntry {
   journalEntryId?: { _id: string; entryNumber: string; date: string; status: string } | null;
 }
 
+interface CustomerOption {
+  _id: string;
+  name: string;
+  code?: string;
+}
+
 const REVENUE_ACCOUNTS = [
   { code: '4000', name: 'Sales Revenue' },
   { code: '4050', name: 'Service Revenue' },
@@ -49,6 +55,8 @@ export default function DeferredRevenueTab() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [customers, setCustomers] = useState<CustomerOption[]>([]);
+  const [customersLoading, setCustomersLoading] = useState(false);
 
   // Create dialog
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -56,6 +64,7 @@ export default function DeferredRevenueTab() {
   const [itemToDelete, setItemToDelete] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
+    customerId: '',
     customer: '',
     description: '',
     totalAmount: '',
@@ -67,6 +76,20 @@ export default function DeferredRevenueTab() {
     notes: '',
     bankAccountId: '',
   });
+
+  const fetchCustomers = useCallback(async () => {
+    setCustomersLoading(true);
+    try {
+      const response: any = await clientsApi.getAll({ limit: 100, isActive: true });
+      const rows = Array.isArray(response.data) ? response.data : response.data?.data;
+      setCustomers(Array.isArray(rows) ? rows : []);
+    } catch (error) {
+      console.error('Failed to fetch customers:', error);
+      toast.error('Could not load customers');
+    } finally {
+      setCustomersLoading(false);
+    }
+  }, []);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -102,12 +125,16 @@ export default function DeferredRevenueTab() {
   }, [fetchBankAccounts]);
 
   useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  useEffect(() => {
     fetchItems();
   }, [fetchItems]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.description || !form.totalAmount || parseFloat(form.totalAmount) <= 0 || !form.endDate) {
+    if (!form.customerId || !form.customer || !form.description || !form.totalAmount || parseFloat(form.totalAmount) <= 0 || !form.endDate) {
       toast.error('Please fill in all required fields with valid values');
       return;
     }
@@ -134,6 +161,7 @@ export default function DeferredRevenueTab() {
         toast.success(response.message || 'Deferred revenue recorded');
         setShowCreateDialog(false);
         setForm({
+          customerId: '',
           customer: '',
           description: '',
           totalAmount: '',
@@ -490,13 +518,29 @@ export default function DeferredRevenueTab() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="dark:text-slate-200">Customer</Label>
-                <Input
-                  value={form.customer}
-                  onChange={(e) => setForm({ ...form, customer: e.target.value })}
-                  placeholder="Customer name"
-                  className="dark:bg-slate-900 dark:text-white dark:border-slate-700"
-                />
+                <Label className="dark:text-slate-200">Customer *</Label>
+                <Select
+                  value={form.customerId}
+                  onValueChange={(customerId) => {
+                    const selected = customers.find((customer) => customer._id === customerId);
+                    setForm({ ...form, customerId, customer: selected?.name || '' });
+                  }}
+                  disabled={customersLoading}
+                >
+                  <SelectTrigger className="dark:bg-slate-900 dark:text-white dark:border-slate-700">
+                    <SelectValue placeholder={customersLoading ? 'Loading customers…' : 'Select customer'} />
+                  </SelectTrigger>
+                  <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
+                    {customers.map((customer) => (
+                      <SelectItem key={customer._id} value={customer._id} className="dark:text-slate-200">
+                        {customer.name}{customer.code ? ` (${customer.code})` : ''}
+                      </SelectItem>
+                    ))}
+                    {!customersLoading && customers.length === 0 && (
+                      <SelectItem value="__no_customers" disabled className="text-slate-500">No active customers found</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="dark:text-slate-200">Total Amount *</Label>
