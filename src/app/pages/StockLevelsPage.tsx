@@ -29,7 +29,8 @@ import {
   Warning as WarningIcon,
   TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
-import { useStockLevels } from '@/lib/hooks/useProducts';
+import { toProductStock, useStockLevels } from '@/lib/hooks/useProducts';
+import { stockApi } from '@/lib/api';
 import { Layout } from '../layout/Layout';
 import { EmptyState } from '@/app/components/EmptyState';
 import { Package } from 'lucide-react';
@@ -55,6 +56,10 @@ interface ProductStock {
     name: string;
   };
   isActive: boolean;
+  productId?: string;
+  warehouse?: { _id: string; name: string; isActive?: boolean };
+  status?: 'in_stock' | 'low_stock' | 'out_of_stock';
+  lastMovementAt?: string | null;
 }
 
 export default function StockLevelsPage() {
@@ -77,7 +82,10 @@ export default function StockLevelsPage() {
   // Filters
   const [search, setSearch] = useState('');
   const [stockStatusFilter, setStockStatusFilter] = useState('');
+  const [warehouseFilter, setWarehouseFilter] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   // Debounce search
   useEffect(() => {
@@ -102,10 +110,14 @@ export default function StockLevelsPage() {
     limit: rowsPerPage,
     search: debouncedSearch || undefined,
     status: stockStatusFilter || undefined,
+    warehouse: warehouseFilter || undefined,
   });
 
   const products = data?.items ?? [];
-  const total = data?.total ?? 0;
+  const summary = data?.summary;
+  const total = summary?.totalProducts ?? 0;
+  const recordTotal = data?.total ?? 0;
+  const warehouses = data?.warehouses ?? [];
   // Only block the table on the very first load; background refetches keep the
   // existing rows visible.
   const loading = isPending;
@@ -126,67 +138,66 @@ export default function StockLevelsPage() {
     refetch();
   };
 
-  const handleExport = () => {
-    const headers = [
-      'Product Code',
-      'Product Name',
-      'Category',
-      'Unit',
-      'Qty On Hand',
-      'Qty Reserved',
-      'Qty Available',
-      'Avg Cost',
-      'Total Value',
-      'Status'
-    ];
-    
-    const rows = products.map(item => [
-      item.sku,
-      item.name,
-      item.category?.name || '-',
-      item.unit,
-      item.currentStock,
-      item.reservedQuantity,
-      item.availableQuantity,
-      item.averageCost.toFixed(2),
-      item.totalValue.toFixed(2),
-      getStockStatus(item).label
-    ]);
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `stock-levels-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleExport = async () => {
+    setExporting(true);
+    setExportError('');
+    try {
+      const allRows: ProductStock[] = [];
+      let currentPage = 1;
+      let pageCount = 1;
+      do {
+        const response = await stockApi.getLevels({
+          page: currentPage,
+          limit: 100,
+          search: debouncedSearch || undefined,
+          status: (stockStatusFilter || undefined) as 'in_stock' | 'low_stock' | 'out_of_stock' | undefined,
+          warehouse: warehouseFilter || undefined,
+        });
+        if (!response.success) throw new Error('Failed to export stock levels');
+        allRows.push(...response.data.map(toProductStock));
+        pageCount = response.pagination?.pages || 1;
+        currentPage += 1;
+      } while (currentPage <= pageCount);
+
+      const headers = ['Product Code', 'Product Name', 'Category', 'Warehouse', 'Unit', 'Qty On Hand', 'Qty Reserved', 'Qty Available', 'Avg Cost', 'Total Value', 'Status', 'Last Movement'];
+      const csvCell = (value: unknown) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+      const rows = allRows.map(item => [
+        item.sku, item.name, item.category?.name || '', item.warehouse?.name || item.defaultWarehouse?.name || '', item.unit,
+        item.currentStock, item.reservedQuantity, item.availableQuantity, item.averageCost.toFixed(2), item.totalValue.toFixed(2),
+        getStockStatus(item).label, item.lastMovementAt ? new Date(item.lastMovementAt).toISOString() : '',
+      ]);
+      const csvContent = [headers, ...rows].map(row => row.map(csvCell).join(',')).join('\r\n');
+      const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `stock-levels-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Failed to export stock levels');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const getStockStatus = (product: ProductStock) => {
-    if (product.currentStock === 0) return { label: t('stockLevels.outOfStock'), color: 'error' as const };
-    if (product.currentStock <= product.lowStockThreshold) return { label: t('stockLevels.lowStock'), color: 'warning' as const };
+    if (product.status === 'out_of_stock' || product.currentStock === 0) return { label: t('stockLevels.outOfStock'), color: 'error' as const };
+    if (product.status === 'low_stock' || product.availableQuantity <= product.lowStockThreshold) return { label: t('stockLevels.lowStock'), color: 'warning' as const };
     return { label: t('stockLevels.inStock'), color: 'success' as const };
   };
 
-  // Calculate totals
-  const totalValue = products.reduce((sum, item) => sum + item.totalValue, 0);
-  const totalQuantity = products.reduce((sum, item) => sum + item.currentStock, 0);
-  const totalReserved = products.reduce((sum, item) => sum + item.reservedQuantity, 0);
-  const totalAvailable = products.reduce((sum, item) => sum + item.availableQuantity, 0);
-  const lowStockCount = products.filter(item => 
-    item.currentStock > 0 && item.currentStock <= item.lowStockThreshold
-  ).length;
-  const outOfStockCount = products.filter(item => item.currentStock === 0).length;
-  const valueAtRisk = products
-    .filter(item => item.currentStock <= item.lowStockThreshold)
-    .reduce((sum, item) => sum + item.totalValue, 0);
+  const totalValue = summary?.totalValue ?? 0;
+  const totalQuantity = summary?.totalQuantity ?? 0;
+  const totalReserved = summary?.totalReserved ?? 0;
+  const totalAvailable = summary?.totalAvailable ?? 0;
+  const lowStockCount = summary?.lowStockCount ?? 0;
+  const outOfStockCount = summary?.outOfStockCount ?? 0;
+  const valueAtRisk = summary?.valueAtRisk ?? 0;
   const availabilityRate = totalQuantity > 0 ? (totalAvailable / totalQuantity) * 100 : 0;
-  const topValueItem = [...products].sort((a, b) => b.totalValue - a.totalValue)[0];
+  const topValueItem = summary?.topValueItem;
+  const healthyCount = Math.max(0, (summary?.stockRecordCount || 0) - lowStockCount - outOfStockCount);
+  const healthRate = summary?.stockRecordCount ? Math.round((healthyCount / summary.stockRecordCount) * 100) : 0;
 
   return (
     <Layout>
@@ -219,14 +230,15 @@ export default function StockLevelsPage() {
           <Button
             variant="outlined"
             size="small"
-            startIcon={<DownloadIcon />}
+            disabled={exporting}
+            startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
             onClick={handleExport}
             sx={{
               borderColor: dark ? '#475569' : '#cbd5e1',
               color: dark ? '#e2e8f0' : '#475569',
             }}
           >
-            {t('common.export', 'Export')}
+            {exporting ? t('common.exporting', 'Exporting...') : t('common.export', 'Export')}
           </Button>
         </div>
       </div>
@@ -297,18 +309,18 @@ export default function StockLevelsPage() {
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockLevels.topValueSku')}</p>
-          <p className="mt-2 truncate text-lg font-bold text-slate-950 dark:text-white">{topValueItem?.name || '-'}</p>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{topValueItem ? `${topValueItem.sku} · ${formatCurrency(topValueItem.totalValue)}` : t('stockLevels.noValuation')}</p>
+          <p className="mt-2 truncate text-lg font-bold text-slate-950 dark:text-white">{topValueItem?.productName || '-'}</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{topValueItem ? `${topValueItem.productSku} · ${formatCurrency(topValueItem.totalValue)}` : t('stockLevels.noValuation')}</p>
         </div>
         <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <div className="flex items-center justify-between">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockLevels.stockHealthMix')}</p>
-            <p className="text-sm font-semibold text-slate-900 dark:text-white">{products.length ? Math.round(((products.length - lowStockCount - outOfStockCount) / products.length) * 100) : 0}% healthy</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{healthRate}% healthy</p>
           </div>
           <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
-            <div className="bg-emerald-500" style={{ width: `${products.length ? ((products.length - lowStockCount - outOfStockCount) / products.length) * 100 : 0}%` }} />
-            <div className="bg-amber-500" style={{ width: `${products.length ? (lowStockCount / products.length) * 100 : 0}%` }} />
-            <div className="bg-red-500" style={{ width: `${products.length ? (outOfStockCount / products.length) * 100 : 0}%` }} />
+            <div className="bg-emerald-500" style={{ width: `${summary?.stockRecordCount ? (healthyCount / summary.stockRecordCount) * 100 : 0}%` }} />
+            <div className="bg-amber-500" style={{ width: `${summary?.stockRecordCount ? (lowStockCount / summary.stockRecordCount) * 100 : 0}%` }} />
+            <div className="bg-red-500" style={{ width: `${summary?.stockRecordCount ? (outOfStockCount / summary.stockRecordCount) * 100 : 0}%` }} />
           </div>
           <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{lowStockCount} low stock, {outOfStockCount} out of stock</p>
         </div>
@@ -320,6 +332,7 @@ export default function StockLevelsPage() {
           {error}
         </Alert>
       )}
+      {exportError && <Alert severity="error" className="mb-4" onClose={() => setExportError('')}>{exportError}</Alert>}
 
       {/* Filters */}
       <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm p-4 mb-4 border border-slate-200 dark:border-slate-700">
@@ -329,7 +342,7 @@ export default function StockLevelsPage() {
             size="small"
             placeholder={t('stockLevels.searchPlaceholder', 'Search product or SKU...')}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
             sx={{
               '& .MuiInputBase-root': {
                 backgroundColor: dark ? '#1e293b' : 'white',
@@ -354,6 +367,17 @@ export default function StockLevelsPage() {
             }}
           />
           <FormControl fullWidth size="small" sx={{
+            '& .MuiInputBase-root': { backgroundColor: dark ? '#1e293b' : 'white', color: dark ? '#e2e8f0' : '#1e293b' },
+            '& .MuiInputLabel-root': { color: dark ? '#cbd5e1' : '#475569' },
+            '& .MuiOutlinedInput-notchedOutline': { borderColor: dark ? '#334155' : '#cbd5e1' },
+          }}>
+            <InputLabel>{t('stockLevels.warehouse', 'Warehouse')}</InputLabel>
+            <Select value={warehouseFilter} label={t('stockLevels.warehouse', 'Warehouse')} onChange={(e) => { setWarehouseFilter(e.target.value); setPage(0); }}>
+              <MenuItem value="">{t('common.all', 'All warehouses')}</MenuItem>
+              {warehouses.map((warehouse) => <MenuItem key={warehouse._id} value={warehouse._id}>{warehouse.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth size="small" sx={{
             '& .MuiInputBase-root': {
               backgroundColor: dark ? '#1e293b' : 'white',
               color: dark ? '#e2e8f0' : '#1e293b',
@@ -372,7 +396,7 @@ export default function StockLevelsPage() {
             <Select
               value={stockStatusFilter}
               label={t('stockLevels.stockStatus', 'Stock Status')}
-              onChange={(e) => setStockStatusFilter(e.target.value)}
+              onChange={(e) => { setStockStatusFilter(e.target.value); setPage(0); }}
               sx={{
                 color: dark ? '#e2e8f0' : '#1e293b',
               }}
@@ -389,6 +413,7 @@ export default function StockLevelsPage() {
             onClick={() => {
               setSearch('');
               setStockStatusFilter('');
+              setWarehouseFilter('');
               setPage(0);
             }}
             sx={{
@@ -410,6 +435,7 @@ export default function StockLevelsPage() {
                 <TableCell sx={{ color: dark ? '#f1f5f9' : '#1e293b', fontWeight: 600 }}>{t('stockLevels.productCode', 'Product Code')}</TableCell>
                 <TableCell sx={{ color: dark ? '#f1f5f9' : '#1e293b', fontWeight: 600 }}>{t('stockLevels.productName', 'Product Name')}</TableCell>
                 <TableCell sx={{ color: dark ? '#f1f5f9' : '#1e293b', fontWeight: 600 }}>{t('stockLevels.category', 'Category')}</TableCell>
+                <TableCell sx={{ color: dark ? '#f1f5f9' : '#1e293b', fontWeight: 600 }}>{t('stockLevels.warehouse', 'Warehouse')}</TableCell>
                 <TableCell align="right" sx={{ color: dark ? '#f1f5f9' : '#1e293b', fontWeight: 600 }}>{t('stockLevels.qtyOnHand', 'Qty On Hand')}</TableCell>
                 <TableCell align="right" sx={{ color: dark ? '#f1f5f9' : '#1e293b', fontWeight: 600 }}>{t('stockLevels.qtyReserved', 'Qty Reserved')}</TableCell>
                 <TableCell align="right" sx={{ color: dark ? '#f1f5f9' : '#1e293b', fontWeight: 600 }}>{t('stockLevels.qtyAvailable', 'Qty Available')}</TableCell>
@@ -421,13 +447,13 @@ export default function StockLevelsPage() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={10} align="center" sx={{ py: 4 }}>
                     <CircularProgress />
                   </TableCell>
                 </TableRow>
               ) : products.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} sx={{ py: 2, border: 0 }}>
+                  <TableCell colSpan={10} sx={{ py: 2, border: 0 }}>
                     <EmptyState
                       compact
                       icon={Package}
@@ -454,6 +480,7 @@ export default function StockLevelsPage() {
                         )}
                       </TableCell>
                       <TableCell sx={{ color: 'inherit' }}>{item.category?.name || '-'}</TableCell>
+                      <TableCell sx={{ color: 'inherit' }}>{item.warehouse?.name || item.defaultWarehouse?.name || '-'}</TableCell>
                       <TableCell align="right" sx={{ color: 'inherit' }}>{item.currentStock.toLocaleString()}</TableCell>
                       <TableCell align="right" sx={{ color: 'inherit' }}>{item.reservedQuantity.toLocaleString()}</TableCell>
                       <TableCell 
@@ -528,7 +555,7 @@ export default function StockLevelsPage() {
         </div>
         <TablePagination
           component="div"
-          count={total}
+          count={recordTotal}
           page={page}
           onPageChange={handlePageChange}
           rowsPerPage={rowsPerPage}

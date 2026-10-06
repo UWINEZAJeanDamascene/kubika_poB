@@ -501,6 +501,7 @@ export default function APPaymentCreatePage() {
                       )}
                     </p>
                   ) : (
+                    <>
                     <div className="space-y-3 xl:hidden">
                       {allocations.map((allocation, index) => (
                         <article key={index} className="space-y-3 rounded-xl border p-3">
@@ -591,6 +592,7 @@ export default function APPaymentCreatePage() {
                         ))}
                       </TableBody>
                     </Table></div>
+                    </>
                   )}
                 </CardContent>
               </Card>

@@ -2186,6 +2186,7 @@ export const stockApi = {
     warehouse?: string;
     product?: string;
     lowStock?: boolean;
+    status?: "in_stock" | "low_stock" | "out_of_stock";
     search?: string;
     page?: number;
     limit?: number;
@@ -2195,9 +2196,21 @@ export const stockApi = {
     const query = buildQuery(params as Record<string, any>);
     return request<{
       success: boolean;
-      data: unknown;
-      warehouses?: unknown[];
-      pagination?: unknown;
+      data: Array<Record<string, unknown>>;
+      warehouses?: Array<{ _id: string; name: string }>;
+      summary?: {
+        stockRecordCount: number;
+        totalProducts: number;
+        totalQuantity: number;
+        totalReserved: number;
+        totalAvailable: number;
+        totalValue: number;
+        lowStockCount: number;
+        outOfStockCount: number;
+        valueAtRisk: number;
+        topValueItem: { productName: string; productSku: string; totalValue: number } | null;
+      };
+      pagination?: { total: number; page: number; limit: number; pages: number };
     }>(`/stock/levels${query ? `?${query}` : ""}`, { signal });
   },
   getMovements: (params?: {

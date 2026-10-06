@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { productsApi } from '@/lib/api';
+import { stockApi } from '@/lib/api';
 
 /**
  * Product / stock-level queries.
@@ -21,6 +21,7 @@ export const productKeys = {
 
 export interface ProductStock {
   _id: string;
+  productId: string;
   sku: string;
   name: string;
   category?: { _id: string; name: string };
@@ -32,6 +33,9 @@ export interface ProductStock {
   totalValue: number;
   lowStockThreshold: number;
   defaultWarehouse?: { _id: string; name: string };
+  warehouse?: { _id: string; name: string; isActive?: boolean };
+  status: 'in_stock' | 'low_stock' | 'out_of_stock';
+  lastMovementAt?: string | null;
   isActive: boolean;
 }
 
@@ -42,25 +46,28 @@ const toNumber = (value: unknown): number => {
 
 /** Map a raw product row into the stock-level shape the table renders. */
 export function toProductStock(product: Record<string, any>): ProductStock {
-  const currentStock = toNumber(product.currentStock);
-  const reservedQuantity = toNumber(product.reservedQuantity);
-  const avgCost = toNumber(product.averageCost);
-  const costPrice = toNumber(product.costPrice);
-  const effectiveCost = avgCost > 0 ? avgCost : costPrice;
+  const currentStock = toNumber(product.currentStock ?? product.qty_on_hand);
+  const reservedQuantity = toNumber(product.reservedQuantity ?? product.qty_reserved);
+  const effectiveCost = toNumber(product.averageCost ?? product.avg_cost);
+  const availableQuantity = toNumber(product.availableQuantity ?? product.qty_available ?? Math.max(currentStock - reservedQuantity, 0));
 
   return {
     _id: product._id,
+    productId: product.productId || product.product?._id || product._id,
     sku: product.sku,
-    name: product.name,
+    name: product.productName || product.name || product.product?.name || '',
     category: product.category,
     unit: product.unit || 'pcs',
     currentStock,
     reservedQuantity,
-    availableQuantity: Math.max(currentStock - reservedQuantity, 0),
+    availableQuantity,
     averageCost: effectiveCost,
-    totalValue: currentStock * effectiveCost,
-    lowStockThreshold: toNumber(product.lowStockThreshold) || 10,
-    defaultWarehouse: product.defaultWarehouse,
+    totalValue: toNumber(product.totalValue ?? product.total_value),
+    lowStockThreshold: toNumber(product.lowStockThreshold ?? product.low_stock_threshold),
+    defaultWarehouse: product.defaultWarehouse || (product.warehouseId ? { _id: product.warehouseId, name: product.warehouseName || '' } : undefined),
+    warehouse: product.warehouse,
+    status: product.status || (currentStock <= 0 ? 'out_of_stock' : availableQuantity <= toNumber(product.lowStockThreshold) ? 'low_stock' : 'in_stock'),
+    lastMovementAt: product.lastMovementAt || null,
     isActive: product.isActive !== false,
   };
 }
@@ -70,11 +77,25 @@ export interface StockLevelsParams {
   limit: number;
   search?: string;
   status?: string;
+  warehouse?: string;
 }
 
 export interface StockLevelsResult {
   items: ProductStock[];
   total: number;
+  warehouses: Array<{ _id: string; name: string }>;
+  summary: {
+    stockRecordCount: number;
+    totalProducts: number;
+    totalQuantity: number;
+    totalReserved: number;
+    totalAvailable: number;
+    totalValue: number;
+    lowStockCount: number;
+    outOfStockCount: number;
+    valueAtRisk: number;
+    topValueItem: { productName: string; productSku: string; totalValue: number } | null;
+  };
 }
 
 /**
@@ -88,27 +109,38 @@ export function useStockLevels(params: StockLevelsParams) {
   const query = useQuery({
     queryKey: productKeys.stockLevels(params as unknown as Record<string, unknown>),
     queryFn: async (): Promise<StockLevelsResult> => {
-      const request: Record<string, unknown> = {
+      const response = await stockApi.getLevels({
         page: params.page,
         limit: params.limit,
-        isArchived: false,
-        forStockLevels: '1',
-      };
-      if (params.search) request.search = params.search;
-      if (params.status) request.status = params.status;
-
-      const response = await productsApi.getAll(request as any);
+        search: params.search,
+        status: params.status as 'in_stock' | 'low_stock' | 'out_of_stock' | undefined,
+        warehouse: params.warehouse,
+      });
       if (!response || !response.success) {
         throw new Error('Failed to fetch stock levels');
       }
 
-      const rows = ((response.data as any[]) || []).map(toProductStock);
-      const pagination = response.pagination as Record<string, any> | undefined;
+      const rows = (response.data || []).map(toProductStock);
+      const pagination = response.pagination;
+      const summary = response.summary;
       return {
         items: rows,
         total: pagination && typeof pagination === 'object'
           ? (pagination.total ?? rows.length)
           : rows.length,
+        warehouses: response.warehouses || [],
+        summary: summary || {
+          stockRecordCount: rows.length,
+          totalProducts: rows.length,
+          totalQuantity: rows.reduce((sum, row) => sum + row.currentStock, 0),
+          totalReserved: rows.reduce((sum, row) => sum + row.reservedQuantity, 0),
+          totalAvailable: rows.reduce((sum, row) => sum + row.availableQuantity, 0),
+          totalValue: rows.reduce((sum, row) => sum + row.totalValue, 0),
+          lowStockCount: rows.filter((row) => row.status === 'low_stock').length,
+          outOfStockCount: rows.filter((row) => row.status === 'out_of_stock').length,
+          valueAtRisk: 0,
+          topValueItem: null,
+        },
       };
     },
     staleTime: 60 * 1000,
