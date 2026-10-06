@@ -81,7 +81,9 @@ export default function SmartImportPage() {
   const [deletingHistoryId, setDeletingHistoryId] = useState<string | null>(null);
 
   useEffect(() => {
-    smartImportsApi.getEntityTypes().then((res) => setEntities(res.data)).catch((error) => toast.error(error.message));
+    smartImportsApi.getEntityTypes()
+      .then((res) => setEntities(res.data.filter((entity) => entity.key !== "clients")))
+      .catch((error) => toast.error(error.message));
   }, []);
 
   useEffect(() => {
@@ -247,7 +249,19 @@ export default function SmartImportPage() {
               <p className="text-sm text-slate-500">Upload, map, validate, and process data through one shared import framework.</p>
             </div>
             <div className="flex gap-2">
-              <Select value={entityType} onValueChange={(value) => { setEntityType(value); setStep("upload"); }}>
+              <Select value={entityType} onValueChange={(value) => {
+                setEntityType(value);
+                setStep("upload");
+                setFile(null);
+                setParseData(null);
+                setColumnMapping({});
+                setValidation(null);
+                setShowErrorsOnly(false);
+                setPage(1);
+                setJobId(null);
+                setProgress(null);
+                setSelectedTemplateId(null);
+              }}>
                 <SelectTrigger className="w-[220px]"><SelectValue /></SelectTrigger>
                 <SelectContent>{entities.map((entity) => <SelectItem key={entity.key} value={entity.key}>{entity.label}</SelectItem>)}</SelectContent>
               </Select>
