@@ -370,9 +370,11 @@ export default function InvoiceDetailPage() {
     setActionLoading(true);
     try {
       await invoicesApi.confirm(id);
-      fetchInvoice();
-    } catch (error) {
+      await fetchInvoice();
+      toast.success('Invoice confirmed and posted to inventory and accounts.');
+    } catch (error: any) {
       console.error('Failed to confirm:', error);
+      toast.error(error?.message || 'Invoice could not be confirmed.');
     } finally {
       setActionLoading(false);
     }
@@ -386,9 +388,11 @@ export default function InvoiceDetailPage() {
     setActionLoading(true);
     try {
       await invoicesApi.cancel(id);
-      fetchInvoice();
-    } catch (error) {
+      await fetchInvoice();
+      toast.success('Draft invoice cancelled.');
+    } catch (error: any) {
       console.error('Failed to cancel:', error);
+      toast.error(error?.message || 'Invoice could not be cancelled. Use a credit note to correct an issued invoice.');
     } finally {
       setActionLoading(false);
     }

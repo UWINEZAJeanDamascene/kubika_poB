@@ -376,7 +376,6 @@ export default function InvoiceFormPage() {
           taxRate: line.taxRate,
           ...(line.warehouse && line.warehouse !== '' ? { warehouse: line.warehouse } : {})
         })),
-        autoConfirm: confirmImmediately
       };
 
       let response;
@@ -395,6 +394,7 @@ export default function InvoiceFormPage() {
       }
     } catch (error) {
       console.error('Failed to save invoice:', error);
+      alert((error as any)?.message || t('invoice.saveFailed', 'Failed to save invoice. Please review the invoice and try again.'));
     } finally {
       setSaving(false);
     }
