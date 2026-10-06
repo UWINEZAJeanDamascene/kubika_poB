@@ -210,10 +210,16 @@ export default function BudgetsListPage() {
     if (!selectedBudget) return;
     setSubmitting(true);
     try {
-      const response: any = await budgetsApi.approve(selectedBudget._id);
+      const history = await budgetsApi.getApprovalHistory(selectedBudget._id);
+      const priorChangeRequest = history.data?.find((approval) => approval.status === "changes_requested");
+      const response: any = priorChangeRequest
+        ? await budgetsApi.resubmitApproval(selectedBudget._id, priorChangeRequest._id)
+        : await budgetsApi.submitForApproval(selectedBudget._id, { workflow_type: "budget_creation" });
       if (response.success) {
         toast.success(
-          t("budgets.messages.approved", "Budget approved successfully"),
+          priorChangeRequest
+            ? t("budgets.messages.resubmitted", "Budget resubmitted for approval")
+            : t("budgets.messages.submitted", "Budget submitted for approval"),
         );
         setShowApproveDialog(false);
         setSelectedBudget(null);
@@ -859,7 +865,7 @@ export default function BudgetsListPage() {
                                     setSelectedBudget(budget);
                                     setShowApproveDialog(true);
                                   }}
-                                  title={t("budgets.approve", "Approve")}
+                                  title={t("budgets.submitForApproval", "Submit for approval")}
                                   className="text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:text-slate-400 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-400"
                                 >
                                   <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
@@ -1029,10 +1035,10 @@ export default function BudgetsListPage() {
                 <div className="rounded-full bg-emerald-50 p-2 ring-1 ring-emerald-100 dark:bg-emerald-950/30 dark:ring-emerald-900/40">
                   <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <DialogTitle className="text-slate-900 dark:text-white">{t("budgets.approveTitle", "Approve Budget")}</DialogTitle>
+                <DialogTitle className="text-slate-900 dark:text-white">{t("budgets.submitTitle", "Submit Budget for Approval")}</DialogTitle>
               </div>
               <DialogDescription className="text-slate-500 dark:text-slate-400">
-                {t("budgets.approveDescription", "Are you sure you want to approve this budget? This action will move it to approved status.")}
+                {t("budgets.submitDescription", "This budget will be sent through the configured approval workflow.")}
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2">
@@ -1041,7 +1047,7 @@ export default function BudgetsListPage() {
               </Button>
               <Button onClick={handleApprove} disabled={submitting} className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-700">
                 {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {t("budgets.approve", "Approve")}
+                {t("budgets.submitForApproval", "Submit for approval")}
               </Button>
             </DialogFooter>
           </DialogContent>

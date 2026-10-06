@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { budgetsApi, type BudgetApproval, type BudgetWorkflowConfig } from "@/lib/api";
 import { Button } from "@/app/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/app/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card";
 import { Badge } from "@/app/components/ui/badge";
 import { Skeleton } from "@/app/components/ui/skeleton";
 import { Progress } from "@/app/components/ui/progress";
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Textarea } from "@/app/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, CheckCircle, XCircle, Clock, User, FileCheck, AlertCircle, GitPullRequest, CheckCircle2, History } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 
 interface BudgetApprovalPanelProps {
   budgetId: string;
@@ -19,6 +20,7 @@ interface BudgetApprovalPanelProps {
 }
 
 export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, departmentId, onApprovalChange }: BudgetApprovalPanelProps) {
+  const currentUserId = useAuthStore(state => state.user?._id || state.user?.id || "");
   const [approvals, setApprovals] = useState<BudgetApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -27,9 +29,11 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showChangesDialog, setShowChangesDialog] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<BudgetApproval | null>(null);
   const [comments, setComments] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [changesRequired, setChangesRequired] = useState("");
 
   useEffect(() => {
     fetchApprovals();
@@ -103,7 +107,10 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
     try {
       const response = await budgetsApi.approveStep(budgetId, selectedApproval._id, comments);
       if (response.success) {
-        toast.success("Step approved successfully");
+        const result: any = response.data;
+        toast.success(result?.step_complete === false
+          ? `Approval recorded (${result.approvals_received}/${result.approvals_required} required)`
+          : "Step approved successfully");
         setShowApproveDialog(false);
         setSelectedApproval(null);
         setComments("");
@@ -144,6 +151,43 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
     }
   };
 
+  const handleRequestChanges = async () => {
+    if (!selectedApproval || !changesRequired.trim()) return;
+    setSubmitting(true);
+    try {
+      const response = await budgetsApi.requestChanges(budgetId, selectedApproval._id, changesRequired.trim());
+      if (response.success) {
+        toast.success("Changes requested; the budget is back in draft for the requester");
+        setShowChangesDialog(false);
+        setSelectedApproval(null);
+        setChangesRequired("");
+        fetchApprovals();
+        onApprovalChange();
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to request changes");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleResubmit = async (approval: BudgetApproval) => {
+    setSubmitting(true);
+    try {
+      const response = await budgetsApi.resubmitApproval(budgetId, approval._id, comments);
+      if (response.success) {
+        toast.success("Budget resubmitted to the approval workflow");
+        setComments("");
+        fetchApprovals();
+        onApprovalChange();
+      }
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to resubmit budget");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const config: Record<string, { className: string; label: string; icon: any }> = {
       pending: { className: "bg-amber-50 text-amber-700 ring-1 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/40", label: "Pending", icon: Clock },
@@ -176,8 +220,11 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
     });
   };
 
-  const pendingApproval = approvals.find((a) => ["pending", "in_progress", "changes_requested"].includes(a.status));
-  const canSubmit = budgetStatus === "draft" && !pendingApproval;
+  const pendingApproval = approvals.find((a) => ["pending", "in_progress"].includes(a.status));
+  const changesRequestedApproval = approvals.find((a) => a.status === "changes_requested");
+  const latestChangeRequestAction = changesRequestedApproval?.actions.slice().reverse().find(action => action.action === "requested_changes");
+  const changesRequesterId = typeof changesRequestedApproval?.requested_by === "object" ? changesRequestedApproval.requested_by?._id : changesRequestedApproval?.requested_by;
+  const canSubmit = budgetStatus === "draft" && !pendingApproval && !changesRequestedApproval;
 
   if (loading) {
     return (
@@ -299,7 +346,21 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
                 </Button>
                 <Button
                   size="sm"
+                  variant="outline"
+                  disabled={pendingApproval.steps[pendingApproval.current_step - 1]?.can_request_changes === false}
+                  onClick={() => {
+                    setSelectedApproval(pendingApproval);
+                    setShowChangesDialog(true);
+                  }}
+                  className="gap-2"
+                >
+                  <AlertCircle className="h-4 w-4" />
+                  Request Changes
+                </Button>
+                <Button
+                  size="sm"
                   variant="destructive"
+                  disabled={pendingApproval.steps[pendingApproval.current_step - 1]?.can_reject === false}
                   onClick={() => {
                     setSelectedApproval(pendingApproval);
                     setShowRejectDialog(true);
@@ -311,6 +372,15 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
                 </Button>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      ) : changesRequestedApproval ? (
+        <Card className="overflow-hidden border-orange-200 bg-orange-50/30 shadow-sm dark:border-orange-900/40 dark:bg-orange-950/20">
+          <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-base text-slate-900 dark:text-white"><AlertCircle className="h-4 w-4 text-orange-500" />Changes Requested {getStatusBadge("changes_requested")}</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm text-slate-700 dark:text-slate-300">{latestChangeRequestAction?.comments || "Review the approval history for requested changes."}</p>
+            {budgetStatus === "draft" && String(changesRequesterId || "") === String(currentUserId) && <Button size="sm" onClick={() => handleResubmit(changesRequestedApproval)} disabled={submitting}>{submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Resubmit for Approval</Button>}
+            {budgetStatus === "draft" && String(changesRequesterId || "") !== String(currentUserId) && <p className="text-xs text-slate-500">Waiting for the original requester to revise and resubmit this budget.</p>}
           </CardContent>
         </Card>
       ) : (
@@ -406,6 +476,14 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
               Submit
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showChangesDialog} onOpenChange={setShowChangesDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Request Budget Changes</DialogTitle><DialogDescription>Explain what must be revised. The request will return to draft for its requester.</DialogDescription></DialogHeader>
+          <div className="py-4"><Textarea placeholder="Changes required..." value={changesRequired} onChange={event => setChangesRequired(event.target.value)}/></div>
+          <DialogFooter><Button variant="outline" onClick={() => setShowChangesDialog(false)}>Cancel</Button><Button onClick={handleRequestChanges} disabled={submitting || !changesRequired.trim()}>{submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Request Changes</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 

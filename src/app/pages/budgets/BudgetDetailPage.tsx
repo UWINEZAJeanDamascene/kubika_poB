@@ -150,7 +150,6 @@ export default function BudgetDetailPage() {
   });
 
   // Dialogs
-  const [approveOpen, setApproveOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
   const [lockOpen, setLockOpen] = useState(false);
   const [unlockOpen, setUnlockOpen] = useState(false);
@@ -306,25 +305,6 @@ export default function BudgetDetailPage() {
       setLineActualConsumptions([]);
     } finally {
       setLineConsumptionLoading(false);
-    }
-  };
-
-  const handleApprove = async () => {
-    setSubmitting(true);
-    try {
-      const response: any = await budgetsApi.approve(id!);
-      if (response.success) {
-        toast.success(t("budgets.success.approved", "Budget approved"));
-        setApproveOpen(false);
-        fetchBudget();
-      }
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.error ||
-          t("budgets.errors.approveFailed", "Failed to approve"),
-      );
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -696,10 +676,6 @@ export default function BudgetDetailPage() {
                     <Button variant="outline" onClick={() => navigate(`/budgets/${id}/edit`)} className="gap-2 border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white">
                       <Pencil className="h-4 w-4" />
                       {t("common.edit", "Edit")}
-                    </Button>
-                    <Button onClick={() => setApproveOpen(true)} className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700">
-                      <CheckCircle className="h-4 w-4" />
-                      {t("budgets.approve", "Approve")}
                     </Button>
                   </>
                 )}
@@ -1624,34 +1600,6 @@ export default function BudgetDetailPage() {
           </TabsContent>
 
         </Tabs>
-
-        {/* Approve Dialog */}
-        <Dialog open={approveOpen} onOpenChange={setApproveOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {t("budgets.dialogs.approve.title", "Approve Budget")}
-              </DialogTitle>
-              <DialogDescription>
-                {t(
-                  "budgets.dialogs.approve.description",
-                  "Are you sure you want to approve this budget?",
-                )}
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setApproveOpen(false)}>
-                {t("common.cancel", "Cancel")}
-              </Button>
-              <Button onClick={handleApprove} disabled={submitting}>
-                {submitting && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                {t("budgets.approve", "Approve")}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Reject Dialog */}
         <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>

@@ -4617,6 +4617,7 @@ export interface StockBatch {
   };
   qtyReceived: string;
   qtyOnHand: string;
+  reservedQuantity?: string | number;
   unitCost: string;
   manufactureDate?: string;
   expiryDate?: string;
@@ -5512,7 +5513,7 @@ export interface BudgetApproval {
   status: "pending" | "in_progress" | "approved" | "rejected" | "changes_requested" | "cancelled" | "timeout";
   actions: Array<{
     step_number: number;
-    action: "approved" | "rejected" | "requested_changes" | "delegated" | "timeout";
+    action: "approved" | "rejected" | "requested_changes" | "resubmitted" | "delegated" | "timeout";
     action_by: { _id: string; name: string; email: string };
     action_at: string;
     comments: string;

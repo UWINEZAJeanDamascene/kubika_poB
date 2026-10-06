@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { pickPackApi } from '@/lib/api';
+import { pickPackApi, serialNumberApi, stockBatchApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import {
   ArrowLeft,
@@ -35,12 +35,16 @@ interface PickPackLine {
     _id: string;
     name: string;
     sku: string;
+    trackingType?: string;
   };
   description: string;
   qtyToPick: number;
   qtyPicked: number;
   location?: string;
   status: string;
+  serialNumbers?: string[];
+  batchId?: string | null;
+  warehouse?: string | { _id: string };
 }
 
 interface PickPack {
@@ -53,6 +57,7 @@ interface PickPack {
     };
   };
   warehouse: {
+    _id: string;
     name: string;
   };
   status: string;
@@ -65,6 +70,10 @@ export default function PickPackPickPage() {
   const [pickPack, setPickPack] = useState<PickPack | null>(null);
   const [loading, setLoading] = useState(true);
   const [pickingLines, setPickingLines] = useState<Record<string, number>>({});
+  const [availableSerials, setAvailableSerials] = useState<Record<string, Array<{ _id: string; serialNo: string }>>>({});
+  const [selectedSerials, setSelectedSerials] = useState<Record<string, string[]>>({});
+  const [availableBatches, setAvailableBatches] = useState<Record<string, Array<{ _id: string; batchNo: string; qtyOnHand: string | number; reservedQuantity?: string | number; isQuarantined: boolean }>>>({});
+  const [selectedBatches, setSelectedBatches] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -84,6 +93,25 @@ export default function PickPackPickPage() {
           initialPicking[line._id] = toNumber(line.qtyPicked);
         });
         setPickingLines(initialPicking);
+        const serialLines = data.lines.filter((line) => line.product?.trackingType === 'serial');
+        const serialResults = await Promise.all(serialLines.map(async (line) => {
+          const warehouseId = typeof data.warehouse === 'string' ? data.warehouse : data.warehouse?._id;
+          const result = await serialNumberApi.getAll({ product: line.product._id, warehouse: warehouseId, status: 'in_stock', limit: 500 });
+          const payload = result.data as any;
+          const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.items) ? payload.items : Array.isArray(payload?.data) ? payload.data : [];
+          return [line._id, rows.map((serial: any) => ({ _id: serial._id, serialNo: serial.serialNo }))] as const;
+        }));
+        setAvailableSerials(Object.fromEntries(serialResults));
+        setSelectedSerials(Object.fromEntries(data.lines.map((line) => [line._id, line.serialNumbers || []])));
+        const batchLines = data.lines.filter((line) => line.product?.trackingType === 'batch');
+        const batchResults = await Promise.all(batchLines.map(async (line) => {
+          const warehouseId = typeof data.warehouse === 'string' ? data.warehouse : data.warehouse?._id;
+          const result = await stockBatchApi.getAll({ product: line.product._id, warehouse: warehouseId, limit: 500 });
+          const rows = Array.isArray(result.data) ? result.data : [];
+          return [line._id, rows.filter((batch) => !batch.isQuarantined && Number(batch.qtyOnHand) - Number(batch.reservedQuantity || 0) > 0)] as const;
+        }));
+        setAvailableBatches(Object.fromEntries(batchResults));
+        setSelectedBatches(Object.fromEntries(data.lines.filter((line) => line.batchId).map((line) => [line._id, line.batchId as string])));
       }
     } catch (error) {
       console.error('Error fetching pick pack:', error);
@@ -118,12 +146,19 @@ export default function PickPackPickPage() {
     try {
       setSubmitting(true);
 
-      const incomplete = pickPack!.lines.filter((line) => {
-        const qty = pickingLines[line._id] || 0;
-        return qty < toNumber(line.qtyToPick);
-      });
-      if (incomplete.length > 0) {
-        toast.error('Pick all quantities before completing');
+      const totalPicked = pickPack!.lines.reduce((sum, line) => sum + (pickingLines[line._id] || 0), 0);
+      if (totalPicked <= 0) {
+        toast.error('Pick at least one unit. Unpicked quantities will remain on backorder.');
+        return;
+      }
+      const serialMismatch = pickPack!.lines.find((line) => line.product?.trackingType === 'serial' && (selectedSerials[line._id] || []).length !== (pickingLines[line._id] || 0));
+      if (serialMismatch) {
+        toast.error(`Select exactly ${pickingLines[serialMismatch._id] || 0} serial number(s) for ${serialMismatch.description}.`);
+        return;
+      }
+      const missingBatch = pickPack!.lines.find((line) => line.product?.trackingType === 'batch' && (pickingLines[line._id] || 0) > 0 && !selectedBatches[line._id]);
+      if (missingBatch) {
+        toast.error(`Select a batch for ${missingBatch.description}.`);
         return;
       }
 
@@ -132,10 +167,12 @@ export default function PickPackPickPage() {
         const qtyToRecord = pickingLines[line._id] || 0;
         const currentPicked = toNumber(line.qtyPicked);
 
-        if (qtyToRecord > currentPicked) {
+        if (qtyToRecord !== currentPicked || line.product?.trackingType === 'serial') {
           const pickRes = await pickPackApi.pickItems(id!, {
             lineId: line._id,
             qtyPicked: qtyToRecord,
+            serialNumbers: selectedSerials[line._id] || [],
+            batchId: selectedBatches[line._id] || undefined,
             notes: '',
           });
           if (!pickRes.success) {
@@ -222,10 +259,7 @@ export default function PickPackPickPage() {
     );
   }
 
-  const allPicked = pickPack.lines.every(line => {
-    const picked = pickingLines[line._id] || 0;
-    return picked >= toNumber(line.qtyToPick);
-  });
+  const hasPicked = pickPack.lines.some(line => (pickingLines[line._id] || 0) > 0);
 
   return (
     <Layout>
@@ -327,7 +361,8 @@ export default function PickPackPickPage() {
                               min="0"
                               max={qtyToPick}
                               value={pickedQty}
-                              onChange={(e) => handleSetQty(line._id, parseInt(e.target.value) || 0)}
+                              step="any"
+                              onChange={(e) => handleSetQty(line._id, parseFloat(e.target.value) || 0)}
                               className="h-9 w-16 bg-white text-center dark:border-slate-800 dark:bg-slate-900 dark:text-white"
                               disabled={submitting}
                             />
@@ -343,6 +378,31 @@ export default function PickPackPickPage() {
                           </div>
                         </div>
                       </div>
+                      {line.product?.trackingType === 'serial' && (
+                        <div className="mt-4 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+                          <p className="mb-2 text-sm font-medium text-slate-800 dark:text-slate-200">Serial numbers ({(selectedSerials[line._id] || []).length}/{pickedQty})</p>
+                          <div className="max-h-40 space-y-1 overflow-y-auto">
+                            {(availableSerials[line._id] || []).map((serial) => {
+                              const checked = (selectedSerials[line._id] || []).includes(serial._id);
+                              return <label key={serial._id} className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                                <input type="checkbox" checked={checked} disabled={submitting || (!checked && (selectedSerials[line._id] || []).length >= pickedQty)} onChange={(event) => setSelectedSerials((current) => ({ ...current, [line._id]: event.target.checked ? [...(current[line._id] || []), serial._id] : (current[line._id] || []).filter((value) => value !== serial._id) }))} />
+                                {serial.serialNo}
+                              </label>;
+                            })}
+                            {!availableSerials[line._id]?.length && <p className="text-xs text-amber-600">No in-stock serial numbers found in this warehouse.</p>}
+                          </div>
+                        </div>
+                      )}
+                      {line.product?.trackingType === 'batch' && (
+                        <div className="mt-4 max-w-xl">
+                          <label className="mb-1 block text-sm font-medium text-slate-800 dark:text-slate-200">Batch / lot</label>
+                          <select value={selectedBatches[line._id] || ''} disabled={submitting || pickedQty === 0} onChange={(event) => setSelectedBatches((current) => ({ ...current, [line._id]: event.target.value }))} className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                            <option value="">Select available batch</option>
+                            {(availableBatches[line._id] || []).map((batch) => <option key={batch._id} value={batch._id}>{batch.batchNo} · available {Math.max(0, Number(batch.qtyOnHand) - Number(batch.reservedQuantity || 0))}</option>)}
+                          </select>
+                          {!availableBatches[line._id]?.length && <p className="mt-1 text-xs text-amber-600">No available, non-quarantined batches in this warehouse.</p>}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
@@ -390,7 +450,7 @@ export default function PickPackPickPage() {
                   <Button
                     className="w-full bg-emerald-600 hover:bg-emerald-700"
                     onClick={handleCompletePicking}
-                    disabled={submitting || !allPicked}
+                    disabled={submitting || !hasPicked}
                   >
                     {submitting ? (
                       <>
@@ -405,9 +465,9 @@ export default function PickPackPickPage() {
                     )}
                   </Button>
 
-                  {!allPicked && (
+                  {!hasPicked && (
                     <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-                      Pick all items before completing
+                      Pick at least one unit to continue. Remaining quantities stay open for a later shipment.
                     </p>
                   )}
                 </CardContent>

@@ -118,12 +118,9 @@ export default function PickPackPackPage() {
     try {
       setSubmitting(true);
 
-      const incomplete = pickPack!.lines.filter((line) => {
-        const qty = packingLines[line._id] || 0;
-        return qty < toNumber(line.qtyPicked || line.qtyToPick);
-      });
-      if (incomplete.length > 0) {
-        toast.error('Pack all quantities before completing');
+      const totalPacked = pickPack!.lines.reduce((sum, line) => sum + (packingLines[line._id] || 0), 0);
+      if (totalPacked <= 0) {
+        toast.error('Pack at least one picked unit. Remaining quantities can ship later.');
         return;
       }
 
@@ -229,10 +226,7 @@ export default function PickPackPackPage() {
     );
   }
 
-  const allPacked = pickPack.lines.every(line => {
-    const packed = packingLines[line._id] || 0;
-    return packed >= toNumber(line.qtyPicked);
-  });
+  const hasPacked = pickPack.lines.some(line => (packingLines[line._id] || 0) > 0);
 
   return (
     <Layout>
@@ -395,7 +389,7 @@ export default function PickPackPackPage() {
                   <Button
                     className="w-full bg-emerald-600 hover:bg-emerald-700"
                     onClick={handleCompletePacking}
-                    disabled={submitting || !allPacked}
+                    disabled={submitting || !hasPacked}
                   >
                     {submitting ? (
                       <>
@@ -410,9 +404,9 @@ export default function PickPackPackPage() {
                     )}
                   </Button>
 
-                  {!allPacked && (
+                  {!hasPacked && (
                     <p className="text-center text-xs text-slate-500 dark:text-slate-400">
-                      Pack all items before completing
+                      Pack at least one unit. Any unpacked quantity remains reserved for later.
                     </p>
                   )}
                 </CardContent>

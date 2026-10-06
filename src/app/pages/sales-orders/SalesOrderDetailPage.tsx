@@ -58,6 +58,8 @@ interface SalesOrderLine {
   description: string;
   qty: number;
   qtyReserved: number;
+  qtyShipped?: number;
+  qtyDelivered?: number;
   unitPrice: number;
   discountPct: number;
   taxRate: number;
@@ -276,9 +278,9 @@ export default function SalesOrderDetailPage() {
   }
 
   const currentStepIndex = WORKFLOW_STEPS.indexOf(order.status as any);
-  const fulfillmentPercent = order.lines.length > 0
-    ? Math.round((order.lines.reduce((s, l) => s + toNumber(l.qtyReserved), 0) / order.lines.reduce((s, l) => s + toNumber(l.qty), 0)) * 100)
-    : 0;
+  const fulfillmentPercent = order.fulfillmentPercent ?? (order.lines.length > 0
+    ? Math.round((order.lines.reduce((s, l) => s + toNumber(l.qtyDelivered), 0) / order.lines.reduce((s, l) => s + toNumber(l.qty), 0)) * 100)
+    : 0);
   const derivedSubtotal = order.lines.reduce((sum, line) => {
     const gross = toNumber(line.qty) * toNumber(line.unitPrice);
     return sum + gross * (1 - toNumber(line.discountPct) / 100);
@@ -355,7 +357,7 @@ export default function SalesOrderDetailPage() {
                       </div>
                       <Button onClick={() => setConfirmDialogOpen(true)} className="h-10 gap-2 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500">
                         <CheckCircle className="h-4 w-4" />
-                        Confirm
+                        {order.isBackorder ? 'Reserve Backorder' : 'Confirm'}
                       </Button>
                       <Button variant="outline" onClick={() => setCancelDialogOpen(true)} className="h-10 gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/30">
                         <XCircle className="h-4 w-4" />
@@ -364,7 +366,7 @@ export default function SalesOrderDetailPage() {
                     </>
                   )}
                   {order.status === 'confirmed' && (
-                    <Button onClick={handleCreatePickPack} className="h-10 gap-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-600 dark:hover:bg-indigo-500">
+                    <Button onClick={handleCreatePickPack} disabled={!order.lines.some((line) => toNumber(line.qtyReserved) > 0)} className="h-10 gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 dark:bg-indigo-600 dark:hover:bg-indigo-500">
                       <Package className="h-4 w-4" />
                       Create Pick & Pack
                     </Button>
@@ -529,7 +531,7 @@ export default function SalesOrderDetailPage() {
                     </CardHeader>
                     <CardContent>
                       <div className="space-y-3 xl:hidden">
-                        {order.lines.map((line) => <article key={line._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-950 dark:text-white">{line.description}</h3><p className="text-xs text-slate-500">{line.product?.sku}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Qty</dt><dd>{toNumber(line.qty)}</dd></div><div><dt className="text-slate-500">Reserved</dt><dd>{toNumber(line.qtyReserved)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(toNumber(line.unitPrice), baseCurrency)}</dd></div><div><dt className="text-slate-500">Total</dt><dd className="font-semibold">{formatCurrency(toNumber(line.lineTotal), baseCurrency)}</dd></div></dl></article>)}
+                        {order.lines.map((line) => <article key={line._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-950 dark:text-white">{line.description}</h3><p className="text-xs text-slate-500">{line.product?.sku}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Ordered</dt><dd>{toNumber(line.qty)}</dd></div><div><dt className="text-slate-500">Reserved</dt><dd>{toNumber(line.qtyReserved)}</dd></div><div><dt className="text-slate-500">Shipped</dt><dd>{toNumber(line.qtyShipped)}</dd></div><div><dt className="text-slate-500">Remaining</dt><dd>{Math.max(0, toNumber(line.qty) - toNumber(line.qtyShipped))}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(toNumber(line.unitPrice), baseCurrency)}</dd></div><div><dt className="text-slate-500">Total</dt><dd className="font-semibold">{formatCurrency(toNumber(line.lineTotal), baseCurrency)}</dd></div></dl></article>)}
                       </div>
                       <div className="hidden overflow-x-auto xl:block">
                         <table className="w-full">
@@ -538,6 +540,8 @@ export default function SalesOrderDetailPage() {
                               <th className="py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Product</th>
                               <th className="py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Qty</th>
                               <th className="py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Reserved</th>
+                              <th className="py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Shipped</th>
+                              <th className="py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Remaining</th>
                               <th className="py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Unit Price</th>
                               <th className="py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</th>
                             </tr>
@@ -551,6 +555,8 @@ export default function SalesOrderDetailPage() {
                                 </td>
                                 <td className="py-3 text-right text-sm text-slate-700 dark:text-slate-300">{toNumber(line.qty)}</td>
                                 <td className="py-3 text-right text-sm text-slate-700 dark:text-slate-300">{toNumber(line.qtyReserved)}</td>
+                                <td className="py-3 text-right text-sm text-slate-700 dark:text-slate-300">{toNumber(line.qtyShipped)}</td>
+                                <td className="py-3 text-right text-sm text-slate-700 dark:text-slate-300">{Math.max(0, toNumber(line.qty) - toNumber(line.qtyShipped))}</td>
                                 <td className="py-3 text-right text-sm text-slate-700 dark:text-slate-300">
                                   {formatCurrency(toNumber(line.unitPrice), baseCurrency)}
                                 </td>
@@ -736,7 +742,7 @@ export default function SalesOrderDetailPage() {
       <AlertDialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <AlertDialogContent className="dark:bg-slate-900 dark:border-slate-800">
           <AlertDialogHeader>
-            <AlertDialogTitle className="dark:text-white">Confirm Sales Order</AlertDialogTitle>
+            <AlertDialogTitle className="dark:text-white">{order.isBackorder ? 'Reserve Backorder Stock' : 'Confirm Sales Order'}</AlertDialogTitle>
             <AlertDialogDescription className="dark:text-slate-400">
               Are you sure you want to confirm this sales order? Once confirmed, it will move to the confirmed status and can be processed for picking & packing.
             </AlertDialogDescription>
