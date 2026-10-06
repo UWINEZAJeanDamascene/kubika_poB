@@ -71,6 +71,7 @@ interface CartItem extends PosProduct {
   cartQuantity: number;
   cartUnitPrice: number;
   cartDiscountPct: number;
+  serialNumbers?: string[];
 }
 
 interface Client {
@@ -600,6 +601,12 @@ export default function SalesLegacyPage() {
       item._id === productId ? { ...item, cartDiscountPct: Math.max(0, Math.min(100, discount)) } : item
     ));
   };
+
+  const updateSerialNumbers = (productId: string, raw: string) => {
+    if (pendingSaleAttempt) return;
+    const serialNumbers = raw.split(/[\r\n,;|]+/).map((serial) => serial.trim().toUpperCase()).filter(Boolean);
+    setCart((prev) => prev.map((item) => item._id === productId ? { ...item, serialNumbers } : item));
+  };
   
   const removeFromCart = (productId: string) => {
     if (pendingSaleAttempt) return;
@@ -1125,6 +1132,7 @@ export default function SalesLegacyPage() {
           discountPct: item.cartDiscountPct,
           taxRate: item.taxRate,
           taxCode: item.taxCode,
+          serialNumbers: item.trackingType === 'serial' ? (item.serialNumbers || []) : undefined,
           description: item.name,
           unit: item.unit,
         })),
@@ -1804,6 +1812,23 @@ export default function SalesLegacyPage() {
                               />
                             </div>
                           </div>
+
+                          {item.trackingType === 'serial' && (
+                            <div className="mt-2">
+                              <label className="text-xs text-slate-500 dark:text-slate-400">Serial numbers ({item.cartQuantity} required)</label>
+                              <textarea
+                                value={(item.serialNumbers || []).join('\n')}
+                                onChange={(event) => updateSerialNumbers(item._id, event.target.value)}
+                                placeholder="Enter one serial number per unit"
+                                rows={Math.min(4, Math.max(2, item.cartQuantity))}
+                                className="mt-1 w-full rounded-md border border-slate-300 bg-white p-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                disabled={Boolean(pendingSaleAttempt)}
+                              />
+                              <p className={`mt-1 text-xs ${(item.serialNumbers || []).length === item.cartQuantity ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                {(item.serialNumbers || []).length} of {item.cartQuantity} serial numbers entered
+                              </p>
+                            </div>
+                          )}
 
                           <div className="mt-2 text-right text-sm font-semibold text-slate-950 dark:text-white">
                             {formatCurrency(

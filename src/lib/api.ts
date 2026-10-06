@@ -2432,6 +2432,8 @@ export const invoicesApi = {
 export interface SalesLegacyItem {
   productId: string;
   quantity: number;
+  catalogUnitPrice?: number;
+  serialNumbers?: string[];
   unitPrice?: number;
   discountPct?: number;
   taxRate?: number;
@@ -2482,6 +2484,7 @@ export interface PosProduct {
   averageCost: number;
   category?: string;
   isAvailable: boolean;
+  trackingType?: 'none' | 'batch' | 'serial';
 }
 
 export const salesLegacyApi = {
