@@ -2676,7 +2676,7 @@ export const creditNotesApi = {
     }),
   refund: (
     id: string,
-    data: { amount: number; paymentMethod: string; reference?: string },
+    data: { amount: number; paymentMethod: string; reference?: string; bankAccountId?: string; posManagerApprovalId?: string },
   ) =>
     request<{ success: boolean; data: unknown }>(`/credit-notes/${id}/refund`, {
       method: "POST",

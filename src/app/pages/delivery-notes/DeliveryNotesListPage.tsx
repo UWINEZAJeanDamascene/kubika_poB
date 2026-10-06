@@ -259,9 +259,7 @@ export default function DeliveryNotesListPage() {
 
       if (!invoiceId) {
         toast.info('Creating invoice from delivery note...');
-        const createResponse = await deliveryNotesApi.createInvoice(id, {
-          confirmDelivery: true,
-        });
+        const createResponse = await deliveryNotesApi.createInvoice(id);
         console.log('Step 1 - createInvoice response:', createResponse);
 
         if (!createResponse.success) {
@@ -292,6 +290,13 @@ export default function DeliveryNotesListPage() {
         }
       } else {
         toast.success('Invoice confirmed');
+      }
+
+      const deliveryResponse = await deliveryNotesApi.confirm(id, { sendEmail: false });
+      if (!deliveryResponse.success) {
+        toast.error(deliveryResponse.message || 'Invoice confirmed, but the delivery could not be committed to stock.');
+        await fetchDeliveryNotes();
+        return;
       }
 
       await fetchDeliveryNotes();
@@ -327,8 +332,13 @@ export default function DeliveryNotesListPage() {
 
   const handleCancel = async (id: string) => {
     if (!confirm(t('deliveryNote.confirmCancel', 'Are you sure you want to cancel this delivery note?'))) return;
+    const cancellationReason = window.prompt(t('deliveryNote.cancellationReason', 'Enter the reason for cancelling this delivery note (at least 5 characters):'))?.trim();
+    if (!cancellationReason || cancellationReason.length < 5) {
+      toast.error(t('deliveryNote.cancellationReasonRequired', 'Enter a cancellation reason of at least 5 characters.'));
+      return;
+    }
     try {
-      const response = await deliveryNotesApi.cancel(id);
+      const response = await deliveryNotesApi.cancel(id, cancellationReason);
       if (response.success) {
         toast.success(t('deliveryNote.cancelled', 'Delivery note cancelled'));
         fetchDeliveryNotes();

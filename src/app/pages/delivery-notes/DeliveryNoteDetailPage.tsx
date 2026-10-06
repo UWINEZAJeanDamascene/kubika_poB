@@ -171,9 +171,7 @@ export default function DeliveryNoteDetailPage() {
       // Create invoice if missing (idempotent if one already exists on the server)
       if (!invoiceId) {
         toast.info('Creating invoice from delivery note...');
-        const createResponse = await deliveryNotesApi.createInvoice(id!, {
-          confirmDelivery: true,
-        });
+        const createResponse = await deliveryNotesApi.createInvoice(id!);
         console.log('Create invoice response:', createResponse);
 
         if (!createResponse.success) {
@@ -262,8 +260,13 @@ export default function DeliveryNoteDetailPage() {
 
   const handleCancel = async () => {
     if (!confirm('Are you sure you want to cancel this delivery note?')) return;
+    const cancellationReason = window.prompt('Enter the reason for cancelling this delivery note (at least 5 characters):')?.trim();
+    if (!cancellationReason || cancellationReason.length < 5) {
+      toast.error('Enter a cancellation reason of at least 5 characters.');
+      return;
+    }
     try {
-      const response = await deliveryNotesApi.cancel(id!);
+      const response = await deliveryNotesApi.cancel(id!, cancellationReason);
       if (response.success) {
         toast.success('Delivery note cancelled');
         fetchDeliveryNote();

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { creditNotesApi } from '@/lib/api';
+import { bankAccountsApi, creditNotesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCompany } from '@/hooks/useCompany';
 import {
@@ -78,11 +78,15 @@ interface CreditNote {
   creditDate: string;
   type: 'goods_return' | 'price_adjustment' | 'cancelled_order';
   status: 'draft' | 'confirmed' | 'cancelled' | 'issued' | 'applied' | 'refunded';
+  posOrigin?: boolean;
   currencyCode: string;
   subtotal: number;
   taxAmount: number;
   totalAmount: number;
   grandTotal?: number;
+  amountRefunded?: number;
+  amountAppliedToAR?: number;
+  amountAvailableAsCredit?: number;
   reason: string;
   notes?: string;
   lines: CreditNoteLine[];
@@ -148,6 +152,12 @@ export default function CreditNoteDetailPage() {
   const [creditNote, setCreditNote] = useState<CreditNote | null>(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundMethod, setRefundMethod] = useState('cash');
+  const [refundReference, setRefundReference] = useState('');
+  const [refundBankAccountId, setRefundBankAccountId] = useState('');
+  const [refundAccounts, setRefundAccounts] = useState<Array<{ _id: string; name: string; accountCode?: string }>>([]);
   const [processing, setProcessing] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
 
@@ -173,6 +183,12 @@ export default function CreditNoteDetailPage() {
     fetchCreditNote();
   }, [fetchCreditNote]);
 
+  useEffect(() => {
+    bankAccountsApi.getAll({ isActive: true }).then((response) => {
+      if (response.success) setRefundAccounts(response.data || []);
+    }).catch(() => undefined);
+  }, []);
+
   const handleConfirm = async () => {
     if (!id) return;
     setProcessing(true);
@@ -188,6 +204,40 @@ export default function CreditNoteDetailPage() {
     } catch (error: any) {
       console.error('Failed to confirm credit note:', error);
       toast.error(error?.message || 'Failed to confirm credit note');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleRefund = async () => {
+    if (!id || !creditNote) return;
+    const amount = Number(refundAmount);
+    const total = toNumber(creditNote.totalAmount || creditNote.grandTotal);
+    const remaining = Math.max(0, total - toNumber(creditNote.amountRefunded));
+    if (!Number.isFinite(amount) || amount <= 0 || amount > remaining) {
+      toast.error(`Enter an amount greater than zero and no more than ${formatCurrency(remaining, creditNote.currencyCode)}.`);
+      return;
+    }
+    if (refundMethod !== 'cash' && !refundBankAccountId) {
+      toast.error('Select the account used to pay the refund.');
+      return;
+    }
+    setProcessing(true);
+    try {
+      const response = await creditNotesApi.refund(id, {
+        amount,
+        paymentMethod: refundMethod,
+        reference: refundReference || undefined,
+        bankAccountId: refundBankAccountId || undefined,
+      });
+      if (!response.success) throw new Error(response.message || 'Failed to record refund.');
+      toast.success('Refund recorded and posted.');
+      setRefundDialogOpen(false);
+      setRefundAmount('');
+      setRefundReference('');
+      await fetchCreditNote();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to record refund.');
     } finally {
       setProcessing(false);
     }
@@ -355,6 +405,11 @@ export default function CreditNoteDetailPage() {
                         <CheckCircle className="h-4 w-4" /> Confirm
                       </Button>
                     </>
+                  )}
+                  {!creditNote.posOrigin && ['confirmed', 'issued', 'applied', 'partially_refunded'].includes(creditNote.status) && toNumber(creditNote.totalAmount || creditNote.grandTotal) > toNumber(creditNote.amountRefunded) && (
+                    <Button size="sm" onClick={() => setRefundDialogOpen(true)} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+                      <Wallet className="h-4 w-4" /> Record Refund
+                    </Button>
                   )}
                 </div>
               </div>
@@ -678,6 +733,49 @@ export default function CreditNoteDetailPage() {
             </div>
           </div>
         </div>
+
+        <Dialog open={refundDialogOpen} onOpenChange={setRefundDialogOpen}>
+          <DialogContent className="sm:max-w-md dark:border-slate-800 dark:bg-slate-950">
+            <DialogHeader>
+              <DialogTitle className="text-slate-900 dark:text-white">Record customer refund</DialogTitle>
+              <DialogDescription className="text-slate-500 dark:text-slate-400">
+                This posts the cash or bank payment and updates the credit note balance. Remaining refundable: {formatCurrency(Math.max(0, toNumber(creditNote.totalAmount || creditNote.grandTotal) - toNumber(creditNote.amountRefunded)), creditNote.currencyCode)}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <label className="block space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                Refund amount
+                <input type="number" min="0.01" step="0.01" max={Math.max(0, toNumber(creditNote.totalAmount || creditNote.grandTotal) - toNumber(creditNote.amountRefunded))} value={refundAmount} onChange={(event) => setRefundAmount(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+              </label>
+              <label className="block space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                Payment method
+                <select value={refundMethod} onChange={(event) => setRefundMethod(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                  <option value="cash">Cash</option>
+                  <option value="bank_transfer">Bank transfer</option>
+                  <option value="mobile_money">Mobile money</option>
+                  <option value="cheque">Cheque</option>
+                </select>
+              </label>
+              {refundMethod !== 'cash' && (
+                <label className="block space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                  Pay from account
+                  <select value={refundBankAccountId} onChange={(event) => setRefundBankAccountId(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                    <option value="">Select account</option>
+                    {refundAccounts.map((account) => <option key={account._id} value={account._id}>{account.name}{account.accountCode ? ` (${account.accountCode})` : ''}</option>)}
+                  </select>
+                </label>
+              )}
+              <label className="block space-y-1 text-sm text-slate-600 dark:text-slate-300">
+                Payment reference (optional)
+                <input value={refundReference} onChange={(event) => setRefundReference(event.target.value)} className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+              </label>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRefundDialogOpen(false)} disabled={processing}>Cancel</Button>
+              <Button onClick={handleRefund} disabled={processing} className="bg-emerald-600 hover:bg-emerald-700">{processing ? 'Posting…' : 'Post refund'}</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Confirm Dialog */}
         <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
