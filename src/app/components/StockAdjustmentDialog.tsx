@@ -69,6 +69,7 @@ export function StockAdjustmentDialog({
     quantity: "",
     unitCost: "",
     reason: "correction",
+    referenceNumber: "",
     notes: "",
   });
 
@@ -108,7 +109,7 @@ export function StockAdjustmentDialog({
   const selectedProduct = products.find((p) => p._id === form.product);
 
   const adjustmentMutation = useMutation({
-    mutationFn: async (input: { product: string; warehouse?: string; quantity: number; type: "in" | "out"; reason: string; notes?: string }) => {
+    mutationFn: async (input: { product: string; warehouse?: string; quantity: number; type: "in" | "out"; reason: string; referenceNumber: string; notes?: string }) => {
       const response = await stockApi.adjustStock({ ...input, reason: input.reason as any });
       if (!response.success) throw new Error("Failed to adjust stock");
       return response;
@@ -153,7 +154,7 @@ export function StockAdjustmentDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!form.product || !form.quantity || !form.reason) {
+    if (!form.product || !form.quantity || !form.reason || !form.referenceNumber.trim()) {
       toast.error(t("stockAdjustment.validationError", "Please fill in all required fields"));
       return;
     }
@@ -174,10 +175,11 @@ export function StockAdjustmentDialog({
         quantity,
         type,
         reason: form.reason as any,
+        referenceNumber: form.referenceNumber.trim(),
         notes: form.notes || undefined,
       });
       toast.success(t("stockAdjustment.success", "Stock adjusted successfully"));
-      setForm({ product: "", warehouse: warehouses[0]?._id || "", type: "in", quantity: "", unitCost: "", reason: "correction", notes: "" });
+      setForm({ product: "", warehouse: warehouses[0]?._id || "", type: "in", quantity: "", unitCost: "", reason: "correction", referenceNumber: "", notes: "" });
       onOpenChange(false);
       onSuccess?.();
     } catch {
@@ -356,6 +358,22 @@ export function StockAdjustmentDialog({
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Notes */}
+          <div className="space-y-2">
+            <Label htmlFor="referenceNumber" className="dark:text-slate-200">
+              Source Reference Number<span className="text-red-500 ml-1">*</span>
+            </Label>
+            <Input
+              id="referenceNumber"
+              placeholder="e.g. COUNT-2026-014 or DAMAGE-INC-008"
+              value={form.referenceNumber}
+              onChange={(e) => setForm({ ...form, referenceNumber: e.target.value })}
+              className="dark:bg-slate-800 dark:text-white dark:border-slate-600"
+              required
+              maxLength={100}
+            />
           </div>
 
           {/* Notes */}

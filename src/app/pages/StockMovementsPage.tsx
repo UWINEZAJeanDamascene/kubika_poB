@@ -27,6 +27,8 @@ import {
   Add as AddIcon
 } from '@mui/icons-material';
 import { ArrowRightLeft } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
+import { toast } from 'sonner';
 import { EmptyState } from '@/app/components/EmptyState';
 import { stockApi, warehousesApi } from '@/lib/api';
 import { Layout } from '../layout/Layout';
@@ -55,6 +57,9 @@ interface StockMovement {
   referenceType?: string;
   reference?: string;
   referenceNumber?: string;
+  serialNumbers?: string[];
+  reversalOfMovement?: string | null;
+  isReversed?: boolean;
   notes?: string;
   ebm?: {
     stockStatus?: string;
@@ -98,6 +103,7 @@ export default function StockMovementsPage() {
   const [endDate, setEndDate] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [showAdjustmentDialog, setShowAdjustmentDialog] = useState(false);
+  const [reversingId, setReversingId] = useState<string | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -172,6 +178,21 @@ export default function StockMovementsPage() {
   const error = isError
     ? (queryError instanceof Error ? queryError.message : t('stockMovements.loadFailed'))
     : null;
+
+  const handleReverseMovement = async (movement: StockMovement) => {
+    if (!window.confirm(`Create a compensating movement for reference ${movement.referenceNumber || movement._id}?`)) return;
+    setReversingId(movement._id);
+    try {
+      const response = await stockApi.reverseMovement(movement._id);
+      if (!response.success) throw new Error('Could not reverse stock movement');
+      toast.success('Compensating stock movement created');
+      await fetchMovements();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not reverse stock movement');
+    } finally {
+      setReversingId(null);
+    }
+  };
 
 
   const handlePageChange = (_: React.MouseEvent<HTMLButtonElement> | null, newPage: number) => {
@@ -609,6 +630,24 @@ export default function StockMovementsPage() {
                           </p>
                           <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('stockMovements.totalCost')}</p>
                           <p className="mt-1 font-mono text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(item.totalCost)}</p>
+                          {item.serialNumbers?.length ? (
+                            <p className="mt-2 break-all text-xs text-slate-500 dark:text-slate-400">Serials: {item.serialNumbers.join(', ')}</p>
+                          ) : null}
+                          {item.reversalOfMovement ? (
+                            <p className="mt-2 text-xs font-semibold text-amber-600 dark:text-amber-400">Reversal of {item.reversalOfMovement}</p>
+                          ) : null}
+                          {item.type === 'adjustment' && item.referenceType === 'adjustment' && !item.reversalOfMovement && (
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              disabled={item.isReversed || reversingId === item._id}
+                              onClick={() => handleReverseMovement(item)}
+                              sx={{ mt: 1, textTransform: 'none' }}
+                            >
+                              {reversingId === item._id ? <CircularProgress size={14} /> : <RotateCcw size={14} />}
+                              <span className="ml-1">{item.isReversed ? 'Reversed' : 'Reverse'}</span>
+                            </Button>
+                          )}
                         </div>
                       </div>
                     );

@@ -2219,8 +2219,13 @@ export const stockApi = {
     product: string;
     quantity: number;
     unitCost: number;
+    referenceNumber: string;
     supplier?: string;
     batchNumber?: string;
+    lotNumber?: string;
+    expiryDate?: string;
+    warehouse?: string;
+    serialNumbers?: string[];
     notes?: string;
   }) =>
     request<{ success: boolean; data: unknown }>("/stock/movements", {
@@ -2232,7 +2237,9 @@ export const stockApi = {
     warehouse?: string;
     quantity: number;
     type: "in" | "out";
-    reason: "damage" | "loss" | "theft" | "expired" | "correction" | "transfer";
+    reason: "damage" | "loss" | "theft" | "expired" | "correction" | "transfer" | "transfer_in" | "transfer_out";
+    referenceNumber: string;
+    reversalOfMovement?: string;
     notes?: string;
   }) =>
     request<{ success: boolean; data: unknown }>("/stock/adjust", {
@@ -2244,6 +2251,10 @@ export const stockApi = {
   deleteMovement: (id: string) =>
     request<{ success: boolean; message: string }>(`/stock/movements/${id}`, {
       method: "DELETE",
+    }),
+  reverseMovement: (id: string) =>
+    request<{ success: boolean; data: unknown }>(`/stock/movements/${id}/reverse`, {
+      method: "POST",
     }),
   updateMovement: (id: string, data: unknown) =>
     request<{ success: boolean; data: unknown }>(`/stock/movements/${id}`, {
