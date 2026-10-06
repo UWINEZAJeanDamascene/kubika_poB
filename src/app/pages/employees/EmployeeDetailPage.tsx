@@ -47,7 +47,7 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(value);
+  }).format(Number.isFinite(Number(value)) ? Number(value) : 0);
 }
 
 function formatDate(dateStr?: string): string {
@@ -137,10 +137,10 @@ export default function EmployeeDetailPage() {
   }
 
   const grossSalary = employee.currentSalary
-    ? employee.currentSalary.basicSalary +
-      employee.currentSalary.transportAllowance +
-      employee.currentSalary.housingAllowance +
-      employee.currentSalary.otherAllowances
+    ? Number(employee.currentSalary.basicSalary || 0) +
+      Number(employee.currentSalary.transportAllowance || 0) +
+      Number(employee.currentSalary.housingAllowance || 0) +
+      Number(employee.currentSalary.otherAllowances || 0)
     : 0;
 
   return (
@@ -274,7 +274,7 @@ export default function EmployeeDetailPage() {
                         Basic Salary
                       </span>
                       <span className="font-medium text-slate-900 dark:text-white">
-                        RWF {formatCurrency(employee.currentSalary.basicSalary)}
+                        RWF {formatCurrency(Number(employee.currentSalary.basicSalary || 0))}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -282,7 +282,7 @@ export default function EmployeeDetailPage() {
                         Transport
                       </span>
                       <span className="font-medium text-slate-900 dark:text-white">
-                        RWF {formatCurrency(employee.currentSalary.transportAllowance)}
+                        RWF {formatCurrency(Number(employee.currentSalary.transportAllowance || 0))}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -290,7 +290,7 @@ export default function EmployeeDetailPage() {
                         Housing
                       </span>
                       <span className="font-medium text-slate-900 dark:text-white">
-                        RWF {formatCurrency(employee.currentSalary.housingAllowance)}
+                        RWF {formatCurrency(Number(employee.currentSalary.housingAllowance || 0))}
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -298,7 +298,7 @@ export default function EmployeeDetailPage() {
                         Other Allowances
                       </span>
                       <span className="font-medium text-slate-900 dark:text-white">
-                        RWF {formatCurrency(employee.currentSalary.otherAllowances)}
+                        RWF {formatCurrency(Number(employee.currentSalary.otherAllowances || 0))}
                       </span>
                     </div>
                   </div>
