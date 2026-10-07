@@ -102,7 +102,6 @@ export default function PurchaseReturnCreatePage() {
   const [referenceNo, setReferenceNo] = useState<string>("");
   const [returnDate, setReturnDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [reason, setReason] = useState<string>("");
-  const [supplierCreditNoteNo, setSupplierCreditNoteNo] = useState<string>("");
 
   const [lines, setLines] = useState<ReturnLine[]>([]);
   const [sendEmail, setSendEmail] = useState(false);
@@ -266,7 +265,6 @@ export default function PurchaseReturnCreatePage() {
         grn: selectedGRNId,
         returnDate,
         reason,
-        supplierCreditNoteNo: supplierCreditNoteNo || undefined,
         lines: validLines,
       };
 
@@ -487,10 +485,6 @@ export default function PurchaseReturnCreatePage() {
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("purchaseReturn.reason", "Reason")} *</Label>
                     <Textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder={t("purchaseReturn.reasonPlaceholder", "Enter reason for return...")} rows={3} required className="text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("purchaseReturn.supplierCreditNote", "Supplier Credit Note No")}</Label>
-                    <Input value={supplierCreditNoteNo} onChange={(e) => setSupplierCreditNoteNo(e.target.value)} placeholder={t("purchaseReturn.supplierCreditNotePlaceholder", "Enter credit note number (optional)")} className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
                   </div>
                 </CardContent>
               </Card>
