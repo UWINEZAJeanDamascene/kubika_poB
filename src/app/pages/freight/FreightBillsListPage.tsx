@@ -42,12 +42,14 @@ export function FreightBillsContent() {
   const { formatCurrency } = useCurrency();
 
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [bills, setBills] = useState<FreightBill[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
   const fetchBills = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const res = await freightBillsApi.getAll({ page, limit: 20 });
       if (res.success && res.data) {
@@ -56,9 +58,12 @@ export function FreightBillsContent() {
         if (pagination) {
           setTotalPages(Math.ceil((pagination.total || 0) / pagination.limit) || 1);
         }
+      } else {
+        setLoadError(true);
       }
     } catch (e) {
       console.error("Failed to fetch freight bills:", e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -120,6 +125,10 @@ export function FreightBillsContent() {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
             </div>
+          ) : loadError ? (
+            <p role="alert" className="py-8 text-center text-sm text-red-600 dark:text-red-400">
+              {t("freight.loadFailed", "Could not load freight bills. Please try again.")}
+            </p>
           ) : (
             <>
               <div className="space-y-3 xl:hidden">
