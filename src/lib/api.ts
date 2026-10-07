@@ -11191,7 +11191,7 @@ export interface APPayment {
   paymentMethod: string;
   amountPaid: string;
   currencyCode: string;
-  status: "draft" | "posted" | "reversed";
+  status: "draft" | "posting" | "posted" | "reversing" | "reversed";
   bankAccount?: {
     _id: string;
     name: string;
@@ -11199,6 +11199,9 @@ export interface APPayment {
   };
   reference?: string;
   notes?: string;
+  postedAt?: string | null;
+  reversedAt?: string | null;
+  reversalReason?: string | null;
   createdAt: string;
 }
 

@@ -73,6 +73,8 @@ interface BudgetLine {
   account_id?: string | { _id: string; code: string; name: string; type: string };
   account_name?: string;
   account_code?: string;
+  project_id?: string | { _id: string; name: string; project_code: string; wbs_code: string };
+  wbs_code?: string;
   budgeted_amount: number;
   actual_amount: number;
   remaining: number;
@@ -217,6 +219,8 @@ export default function PurchaseFormPage() {
           account_id: line.account_id,
           account_name: line.account_id?.name || '',
           account_code: line.account_id?.code || '',
+          project_id: line.project_id || undefined,
+          wbs_code: line.wbs_code || '',
           budgeted_amount: line.budgeted_amount || 0,
           actual_amount: line.actual_amount || 0,
           remaining: (line.budgeted_amount || 0) - (line.actual_amount || 0),
@@ -666,9 +670,10 @@ export default function PurchaseFormPage() {
                             <SelectItem value="none">No Line</SelectItem>
                             {selectedBudgetLines.map((line) => {
                               const accountName = line.account_id && typeof line.account_id === 'object' ? (line.account_id as any).name : (line.account_name || '');
-                              return (
-                                <SelectItem key={line._id} value={line._id}>{accountName || 'Unnamed'} (${(line.remaining || 0).toLocaleString()} left)</SelectItem>
-                              );
+                              const project = typeof line.project_id === 'object'
+                                ? line.project_id.wbs_code || line.project_id.project_code || line.project_id.name
+                                : line.wbs_code;
+                              return <SelectItem key={line._id} value={line._id}>{accountName || 'Unnamed'}{project ? ` · ${project}` : ''} (${(line.remaining || 0).toLocaleString()} left)</SelectItem>;
                             })}
                           </SelectContent>
                         </Select>

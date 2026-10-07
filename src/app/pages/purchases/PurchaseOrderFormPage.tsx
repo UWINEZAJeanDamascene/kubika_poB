@@ -87,6 +87,9 @@ interface POLine {
   budgetId?: string;
   budget_line_id?: string;
   accountId?: string;
+  project_id?: string;
+  projectName?: string;
+  projectCode?: string;
 }
 
 interface FreightData {
@@ -260,6 +263,9 @@ export default function PurchaseOrderFormPage() {
             budgetId: line.budgetId || '',
             budget_line_id: line.budget_line_id || '',
             accountId: line.accountId || '',
+            project_id: line.project_id || '',
+            projectName: line.projectName || '',
+            projectCode: line.projectCode || '',
           })) || [],
           freight: {
             carrier: po.freight?.carrier || '',
@@ -359,6 +365,13 @@ export default function PurchaseOrderFormPage() {
       ...newLines[index],
       budget_line_id: budgetLineId,
       accountId: selectedLine ? getBudgetLineAccountId(selectedLine) : '',
+      project_id: selectedLine
+        ? (typeof selectedLine.project_id === 'object' ? selectedLine.project_id._id : selectedLine.project_id) || ''
+        : '',
+      projectName: selectedLine && typeof selectedLine.project_id === 'object' ? selectedLine.project_id.name : '',
+      projectCode: selectedLine && typeof selectedLine.project_id === 'object'
+        ? selectedLine.project_id.wbs_code || selectedLine.project_id.project_code
+        : selectedLine?.wbs_code || '',
     };
     setFormData({ ...formData, lines: newLines });
   };
@@ -463,6 +476,9 @@ export default function PurchaseOrderFormPage() {
           budgetId: line.budgetId || undefined,
           budget_line_id: line.budget_line_id || undefined,
           accountId: line.accountId || undefined,
+          project_id: line.project_id || undefined,
+          projectName: line.projectName || undefined,
+          projectCode: line.projectCode || undefined,
         };
       });
 

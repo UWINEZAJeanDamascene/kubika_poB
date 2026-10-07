@@ -122,7 +122,12 @@ interface PurchaseOrder {
     taxAmount: number;
     lineTotal: number;
     budgetId?: string | { _id: string; name: string; fiscalYear?: string };
+    budget_line_id?: string;
     accountId?: string | { _id: string; code: string; name: string };
+    project_id?: string;
+    projectName?: string;
+    projectCode?: string;
+    encumbrance_id?: string;
   }>;
 }
 
@@ -799,11 +804,11 @@ export default function PurchaseOrderDetailPage() {
                               {(() => {
                                 if (typeof line.accountId === 'object' && line.accountId?.code) {
                                   return (
-                                    <span className="text-xs text-slate-600 dark:text-slate-300">{line.accountId.code} - {line.accountId.name}</span>
+                                    <span className="text-xs text-slate-600 dark:text-slate-300">{line.accountId.code} - {line.accountId.name}{(line.projectCode || line.projectName) && <span className="mt-1 block text-indigo-600 dark:text-indigo-300">{line.projectCode || line.projectName}</span>}</span>
                                   );
                                 } else if (typeof line.accountId === 'string' && line.accountId) {
                                   return (
-                                    <span className="text-xs text-slate-600 dark:text-slate-300">{line.accountId.substring(0, 8)}...</span>
+                                    <span className="text-xs text-slate-600 dark:text-slate-300">{line.accountId.substring(0, 8)}...{(line.projectCode || line.projectName) && <span className="mt-1 block text-indigo-600 dark:text-indigo-300">{line.projectCode || line.projectName}</span>}</span>
                                   );
                                 }
                                 return <span className="text-sm text-slate-400">-</span>;

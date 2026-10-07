@@ -58,6 +58,13 @@ interface PurchaseItem {
   lineTotal?: string | number;
   taxCode?: string;
   taxRate?: string | number;
+  budgetId?: string;
+  budget_line_id?: string;
+  accountId?: string;
+  project_id?: string;
+  projectName?: string;
+  projectCode?: string;
+  encumbrance_id?: string;
 }
 
 interface Payment {
@@ -574,7 +581,7 @@ export default function PurchaseDetailPage() {
                       const quantity = Number(item.quantity ?? item.qty) || 0;
                       const total = Number(item.totalWithTax ?? item.lineTotal) || 0;
                       const tax = Number(item.taxAmount ?? (total - quantity * (Number(item.unitCost) || 0))) || 0;
-                      return <article key={idx} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{typeof item.product?.name === 'string' ? item.product.name : '-'}</h3><p className="text-xs text-slate-500 dark:text-slate-400">{typeof item.product?.sku === 'string' ? item.product.sku : ''}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">{t('purchases.detail.qty', 'Qty')}</dt><dd>{quantity}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.unitCost', 'Unit cost')}</dt><dd>{formatCurrency(item.unitCost)}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.tax', 'Tax')}</dt><dd>{formatCurrency(tax)}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.total', 'Total')}</dt><dd className="font-semibold text-slate-900 dark:text-white">{formatCurrency(total)}</dd></div></dl></article>;
+                      return <article key={idx} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{typeof item.product?.name === 'string' ? item.product.name : '-'}</h3><p className="text-xs text-slate-500 dark:text-slate-400">{typeof item.product?.sku === 'string' ? item.product.sku : ''}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">{t('purchases.detail.qty', 'Qty')}</dt><dd>{quantity}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.unitCost', 'Unit cost')}</dt><dd>{formatCurrency(item.unitCost)}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.tax', 'Tax')}</dt><dd>{formatCurrency(tax)}</dd></div><div><dt className="text-slate-500">{t('purchases.detail.total', 'Total')}</dt><dd className="font-semibold text-slate-900 dark:text-white">{formatCurrency(total)}</dd></div></dl>{(item.projectCode || item.projectName) && <p className="mt-2 text-xs font-medium text-indigo-600 dark:text-indigo-300">Project: {item.projectCode || item.projectName}</p>}</article>;
                     })}
                   </div>
                   <div className="hidden overflow-x-auto xl:block">
@@ -594,6 +601,7 @@ export default function PurchaseDetailPage() {
                             <TableCell>
                               <p className="font-medium text-slate-900 dark:text-white">{typeof item.product?.name === 'string' ? item.product.name : '-'}</p>
                               <p className="text-xs text-slate-500 dark:text-slate-400">{typeof item.product?.sku === 'string' ? item.product.sku : ''}</p>
+                              {(item.projectCode || item.projectName) && <p className="mt-1 text-xs text-indigo-600 dark:text-indigo-300">Project: {item.projectCode || item.projectName}</p>}
                             </TableCell>
                             <TableCell className="text-right text-slate-600 dark:text-slate-300">{item.quantity}</TableCell>
                             <TableCell className="text-right font-mono text-sm text-slate-600 dark:text-slate-300 hidden sm:table-cell">

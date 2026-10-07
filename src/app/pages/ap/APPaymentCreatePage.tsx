@@ -70,6 +70,7 @@ interface APPaymentFormData {
   bankAccountId: string;
   amountPaid: number;
   currencyCode: string;
+  exchangeRate: number;
   reference: string;
   notes: string;
 }
@@ -102,6 +103,7 @@ export default function APPaymentCreatePage() {
     bankAccountId: "",
     amountPaid: 0,
     currencyCode: "RWF",
+    exchangeRate: 1,
     reference: "",
     notes: "",
   });
@@ -133,13 +135,13 @@ export default function APPaymentCreatePage() {
       // Get GRNs for this supplier with pending balance
       const response = await grnApi.getAll({
         supplier_id: supplierId,
-        status: "received",
+        status: "confirmed",
         limit: 100,
       });
       if (response.success && Array.isArray(response.data)) {
         // Filter to only show GRNs with balance > 0
         const grnsWithBalance = (response.data as any[]).filter(
-          (grn) => parseFloat(grn.balance || grn.totalAmount) > 0,
+          (grn) => parseFloat(grn.balance ?? grn.totalAmount ?? "0") > 0,
         );
         setGRNs(grnsWithBalance as GRN[]);
       }
@@ -164,6 +166,7 @@ export default function APPaymentCreatePage() {
             bankAccountId: payment.bankAccount?._id || "",
             amountPaid: parseFloat(payment.amountPaid) || 0,
             currencyCode: payment.currencyCode || "RWF",
+            exchangeRate: Number(payment.exchangeRate) || 1,
             reference: payment.reference || "",
             notes: payment.notes || "",
           });
@@ -243,7 +246,7 @@ export default function APPaymentCreatePage() {
 
   const getGRNBalance = (grnId: string) => {
     const grn = grns.find((g) => g._id === grnId);
-    return grn ? parseFloat(grn.balance || grn.totalAmount) : 0;
+    return grn ? parseFloat(grn.balance ?? grn.totalAmount ?? "0") : 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -453,9 +456,10 @@ export default function APPaymentCreatePage() {
                       <DocumentCurrencySelect
                         value={formData.currencyCode}
                         date={formData.paymentDate}
-                        onChange={(currency) =>
-                          handleInputChange("currencyCode", currency)
-                        }
+                        onChange={(currency, rate) => {
+                          handleInputChange("currencyCode", currency);
+                          handleInputChange("exchangeRate", rate ?? 0);
+                        }}
                       />
                     </div>
 
