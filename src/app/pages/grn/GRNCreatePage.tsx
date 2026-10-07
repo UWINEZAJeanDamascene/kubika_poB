@@ -36,6 +36,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Label } from "@/app/components/ui/label";
 import { Switch } from "@/app/components/ui/switch";
 import { useTranslation } from "react-i18next";
+import { toast } from "sonner";
 
 /* ═══════════════════════════════════════════════════════════════
    TYPES
@@ -47,10 +48,11 @@ interface PurchaseOrder {
     _id: string;
     name: string;
   };
-  warehouse: {
-    _id: string;
-    name: string;
-  };
+  warehouse: string | {
+    _id?: string;
+    id?: string;
+    name?: string;
+  } | null;
   lines: Array<{
     _id: string;
     product: {
@@ -77,6 +79,7 @@ interface Warehouse {
   _id: string;
   name: string;
   code?: string;
+  isDefault?: boolean;
 }
 
 interface GRNLine {
@@ -113,7 +116,6 @@ export default function GRNCreatePage() {
   const [selectedPOId, setSelectedPOId] = useState<string>(initialPOId || "");
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [warehouseId, setWarehouseId] = useState<string>("");
-  const [supplierInvoiceNo, setSupplierInvoiceNo] = useState<string>("");
   const [referenceNo, setReferenceNo] = useState<string>("");
   const [receivedDate, setReceivedDate] = useState<string>(new Date().toISOString().split("T")[0]);
 
@@ -126,7 +128,6 @@ export default function GRNCreatePage() {
   const [freightAccount, setFreightAccount] = useState<string>("5110");
   const [freightIncludeInCost, setFreightIncludeInCost] = useState<boolean>(false);
   const [freightAllocationMethod, setFreightAllocationMethod] = useState<string>("by_value");
-  const [freightInvoiceRef, setFreightInvoiceRef] = useState<string>("");
   const [freightInvoiceDate, setFreightInvoiceDate] = useState<string>("");
   const [freightPaidBy, setFreightPaidBy] = useState<string>("company");
 
@@ -154,14 +155,23 @@ export default function GRNCreatePage() {
   const warehousesQuery = useQuery({
     queryKey: ["warehouses", "grn-receipt"],
     queryFn: async (): Promise<Warehouse[]> => {
-      const response = await warehousesApi.getAll({ limit: 100 });
-      return response.success && Array.isArray(response.data) ? response.data as Warehouse[] : [];
+      const response = await warehousesApi.getAll({ limit: 100, isActive: true });
+      if (!response.success || !Array.isArray(response.data)) {
+        throw new Error(response.message || "Failed to load active warehouses");
+      }
+      return response.data as Warehouse[];
     },
     staleTime: 0,
     gcTime: 0,
     refetchOnMount: "always",
   });
   const warehouses = warehousesQuery.data ?? [];
+  const selectedPOWarehouseId = typeof selectedPO?.warehouse === "string"
+    ? selectedPO.warehouse
+    : selectedPO?.warehouse?._id || selectedPO?.warehouse?.id || "";
+  const selectedPOWarehouseName = selectedPO?.warehouse && typeof selectedPO.warehouse !== "string"
+    ? selectedPO.warehouse.name
+    : undefined;
 
   /* ── PO select ── */
   const handlePOSelect = useCallback(async (poId: string) => {
@@ -177,7 +187,10 @@ export default function GRNCreatePage() {
       if (response.success) {
         const po = response.data as PurchaseOrder;
         setSelectedPO(po);
-        setWarehouseId(po.warehouse?._id || "");
+        const poWarehouseId = typeof po.warehouse === "string"
+          ? po.warehouse
+          : po.warehouse?._id || po.warehouse?.id || "";
+        setWarehouseId(poWarehouseId);
 
         // Pre-fill freight from PO estimate
         const poFreight = po.freight;
@@ -195,7 +208,6 @@ export default function GRNCreatePage() {
           setFreightIncludeInCost(false);
         }
         setFreightAllocationMethod("by_value");
-        setFreightInvoiceRef("");
         setFreightInvoiceDate("");
         setFreightPaidBy("company");
 
@@ -221,13 +233,24 @@ export default function GRNCreatePage() {
             };
         });
         setLines(grnLines);
+      } else {
+        toast.error("Failed to load purchase order details");
       }
     } catch (error) {
       console.error("Failed to fetch PO details:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to load purchase order details");
     } finally {
       setLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    if (!warehouseId && selectedPO && !selectedPO.warehouse && warehouses.length > 0) {
+      setWarehouseId(
+        warehouses.find((warehouse) => warehouse.isDefault)?._id || warehouses[0]._id,
+      );
+    }
+  }, [selectedPO, warehouseId, warehouses]);
 
   useEffect(() => {
     if (initialPOId) {
@@ -350,8 +373,7 @@ export default function GRNCreatePage() {
       const grnData = {
         purchaseOrderId: selectedPOId,
         warehouse: warehouseId,
-        referenceNo: referenceNo || `GRN-${Date.now()}`,
-        supplierInvoiceNo: supplierInvoiceNo || undefined,
+        referenceNo: referenceNo || undefined,
         receivedDate: receivedDate || undefined,
         lines: validLines,
         freight: {
@@ -361,7 +383,6 @@ export default function GRNCreatePage() {
           account: freightAccount || "5110",
           includeInInventoryCost: freightIncludeInCost || false,
           allocationMethod: freightAllocationMethod || "by_value",
-          invoiceReference: freightInvoiceRef || undefined,
           invoiceDate: freightInvoiceDate || undefined,
           paidBy: freightPaidBy || "company",
         },
@@ -372,9 +393,12 @@ export default function GRNCreatePage() {
         const grnId = (response.data as { _id: string })._id;
         if (confirmImmediately && grnId) await grnApi.confirm(grnId);
         navigate("/grn");
+      } else {
+        toast.error("Failed to create GRN");
       }
     } catch (error) {
       console.error("Failed to create GRN:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to create GRN");
     } finally {
       setSaving(false);
     }
@@ -579,6 +603,18 @@ export default function GRNCreatePage() {
                         <SelectValue placeholder={t("grn.selectWarehouse", "Select warehouse")} />
                       </SelectTrigger>
                       <SelectContent>
+                        {selectedPOWarehouseId && !warehouses.some((warehouse) => warehouse._id === selectedPOWarehouseId) && (
+                          <SelectItem value={selectedPOWarehouseId}>
+                            {selectedPOWarehouseName || selectedPOWarehouseId}
+                          </SelectItem>
+                        )}
+                        {warehouses.length === 0 && !selectedPOWarehouseId && (
+                          <div className="px-3 py-2 text-sm text-slate-500">
+                            {warehousesQuery.isError
+                              ? t("grn.warehouseLoadError", "Warehouses could not be loaded")
+                              : t("grn.noWarehouses", "No active warehouses available")}
+                          </div>
+                        )}
                         {warehouses.map((wh) => (
                           <SelectItem key={wh._id} value={wh._id}>
                             {wh.name}
@@ -593,7 +629,9 @@ export default function GRNCreatePage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("grn.supplierInvoiceNo", "Supplier Invoice No")}</Label>
-                    <Input value={supplierInvoiceNo} onChange={(e) => setSupplierInvoiceNo(e.target.value)} placeholder={t("grn.supplierInvoicePlaceholder", "Enter invoice number")} className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                    <p className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      {t("grn.generatedOnSave", "Generated automatically when the GRN is saved")}
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -633,7 +671,9 @@ export default function GRNCreatePage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("grn.freightInvoiceRef", "Freight invoice reference")}</Label>
-                    <Input value={freightInvoiceRef} onChange={(e) => setFreightInvoiceRef(e.target.value)} placeholder={t("grn.freightInvoiceRefPlaceholder", "Transporter invoice number")} className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                    <p className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                      {t("grn.generatedOnSave", "Generated automatically when the GRN is saved")}
+                    </p>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("grn.freightInvoiceDate", "Freight invoice date")}</Label>
