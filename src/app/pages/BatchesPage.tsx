@@ -24,6 +24,7 @@ import {
   Boxes,
 } from 'lucide-react';
 import { EmptyState } from '@/app/components/EmptyState';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { stockBatchApi, StockBatch, warehousesApi, productsApi } from '@/lib/api';
 import { Layout } from '../layout/Layout';
 
@@ -41,6 +42,7 @@ interface Warehouse {
 
 export default function BatchesPage() {
   const { t } = useTranslation();
+  const { baseCurrency, formatCurrency } = useCurrency();
   const [batches, setBatches] = useState<StockBatch[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -258,7 +260,7 @@ export default function BatchesPage() {
             {[
               [t('common.batches.batchesInView'), total.toLocaleString(), t('common.batches.loadedCount', { count: batches.length })],
               [t('common.batches.quantityOnHand'), totalQty.toLocaleString(undefined, { maximumFractionDigits: 2 }), t('common.batches.acrossFilters')],
-              [t('common.batches.batchValue'), `$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, t('common.batches.qtyTimesCost')],
+              [t('common.batches.batchValue'), formatCurrency(totalValue, baseCurrency), t('common.batches.qtyTimesCost')],
               [t('common.batches.expiryQuarantineRisk'), `${expiryRiskCount + quarantinedCount}`, t('common.batches.expiryQuarantineDetail', { expiry: expiryRiskCount, quarantine: quarantinedCount })],
             ].map(([label, value, sub]) => (
               <Paper key={label} sx={{ p: 2.75, backgroundColor: dark ? '#111827' : 'white', border: `1px solid ${dark ? '#334155' : '#e2e8f0'}`, boxShadow: 'none', borderRadius: 2 }}>
@@ -424,7 +426,7 @@ export default function BatchesPage() {
                         <div className="rounded-md bg-slate-50 p-3 dark:bg-slate-900">
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">On Hand</p>
                           <p className="mt-1 text-xl font-black text-slate-950 dark:text-white">{toNum(batch.qtyOnHand).toLocaleString(undefined, { maximumFractionDigits: 2 })}</p>
-                          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">${toNum(batch.unitCost).toFixed(6)} unit cost</p>
+                          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">{formatCurrency(toNum(batch.unitCost), baseCurrency)} unit cost</p>
                         </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Expiry</p>
@@ -439,7 +441,7 @@ export default function BatchesPage() {
                         <div className="flex items-center justify-between gap-4 lg:flex-col lg:items-end">
                           <div className="text-left lg:text-right">
                             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Value</p>
-                            <p className="mt-1 font-mono text-sm font-bold text-slate-950 dark:text-white">${batchValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                            <p className="mt-1 font-mono text-sm font-bold text-slate-950 dark:text-white">{formatCurrency(batchValue, baseCurrency)}</p>
                           </div>
                           <IconButton
                             size="small"
