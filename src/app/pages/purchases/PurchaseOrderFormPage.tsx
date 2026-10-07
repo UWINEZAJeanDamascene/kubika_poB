@@ -45,6 +45,7 @@ import { Label } from '@/app/components/ui/label';
 import { Switch } from '@/app/components/ui/switch';
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Supplier {
   _id: string;
@@ -115,8 +116,10 @@ interface PurchaseOrderFormData {
 export default function PurchaseOrderFormPage() {
   const { t } = useTranslation();
   const { baseCurrency } = useCurrency();
+  const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
+  const canCreateGrn = hasPermission('grn:create');
   const isEdit = !!id;
 
   const [loading, setLoading] = useState(false);
@@ -515,16 +518,29 @@ export default function PurchaseOrderFormPage() {
       }
 
       // If submit for approval, call the approve endpoint separately
+      let approvedPoId: string | undefined;
       if (submitForApproval && savedPoId) {
-        await purchaseOrdersApi.approve(savedPoId, sendEmail);
+        const response = await purchaseOrdersApi.approve(savedPoId, sendEmail);
+        if (!response.success) {
+          throw new Error('Failed to approve purchase order');
+        }
+        approvedPoId = savedPoId;
       }
 
       // If saving as draft with email option, send email (creates as approved)
       if (!submitForApproval && sendEmail && savedPoId && !isEdit) {
-        await purchaseOrdersApi.approve(savedPoId, true);
+        const response = await purchaseOrdersApi.approve(savedPoId, true);
+        if (!response.success) {
+          throw new Error('Failed to approve purchase order');
+        }
+        approvedPoId = savedPoId;
       }
 
-      navigate('/purchase-orders');
+      if (approvedPoId && canCreateGrn) {
+        navigate('/grn/new', { state: { purchaseOrderId: approvedPoId } });
+      } else {
+        navigate('/purchase-orders');
+      }
     } catch (error) {
       console.error('Failed to save purchase order:', error);
     } finally {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
-import { purchaseReturnsApi, grnApi, warehousesApi } from "@/lib/api";
+import { purchaseReturnsApi, grnApi } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
 import {
   ArrowLeft,
@@ -58,17 +58,15 @@ interface GRN {
       _id: string;
       name: string;
       sku: string;
+      trackingType?: string;
     };
     qtyReceived: number;
     unitCost: number;
     taxRate: number;
+    qtyPreviouslyReturned?: number;
+    qtyReturnable?: number;
+    returnableSerialNumbers?: string[];
   }>;
-}
-
-interface Warehouse {
-  _id: string;
-  name: string;
-  code?: string;
 }
 
 interface ReturnLine {
@@ -79,7 +77,11 @@ interface ReturnLine {
   qtyReceived: number;
   qtyPreviouslyReturned: number;
   qtyToReturn: number;
+  trackingType: string;
+  returnableSerialNumbers: string[];
+  serialNumbersToReturn: string[];
   unitCost: number;
+  taxRate: number;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -94,11 +96,9 @@ export default function PurchaseReturnCreatePage() {
   const [grnFetchError, setGrnFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [grns, setGrns] = useState<GRN[]>([]);
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
 
   const [selectedGRNId, setSelectedGRNId] = useState<string>("");
   const [selectedGRN, setSelectedGRN] = useState<GRN | null>(null);
-  const [warehouseId, setWarehouseId] = useState<string>("");
   const [referenceNo, setReferenceNo] = useState<string>("");
   const [returnDate, setReturnDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [reason, setReason] = useState<string>("");
@@ -136,21 +136,9 @@ export default function PurchaseReturnCreatePage() {
     }
   }, []);
 
-  const fetchWarehouses = useCallback(async () => {
-    try {
-      const response = await warehousesApi.getAll({ limit: 100 });
-      if (response.success && response.data) {
-        setWarehouses((Array.isArray(response.data) ? response.data : (response.data as unknown[])) as Warehouse[]);
-      }
-    } catch (error) {
-      console.error("[PurchaseReturnCreatePage] Error fetching warehouses:", error);
-    }
-  }, []);
-
   useEffect(() => {
     fetchGRNs();
-    fetchWarehouses();
-  }, [fetchGRNs, fetchWarehouses]);
+  }, [fetchGRNs]);
 
   /* ── GRN select ── */
   const handleGRNSelect = async (grnId: string) => {
@@ -166,11 +154,6 @@ export default function PurchaseReturnCreatePage() {
       if (response.success) {
         const grn = response.data as GRN;
         setSelectedGRN(grn);
-        const whId =
-          typeof grn.warehouse === "object"
-            ? grn.warehouse?._id
-            : (grn.warehouse as unknown as string) || "";
-        setWarehouseId(whId || "");
         const returnLines: ReturnLine[] = (grn.lines || []).map((line: any) => {
           const productId =
             typeof line.product === "object"
@@ -182,9 +165,13 @@ export default function PurchaseReturnCreatePage() {
             productName: typeof line.product === "object" ? line.product?.name : undefined,
             productSku: typeof line.product === "object" ? line.product?.sku : undefined,
             qtyReceived: Number(line.qtyReceived) || 0,
-            qtyPreviouslyReturned: 0,
+            qtyPreviouslyReturned: Number(line.qtyPreviouslyReturned) || 0,
             qtyToReturn: 0,
+            trackingType: typeof line.product === "object" ? line.product?.trackingType || "none" : "none",
+            returnableSerialNumbers: Array.isArray(line.returnableSerialNumbers) ? line.returnableSerialNumbers : [],
+            serialNumbersToReturn: [],
             unitCost: Number(line.unitCost) || 0,
+            taxRate: Number(line.taxRate) || 0,
           };
         });
         setLines(returnLines);
@@ -198,17 +185,60 @@ export default function PurchaseReturnCreatePage() {
 
   const handleLineChange = (index: number, qtyToReturn: number) => {
     const newLines = [...lines];
+    if (newLines[index].trackingType === "serial") return;
     const availableQty = newLines[index].qtyReceived - newLines[index].qtyPreviouslyReturned;
     newLines[index].qtyToReturn = Math.max(0, Math.min(qtyToReturn, availableQty));
     setLines(newLines);
   };
 
+  const handleSerialSelection = (index: number, serialNumber: string, selected: boolean) => {
+    const newLines = [...lines];
+    const line = newLines[index];
+    const selectedSerials = new Set(line.serialNumbersToReturn);
+    if (selected) selectedSerials.add(serialNumber);
+    else selectedSerials.delete(serialNumber);
+    line.serialNumbersToReturn = [...selectedSerials];
+    line.qtyToReturn = line.serialNumbersToReturn.length;
+    setLines(newLines);
+  };
+
+  const renderSerialSelector = (line: ReturnLine, index: number) => {
+    if (line.trackingType !== "serial") return null;
+    return (
+      <fieldset className="mt-3 rounded-md border border-slate-200 p-3 dark:border-slate-700">
+        <legend className="px-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+          {line.productName}: {t("purchaseReturn.serialNumbers", "Select serial numbers")}
+        </legend>
+        {line.returnableSerialNumbers.length === 0 ? (
+          <p className="text-xs text-slate-500">{t("purchaseReturn.noSerialsAvailable", "No source serial numbers are currently available to return.")}</p>
+        ) : (
+          <div className="grid max-h-36 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
+            {line.returnableSerialNumbers.map((serialNumber) => (
+              <label key={serialNumber} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={line.serialNumbersToReturn.includes(serialNumber)}
+                  onChange={(event) => handleSerialSelection(index, serialNumber, event.target.checked)}
+                />
+                <span className="font-mono">{serialNumber}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </fieldset>
+    );
+  };
+
   const calculateSubtotal = () => lines.reduce((sum, line) => sum + line.qtyToReturn * line.unitCost, 0);
-  const calculateTotal = () => calculateSubtotal();
+  const calculateTax = () => lines.reduce((sum, line) => {
+    const lineNet = line.qtyToReturn * line.unitCost;
+    return sum + Math.round((lineNet * line.taxRate / 100 + Number.EPSILON) * 100) / 100;
+  }, 0);
+  const calculateTotal = () => calculateSubtotal() + calculateTax();
   const validLinesCount = lines.filter((l) => l.qtyToReturn > 0).length;
 
   const handleSave = async (confirmImmediately = false) => {
-    if (!selectedGRNId || !warehouseId || !reason) return;
+    if (!selectedGRNId || !reason.trim()) return;
 
     setSaving(true);
     try {
@@ -216,9 +246,8 @@ export default function PurchaseReturnCreatePage() {
         .filter((line) => line.qtyToReturn > 0)
         .map((line) => ({
           grnLine: line.grnLine,
-          product: line.product,
           qtyReturned: line.qtyToReturn,
-          unitCost: line.unitCost,
+          ...(line.trackingType === "serial" ? { serialNumbers: line.serialNumbersToReturn } : {}),
         }));
 
       if (validLines.length === 0) {
@@ -233,10 +262,8 @@ export default function PurchaseReturnCreatePage() {
       }
 
       const returnData = {
-        referenceNo: referenceNo || `PRN-${Date.now()}`,
+        ...(referenceNo.trim() ? { referenceNo: referenceNo.trim() } : {}),
         grn: selectedGRNId,
-        supplier: selectedGRN?.supplier?._id,
-        warehouse: warehouseId,
         returnDate,
         reason,
         supplierCreditNoteNo: supplierCreditNoteNo || undefined,
@@ -364,8 +391,11 @@ export default function PurchaseReturnCreatePage() {
                           </dl>
                           <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">
                             <label className="text-xs text-slate-500">{t("purchaseReturn.qtyToReturn", "Quantity to return")}</label>
-                            <Input type="number" min={0} max={availableQty} value={line.qtyToReturn} onChange={(e) => handleLineChange(index, parseFloat(e.target.value) || 0)} className="h-9 w-28 text-right" disabled={availableQty <= 0} />
+                            {line.trackingType === "serial"
+                              ? <span className="text-sm font-medium">{line.qtyToReturn}</span>
+                              : <Input type="number" min={0} max={availableQty} value={line.qtyToReturn} onChange={(e) => handleLineChange(index, parseFloat(e.target.value) || 0)} className="h-9 w-28 text-right" disabled={availableQty <= 0} />}
                           </div>
+                          {renderSerialSelector(line, index)}
                           <p className="mt-2 text-right text-sm font-semibold">{(line.qtyToReturn * line.unitCost).toFixed(2)}</p>
                         </article>;
                       })}
@@ -396,15 +426,17 @@ export default function PurchaseReturnCreatePage() {
                                 <TableCell className="text-right text-slate-600 dark:text-slate-300">{line.qtyPreviouslyReturned}</TableCell>
                                 <TableCell className="text-right text-slate-600 dark:text-slate-300">{availableQty}</TableCell>
                                 <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    max={availableQty}
-                                    value={line.qtyToReturn}
-                                    onChange={(e) => handleLineChange(index, parseFloat(e.target.value) || 0)}
-                                    className="w-16 text-right text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
-                                    disabled={availableQty <= 0}
-                                  />
+                                  {line.trackingType === "serial"
+                                    ? line.qtyToReturn
+                                    : <Input
+                                      type="number"
+                                      min={0}
+                                      max={availableQty}
+                                      value={line.qtyToReturn}
+                                      onChange={(e) => handleLineChange(index, parseFloat(e.target.value) || 0)}
+                                      className="w-16 text-right text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                      disabled={availableQty <= 0}
+                                    />}
                                 </TableCell>
                                 <TableCell className="text-right font-mono text-slate-600 dark:text-slate-300">{line.unitCost.toFixed(2)}</TableCell>
                                 <TableCell className="text-right font-medium text-slate-900 dark:text-white">{(line.qtyToReturn * line.unitCost).toFixed(2)}</TableCell>
@@ -413,6 +445,7 @@ export default function PurchaseReturnCreatePage() {
                           })}
                         </TableBody>
                       </Table>
+                      {lines.map((line, index) => renderSerialSelector(line, index))}
                     </div>
                   </CardContent>
                 </Card>
@@ -443,16 +476,9 @@ export default function PurchaseReturnCreatePage() {
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("purchaseReturn.warehouse", "Warehouse")}</Label>
-                    <Select value={warehouseId || undefined} onValueChange={setWarehouseId}>
-                      <SelectTrigger className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                        <SelectValue placeholder={t("purchaseReturn.selectWarehouse", "Select warehouse")} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {warehouses.map((wh) => (
-                          <SelectItem key={wh._id} value={wh._id}>{wh.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <p className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
+                      {selectedGRN?.warehouse?.name || t("purchaseReturn.selectGRNPlaceholder", "Select a confirmed GRN...")}
+                    </p>
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("purchaseReturn.returnDate", "Return Date")}</Label>
@@ -482,6 +508,10 @@ export default function PurchaseReturnCreatePage() {
                     <div className="flex justify-between text-slate-600 dark:text-slate-300">
                       <span>{t("purchaseReturn.subtotal", "Subtotal")}</span>
                       <span className="font-medium text-slate-900 dark:text-white">${calculateSubtotal().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                      <span>{t("purchaseReturn.tax", "Tax reversal")}</span>
+                      <span className="font-medium text-slate-900 dark:text-white">${calculateTax().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900 dark:border-slate-700 dark:text-white">
                       <span>{t("purchaseReturn.total", "Total")}</span>

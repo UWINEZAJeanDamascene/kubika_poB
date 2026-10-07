@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useLocation } from "react-router";
 import { grnApi, purchaseOrdersApi, warehousesApi } from "@/lib/api";
@@ -164,7 +164,7 @@ export default function GRNCreatePage() {
   const warehouses = warehousesQuery.data ?? [];
 
   /* ── PO select ── */
-  const handlePOSelect = async (poId: string) => {
+  const handlePOSelect = useCallback(async (poId: string) => {
     setSelectedPOId(poId);
     if (!poId) {
       setSelectedPO(null);
@@ -227,7 +227,13 @@ export default function GRNCreatePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (initialPOId) {
+      void handlePOSelect(initialPOId);
+    }
+  }, [initialPOId, handlePOSelect]);
 
   /* ── Serial parsing ── */
   const parseSerialNumbers = (input: string): string[] => {

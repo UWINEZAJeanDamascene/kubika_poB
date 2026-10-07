@@ -118,6 +118,7 @@ export default function PurchaseOrdersListPage() {
   const canCreatePurchaseOrder = hasPermission('purchase_orders:create');
   const canUpdatePurchaseOrder = hasPermission('purchase_orders:update');
   const canApprovePurchaseOrder = hasPermission('purchase_orders:approve');
+  const canCreateGrn = hasPermission('grn:create');
   const canCancelPurchaseOrder =
     hasPermission('purchase_orders:delete') ||
     hasPermission('purchase_orders:update');
@@ -239,7 +240,18 @@ export default function PurchaseOrdersListPage() {
   // restores the previous list so the UI never claims an approval the server
   // did not accept.
   const approvePoMutation = useMutation({
-    mutationFn: (id: string) => purchaseOrdersApi.approve(id),
+    mutationFn: async (id: string) => {
+      const response = await purchaseOrdersApi.approve(id);
+      if (!response.success) {
+        throw new Error('Failed to approve purchase order');
+      }
+      return response;
+    },
+    onSuccess: (_response, id) => {
+      if (canCreateGrn) {
+        navigate('/grn/new', { state: { purchaseOrderId: id } });
+      }
+    },
     onMutate: async (id: string) => {
       await queryClient.cancelQueries({ queryKey: ['purchaseOrders'] });
       const previous = queryClient.getQueriesData({ queryKey: ['purchaseOrders'] });

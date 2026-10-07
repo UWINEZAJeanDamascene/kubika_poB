@@ -236,8 +236,15 @@ export default function PurchaseOrderDetailPage() {
     if (!id || !canApprovePurchaseOrder) return;
     setActionLoading(true);
     try {
-      await purchaseOrdersApi.approve(id, sendEmailApprove);
-      fetchPurchaseOrder();
+      const response = await purchaseOrdersApi.approve(id, sendEmailApprove);
+      if (!response.success) {
+        throw new Error('Failed to approve purchase order');
+      }
+      if (canCreateGrn) {
+        navigate('/grn/new', { state: { purchaseOrderId: id } });
+      } else {
+        fetchPurchaseOrder();
+      }
     } catch (error) {
       console.error('Failed to approve:', error);
     } finally {

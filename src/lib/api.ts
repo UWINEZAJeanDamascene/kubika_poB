@@ -3374,17 +3374,15 @@ export const purchaseReturnsApi = {
       `/stock/advanced/purchase-returns/${id}`,
     ),
   create: (data: {
-    referenceNo: string;
+    referenceNo?: string;
     grn: string;
-    supplier: string;
-    warehouse: string;
     reason: string;
+    returnDate?: string;
     supplierCreditNoteNo?: string;
     lines: Array<{
       grnLine: string;
-      product: string;
       qtyReturned: number;
-      unitCost: number;
+      serialNumbers?: string[];
     }>;
   }, sendEmail?: boolean) =>
     request<{ success: boolean; data: unknown }>(
@@ -13100,5 +13098,3 @@ export const projectsApi = {
       };
     }>("/projects/statistics"),
 };
-
-

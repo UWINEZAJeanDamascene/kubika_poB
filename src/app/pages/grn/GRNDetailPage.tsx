@@ -88,6 +88,7 @@ interface GRNDetail {
     };
     qtyReceived: number;
     unitCost: number;
+    landedUnitCost?: number | null;
     taxRate: number;
     lineTotal: number;
   }>;
@@ -218,10 +219,7 @@ export default function GRNDetailPage() {
   const calculateTotal = () => {
     let total = calculateSubtotal() + calculateTax();
     const freightAmt = Number(grn?.freight?.actualAmount) || 0;
-    const freightAbsorbed = grn?.freight?.includeInInventoryCost;
-    if (freightAmt > 0 && !freightAbsorbed) {
-      total += freightAmt;
-    }
+    total += freightAmt;
     return total;
   };
 
@@ -403,7 +401,7 @@ export default function GRNDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 xl:hidden">
-                    {grn.lines?.map((line, index) => <article key={index} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="text-sm font-semibold text-slate-900 dark:text-white">{line.product?.name || '-'}</h3><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{line.product?.sku || '-'}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.qtyReceived', 'Received')}</dt><dd className="mt-0.5">{line.qtyReceived}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.unitCost', 'Unit Cost')}</dt><dd className="mt-0.5 font-mono">{formatCurrency(line.unitCost)}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.taxRate', 'Tax %')}</dt><dd className="mt-0.5">{line.taxRate}%</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.lineTotal', 'Total')}</dt><dd className="mt-0.5 font-semibold">{formatCurrency(toNum(line.qtyReceived) * toNum(line.unitCost))}</dd></div></dl></article>)}
+                    {grn.lines?.map((line, index) => <article key={index} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="text-sm font-semibold text-slate-900 dark:text-white">{line.product?.name || '-'}</h3><p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{line.product?.sku || '-'}</p><dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.qtyReceived', 'Received')}</dt><dd className="mt-0.5">{line.qtyReceived}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.unitCost', 'Supplier unit cost')}</dt><dd className="mt-0.5 font-mono">{formatCurrency(line.unitCost)}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.landedUnitCost', 'Landed unit cost')}</dt><dd className="mt-0.5 font-mono">{formatCurrency(line.landedUnitCost ?? line.unitCost)}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.taxRate', 'Tax %')}</dt><dd className="mt-0.5">{line.taxRate}%</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('grn.lineTotal', 'Goods subtotal')}</dt><dd className="mt-0.5 font-semibold">{formatCurrency(toNum(line.qtyReceived) * toNum(line.unitCost))}</dd></div></dl></article>)}
                   </div>
                   <div className="hidden overflow-x-auto xl:block">
                     <Table>
@@ -412,6 +410,7 @@ export default function GRNDetailPage() {
                           <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("grn.product", "Product")}</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("grn.qtyReceived", "Received")}</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("grn.unitCost", "Unit")}</TableHead>
+                          <TableHead className="text-right text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("grn.landedUnitCost", "Landed unit")}</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("grn.taxRate", "Tax %")}</TableHead>
                           <TableHead className="text-right text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("grn.lineTotal", "Total")}</TableHead>
                         </TableRow>
@@ -425,6 +424,7 @@ export default function GRNDetailPage() {
                             </TableCell>
                             <TableCell className="text-right text-slate-600 dark:text-slate-300">{line.qtyReceived}</TableCell>
                             <TableCell className="text-right font-mono text-slate-600 dark:text-slate-300">{formatCurrency(line.unitCost)}</TableCell>
+                            <TableCell className="text-right font-mono text-slate-600 dark:text-slate-300">{formatCurrency(line.landedUnitCost ?? line.unitCost)}</TableCell>
                             <TableCell className="text-right text-slate-600 dark:text-slate-300">{line.taxRate}%</TableCell>
                             <TableCell className="text-right font-medium text-slate-900 dark:text-white">{formatCurrency(toNum(line.qtyReceived) * toNum(line.unitCost))}</TableCell>
                           </TableRow>
@@ -543,7 +543,7 @@ export default function GRNDetailPage() {
                       <span>{t("grn.tax", "Tax")}</span>
                       <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(calculateTax())}</span>
                     </div>
-                    {grn?.freight && Number(grn.freight.actualAmount) > 0 && !grn.freight.includeInInventoryCost && (
+                    {grn?.freight && Number(grn.freight.actualAmount) > 0 && (
                       <div className="flex justify-between text-slate-600 dark:text-slate-300">
                         <span>{t("grn.freight", "Freight")}</span>
                         <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(grn.freight.actualAmount)}</span>
