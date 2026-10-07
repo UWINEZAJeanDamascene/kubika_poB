@@ -1756,6 +1756,20 @@
   min-width: 0;
 }
 
+@media (min-width: 1920px) {
+  .app-page-scroll :is(
+    .max-w-6xl,
+    .max-w-7xl,
+    .max-w-screen-2xl,
+    [class~="max-w-[1400px]"],
+    [class~="max-w-[1600px]"],
+    [class~="max-w-[1800px]"],
+    [class~="max-w-[2000px]"]
+  ) {
+    max-width: 2200px !important;
+  }
+}
+
 /* Legacy page roots should fill the shell's available scroll height rather
    than add the browser viewport height on top of the app bars. */
 .app-page-scroll .min-h-screen {

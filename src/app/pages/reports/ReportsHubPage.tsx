@@ -371,7 +371,7 @@ export default function ReportsHubPage() {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 min-[2200px]:grid-cols-5">
             {reportCategories.map((category) => {
               const Icon = category.icon;
 
