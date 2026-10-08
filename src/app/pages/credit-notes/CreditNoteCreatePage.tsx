@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { creditNotesApi, invoicesApi, warehousesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCompany } from '@/hooks/useCompany';
@@ -117,6 +117,9 @@ export default function CreditNoteCreatePage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const preselectedInvoiceId = searchParams.get('invoice') || '';
+  const preselectedReason = searchParams.get('reason') || '';
   const isEdit = !!id;
   const { currency: companyCurrency } = useCompany();
 
@@ -245,7 +248,7 @@ export default function CreditNoteCreatePage() {
     }
   }, [id, fetchCreditNote]);
 
-  const handleInvoiceSelect = async (invoiceId: string) => {
+  const handleInvoiceSelect = useCallback(async (invoiceId: string) => {
     setSelectedInvoice(invoiceId);
     if (!invoiceId) {
       setLines([]);
@@ -275,7 +278,14 @@ export default function CreditNoteCreatePage() {
     }));
 
     setLines(creditNoteLines);
-  };
+  }, [invoices]);
+
+  useEffect(() => {
+    if (isEdit || !preselectedInvoiceId || !invoices.length) return;
+    if (!invoices.some((invoice) => invoice._id === preselectedInvoiceId)) return;
+    setReason(preselectedReason);
+    void handleInvoiceSelect(preselectedInvoiceId);
+  }, [handleInvoiceSelect, invoices, isEdit, preselectedInvoiceId, preselectedReason]);
 
   const handleLineChange = (index: number, field: string, value: any) => {
     const updatedLines = [...lines];

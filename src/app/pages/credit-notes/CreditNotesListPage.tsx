@@ -117,7 +117,6 @@ export default function CreditNotesListPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState('');
   const [createReason, setCreateReason] = useState('');
-  const [creating, setCreating] = useState(false);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -306,31 +305,17 @@ export default function CreditNotesListPage() {
     return true;
   });
 
-  const handleCreateCreditNote = async () => {
+  const handleCreateCreditNote = () => {
     if (!selectedInvoice || !createReason.trim()) return;
-    
-    setCreating(true);
-    try {
-      const response = await creditNotesApi.create({
-        invoice: selectedInvoice,
-        creditDate: new Date().toISOString(),
-        type: 'goods_return',
-        reason: createReason.trim()
-      });
-      
-      if (response.success && response.data) {
-        const newCreditNote = response.data as CreditNote;
-        navigate(`/credit-notes/${newCreditNote._id}/edit`);
-      }
-    } catch (error: any) {
-      console.error('Failed to create credit note:', error);
-      toast.error(error?.message || 'Failed to create credit note');
-    } finally {
-      setCreating(false);
-      setShowCreateModal(false);
-      setCreateReason('');
-      setSelectedInvoice('');
-    }
+
+    const params = new URLSearchParams({
+      invoice: selectedInvoice,
+      reason: createReason.trim(),
+    });
+    setShowCreateModal(false);
+    setCreateReason('');
+    setSelectedInvoice('');
+    navigate(`/credit-notes/new?${params.toString()}`);
   };
 
   const handleExport = async () => {
@@ -744,8 +729,8 @@ export default function CreditNotesListPage() {
             <Button variant="outline" size="sm" onClick={() => { setShowCreateModal(false); setCreateReason(''); setSelectedInvoice(''); }} className="dark:border-slate-700 dark:text-slate-200">
               <X className="mr-1.5 h-4 w-4" /> Cancel
             </Button>
-            <Button size="sm" onClick={handleCreateCreditNote} disabled={!selectedInvoice || !createReason.trim() || creating} className="bg-violet-600 hover:bg-violet-700">
-              {creating ? 'Creating...' : 'Create'}
+            <Button size="sm" onClick={handleCreateCreditNote} disabled={!selectedInvoice || !createReason.trim()} className="bg-violet-600 hover:bg-violet-700">
+              Create
             </Button>
           </DialogFooter>
         </DialogContent>
