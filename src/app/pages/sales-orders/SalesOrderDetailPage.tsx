@@ -160,7 +160,7 @@ export default function SalesOrderDetailPage() {
       const response = await salesOrdersApi.confirm(id!, sendEmail);
       if (response.success) {
         toast.success('Sales order confirmed successfully');
-        fetchSalesOrder();
+        navigate(`/pick-packs/create?salesOrderId=${encodeURIComponent(id!)}`);
       }
     } catch (error: any) {
       console.error('Error confirming sales order:', error);

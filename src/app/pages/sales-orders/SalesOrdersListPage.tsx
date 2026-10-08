@@ -188,7 +188,10 @@ export default function SalesOrdersListPage() {
       const response = await salesOrdersApi.confirm(pendingOrderId);
       if (response.success) {
         toast.success(t('salesOrders.confirmSuccess', 'Sales order confirmed successfully'));
-        await queryClient.invalidateQueries({ queryKey: ['sales-orders'] });
+        navigate(`/pick-packs/create?salesOrderId=${encodeURIComponent(pendingOrderId)}`);
+        void queryClient.invalidateQueries({ queryKey: ['sales-orders'] }).catch((error) => {
+          console.error('Error refreshing sales orders after confirmation:', error);
+        });
       }
     } catch (error) {
       console.error('Error confirming sales order:', error);
