@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { creditNotesApi, invoicesApi, warehousesApi, serialNumberApi, stockBatchApi } from '@/lib/api';
+import { creditNotesApi, invoicesApi, warehousesApi, serialNumberApi, stockBatchApi, deliveryNotesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
@@ -210,7 +210,7 @@ function CreditNoteSerialSelector({
         ))}
       </select>
       <label className="block space-y-1 text-xs text-slate-600 dark:text-slate-300">
-        If the sold serial record is missing, enter the physical serial number(s), one per line. Confirming the credit note restores missing serial records to stock.
+        Serials from confirmed delivery notes are preselected when their stock records are available. If a sold serial record is missing, enter the physical serial number(s), one per line; confirming the credit note restores missing records to stock.
         <textarea
           rows={Math.min(Math.max(quantity, 2), 4)}
           value={manuallyEnteredSerials.join('\n')}
@@ -468,23 +468,80 @@ export default function CreditNoteCreatePage() {
       return;
     }
 
-    const invoice = invoices.find(inv => inv._id === invoiceId);
-    if (invoice?.lines?.length) {
-      setLines(mapInvoiceLines(invoice));
-      return;
-    }
-
     try {
-      const response = await invoicesApi.getById(invoiceId, { refresh: true });
-      const invoiceData = response.data as Invoice | undefined;
-      if (!response.success || !invoiceData || !Array.isArray(invoiceData.lines)) {
-        throw new Error('The selected invoice could not be loaded with its line items.');
+      let invoice = invoices.find(inv => inv._id === invoiceId);
+      if (!invoice?.lines?.length) {
+        const response = await invoicesApi.getById(invoiceId, { refresh: true });
+        const fetchedInvoice = response.data as Invoice | undefined;
+        if (!response.success || !fetchedInvoice || !Array.isArray(fetchedInvoice.lines)) {
+          throw new Error('The selected invoice could not be loaded with its line items.');
+        }
+        invoice = fetchedInvoice;
       }
-      setLines(mapInvoiceLines(invoiceData));
+
+      let invoiceLines = mapInvoiceLines(invoice);
+      const serialProductIds = [...new Set(
+        invoiceLines
+          .filter((line) => line.product.trackingType === 'serial')
+          .map((line) => line.product._id)
+          .filter(Boolean),
+      )];
+      if (serialProductIds.length === 0) {
+        setLines(invoiceLines);
+        return;
+      }
+
+      const deliveryNotesResponse = await deliveryNotesApi.getForInvoice(invoiceId);
+      if (!deliveryNotesResponse.success) {
+        throw new Error('Could not load the delivery history for the selected invoice.');
+      }
+
+      const serialIdsByInvoiceLine = new Map<string, string[]>();
+      for (const deliveryNote of deliveryNotesResponse.data || []) {
+        if (!['confirmed', 'delivered'].includes(String(deliveryNote.status || '').toLowerCase())) continue;
+        for (const deliveryLine of deliveryNote.lines || []) {
+          const invoiceLineId = deliveryLine.invoiceLineId;
+          if (!invoiceLineId || !Array.isArray(deliveryLine.serialNumbers)) continue;
+          const serialIds = serialIdsByInvoiceLine.get(invoiceLineId) || [];
+          serialIds.push(...deliveryLine.serialNumbers.map(String));
+          serialIdsByInvoiceLine.set(invoiceLineId, serialIds);
+        }
+      }
+
+      const dispatchedByProduct = new Map<string, Map<string, string>>();
+      await Promise.all(serialProductIds.map(async (productId) => {
+        const response = await serialNumberApi.getDispatchedForReturn(productId);
+        if (!response.success) throw new Error(`Could not load dispatched serials for product ${productId}.`);
+        const serialIdsByReference = new Map<string, string>();
+        for (const serial of response.data) {
+          serialIdsByReference.set(serial._id.toLowerCase(), serial._id);
+          const serialNumber = serial.serialNo || serial.serialNumber;
+          if (serialNumber) serialIdsByReference.set(serialNumber.toLowerCase(), serial._id);
+        }
+        dispatchedByProduct.set(productId, serialIdsByReference);
+      }));
+
+      invoiceLines = invoiceLines.map((line) => {
+        if (line.product.trackingType !== 'serial') return line;
+        const deliveredSerialIds = [
+          ...(line.serialNumbers || []),
+          ...(serialIdsByInvoiceLine.get(line.invoiceLineId) || []),
+        ];
+        const availableSerialIds = dispatchedByProduct.get(line.product._id) || new Map<string, string>();
+        return {
+          ...line,
+          serialNumbers: [...new Set(deliveredSerialIds)]
+            .map((serialReference) => availableSerialIds.get(serialReference.toLowerCase()))
+            .filter((serialId): serialId is string => Boolean(serialId)),
+        };
+      });
+      setLines(invoiceLines);
     } catch (error) {
-      console.error('[CreditNoteCreate] Failed to load selected invoice lines:', error);
-      setLines([]);
-      toast.error(error instanceof Error ? error.message : 'Failed to load selected invoice lines.');
+      console.error('[CreditNoteCreate] Failed to load invoice or sold serial history:', error);
+      const invoice = invoices.find(inv => inv._id === invoiceId);
+      if (invoice?.lines?.length) setLines(mapInvoiceLines(invoice));
+      else setLines([]);
+      toast.error(error instanceof Error ? error.message : 'Failed to load invoice delivery history.');
     }
   }, [invoices]);
 

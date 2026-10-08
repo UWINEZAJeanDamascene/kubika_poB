@@ -2851,6 +2851,18 @@ export const quotationsApi = {
 
 // Delivery Notes API
 export const deliveryNotesApi = {
+  getForInvoice: (invoiceId: string) =>
+    request<{
+      success: boolean;
+      data: Array<{
+        status?: string;
+        lines?: Array<{
+          invoiceLineId?: string;
+          product?: string | { _id?: string; id?: string };
+          serialNumbers?: string[];
+        }>;
+      }>;
+    }>(`/delivery-notes/invoice/${invoiceId}`),
   getAll: (params?: {
     clientId?: string;
     status?: string;
