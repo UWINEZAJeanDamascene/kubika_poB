@@ -89,7 +89,12 @@ export default function SupplierDetailPage() {
   const [loading, setLoading] = useState(true);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [purchasesLoading, setPurchasesLoading] = useState(false);
-  const [purchaseSummary, setPurchaseSummary] = useState({ totalAmount: 0, totalQuantity: 0, totalPurchases: 0 });
+  const [purchaseSummary, setPurchaseSummary] = useState<{
+    totalAmount: number;
+    totalQuantity: number;
+    totalPurchases: number;
+    lastPurchaseDate?: string | null;
+  }>({ totalAmount: 0, totalQuantity: 0, totalPurchases: 0 });
 
   useEffect(() => {
     if (id) {
@@ -379,14 +384,24 @@ export default function SupplierDetailPage() {
               value={supplier.productsSupplied?.length || 0}
               icon={<Boxes className="h-5 w-5" />}
               tone="emerald"
-              subtitle={t('suppliers.activeCatalog', 'Active catalog items')}
+              subtitle={t('suppliers.activeCatalog', '{{count}} catalog items', {
+                count: supplier.productsSupplied?.length || 0,
+              })}
             />
             <MetricTile
               title={t('suppliers.lastPurchase', 'Last Purchase')}
-              value={supplier.lastPurchaseDate ? formatDate(supplier.lastPurchaseDate) : '-'}
+              value={
+                supplier.lastPurchaseDate || purchaseSummary.lastPurchaseDate
+                  ? formatDate(String(supplier.lastPurchaseDate || purchaseSummary.lastPurchaseDate))
+                  : '-'
+              }
               icon={<CalendarDays className="h-5 w-5" />}
               tone="amber"
-              subtitle={supplier.lastPurchaseDate ? t('suppliers.mostRecent', 'Most recent') : t('suppliers.noActivity', 'No activity')}
+              subtitle={
+                supplier.lastPurchaseDate || purchaseSummary.lastPurchaseDate
+                  ? t('suppliers.mostRecent', 'Most recent')
+                  : t('suppliers.noActivity', 'No activity')
+              }
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
