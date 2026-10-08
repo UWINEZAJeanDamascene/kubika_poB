@@ -259,11 +259,11 @@ export default function InvoiceDetailPage() {
   const [verifyingTin, setVerifyingTin] = useState(false);
   const [ebmSubmitting, setEbmSubmitting] = useState<"sale" | "proforma" | "copy" | null>(null);
 
-  const fetchInvoice = useCallback(async () => {
+  const fetchInvoice = useCallback(async (refresh = false) => {
     if (!id) return;
     setLoading(true);
     try {
-      const response = await invoicesApi.getById(id);
+      const response = await invoicesApi.getById(id, { refresh });
       if (response.success) {
         setInvoice(response.data as Invoice);
       }
@@ -413,7 +413,26 @@ export default function InvoiceDetailPage() {
     setActionLoading(true);
     try {
       const response = await invoicesApi.correctTaxFromDeliveryNote(id);
-      await Promise.all([fetchInvoice(), fetchRelatedDocuments(), fetchJournalEntries()]);
+      const correctedInvoice = response.data as Invoice | undefined;
+      if (correctedInvoice) {
+        setInvoice(correctedInvoice);
+      }
+
+      const [freshInvoice] = await Promise.all([
+        invoicesApi.getById(id, { refresh: true }),
+        fetchRelatedDocuments(),
+        fetchJournalEntries(),
+      ]);
+      if (!freshInvoice.success || !freshInvoice.data) {
+        throw new Error('Tax correction was submitted, but the updated invoice could not be reloaded. Refresh the page before retrying.');
+      }
+
+      const refreshedInvoice = freshInvoice.data as Invoice;
+      const refreshedTax = money(refreshedInvoice.taxAmount ?? refreshedInvoice.totalTax);
+      if (refreshedTax + 0.009 < sourceTax) {
+        throw new Error(`The server returned successfully but the refreshed invoice still shows ${formatCurrency(refreshedTax)} tax. The correction was not verified; refresh the page and check the invoice journal before retrying.`);
+      }
+      setInvoice(refreshedInvoice);
       toast.success(response.message || 'Invoice tax and its accounting correction were applied.');
     } catch (error: any) {
       console.error('Failed to apply delivery-note tax correction:', error);

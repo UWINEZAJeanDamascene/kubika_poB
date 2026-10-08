@@ -2346,8 +2346,10 @@ export const invoicesApi = {
       { signal },
     );
   },
-  getById: (id: string) =>
-    request<{ success: boolean; data: unknown }>(`/sales-invoices/${id}`),
+  getById: (id: string, options?: { refresh?: boolean }) =>
+    request<{ success: boolean; data: unknown }>(
+      `/sales-invoices/${id}${options?.refresh ? "?refresh=1" : ""}`,
+    ),
   create: (invoice: unknown) =>
     request<{ success: boolean; data: unknown }>("/sales-invoices", {
       method: "POST",
