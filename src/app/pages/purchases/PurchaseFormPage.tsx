@@ -622,7 +622,12 @@ export default function PurchaseFormPage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t('purchase.form.supplierInvoice', 'Supplier Invoice #')}</Label>
-                      <Input value={formData.supplierInvoiceNumber} onChange={(e) => setFormData({ ...formData, supplierInvoiceNumber: e.target.value })} placeholder="Invoice number" className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                      <Input value={formData.supplierInvoiceNumber} onChange={(e) => setFormData({ ...formData, supplierInvoiceNumber: e.target.value })} placeholder={t('purchase.form.supplierInvoiceAutoGenerate', 'Auto-generated if blank')} className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                      {!formData.supplierInvoiceNumber && !isEdit && (
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          {t('purchase.form.supplierInvoiceAutoGenerateHint', 'A unique invoice reference will be generated when you save this purchase.')}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-1.5">
