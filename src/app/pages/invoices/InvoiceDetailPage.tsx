@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Copy,
   Loader2,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
@@ -175,6 +176,13 @@ interface DeliveryNote {
   createdAt: string;
   grandTotal: number;
   status: string;
+  lines?: Array<{
+    lineTax?: number;
+    taxRate?: number;
+    lineSubtotal?: number;
+    qtyToDeliver?: number;
+    deliveredQty?: number;
+  }>;
 }
 
 interface InvoiceJournalEntry {
@@ -375,6 +383,41 @@ export default function InvoiceDetailPage() {
     } catch (error: any) {
       console.error('Failed to confirm:', error);
       toast.error(error?.message || 'Invoice could not be confirmed.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleDeliveryNoteTaxCorrection = async () => {
+    if (!id || !invoice) return;
+    if (deliveryNotes.length !== 1) {
+      toast.error('Tax correction requires exactly one linked Delivery Note.');
+      return;
+    }
+    const sourceTax = (deliveryNotes[0].lines || []).reduce((lineSum, line) => {
+      const subtotal = money(line.lineSubtotal);
+      const lineTax = money(line.lineTax);
+      const calculatedTax = Math.round(subtotal * money(line.taxRate) / 100 * 100) / 100;
+      return lineSum + (lineTax || calculatedTax);
+    }, 0);
+    const currentTax = money(invoice.taxAmount ?? invoice.totalTax);
+    const correction = sourceTax - currentTax;
+    if (correction <= 0) {
+      toast.info('No additional delivery-note tax was found to apply.');
+      return;
+    }
+    if (!window.confirm(`Apply ${formatCurrency(correction)} tax from the linked delivery note? This will update the confirmed invoice total and customer balance and post a matching VAT journal correction.`)) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await invoicesApi.correctTaxFromDeliveryNote(id);
+      await Promise.all([fetchInvoice(), fetchRelatedDocuments(), fetchJournalEntries()]);
+      toast.success(response.message || 'Invoice tax and its accounting correction were applied.');
+    } catch (error: any) {
+      console.error('Failed to apply delivery-note tax correction:', error);
+      toast.error(error?.message || 'Invoice tax correction failed.');
     } finally {
       setActionLoading(false);
     }
@@ -652,6 +695,15 @@ export default function InvoiceDetailPage() {
   const customerTin = invoice.customerTin || invoice.client?.taxId || '';
   const customerTinVerification = invoice.ebmCustomerTinVerification || invoice.ebm?.customerTinVerification;
   const hasInvalidCustomerTin = Boolean(customerTin) && !/^\d{9}$/.test(customerTin);
+  const deliveryNoteTax = deliveryNotes.length === 1 ? (deliveryNotes[0].lines || []).reduce((lineSum, line) => {
+    const subtotal = money(line.lineSubtotal);
+    return lineSum + (money(line.lineTax) || Math.round(subtotal * money(line.taxRate) / 100 * 100) / 100);
+  }, 0) : 0;
+  const canCorrectTaxFromDeliveryNote = invoice.status === 'confirmed'
+    && deliveryNotes.length === 1
+    && money(invoice.amountPaid) === 0
+    && money(invoice.taxAmount ?? invoice.totalTax) + 0.009 < deliveryNoteTax
+    && !['submitted', 'pending'].includes(invoice.ebm?.ebmStatus || '');
 
   return (
     <Layout>
@@ -781,6 +833,12 @@ export default function InvoiceDetailPage() {
 
               {/* Action Buttons */}
               <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-5 dark:border-slate-800">
+                {canCorrectTaxFromDeliveryNote && (
+                  <Button size="sm" variant="outline" onClick={handleDeliveryNoteTaxCorrection} disabled={actionLoading} className="gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/30">
+                    {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    Apply tax from Delivery Note
+                  </Button>
+                )}
                 {invoice.status === 'draft' && (
                   <>
                     <Button size="sm" onClick={handleConfirm} disabled={actionLoading} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">

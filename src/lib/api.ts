@@ -2367,6 +2367,11 @@ export const invoicesApi = {
       `/sales-invoices/${id}/confirm`,
       { method: "PUT" },
     ),
+  correctTaxFromDeliveryNote: (id: string) =>
+    request<{ success: boolean; data: unknown; message: string }>(
+      `/sales-invoices/${id}/correct-tax-from-delivery-note`,
+      { method: "PUT" },
+    ),
   verifyCustomerTin: (id: string, payload?: { branchId?: string; bhfId?: string }) =>
     request<{ success: boolean; data: unknown; verification?: unknown }>(
       `/sales-invoices/${id}/ebm/verify-tin`,
