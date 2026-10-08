@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { creditNotesApi, invoicesApi, warehousesApi } from '@/lib/api';
+import { creditNotesApi, invoicesApi, warehousesApi, serialNumberApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
@@ -45,6 +45,8 @@ interface CreditNoteLine {
     _id: string;
     name: string;
     code?: string;
+    trackingType?: 'none' | 'batch' | 'serial';
+    isStockable?: boolean;
   };
   productName: string;
   productCode: string;
@@ -57,6 +59,7 @@ interface CreditNoteLine {
   lineTax: number;
   lineTotal: number;
   returnToWarehouse?: string;
+  serialNumbers?: string[];
 }
 
 interface CreditNote {
@@ -113,6 +116,73 @@ const toNumber = (val: any): number => {
   }
   return Number(val) || 0;
 };
+
+function CreditNoteSerialSelector({
+  productId,
+  selectedSerials,
+  quantity,
+  onChange,
+}: {
+  productId: string;
+  selectedSerials: string[];
+  quantity: number;
+  onChange: (serialIds: string[]) => void;
+}) {
+  const [serials, setSerials] = useState<Array<{ _id: string; serialNo: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+    serialNumberApi.getDispatchedForReturn(productId)
+      .then((response) => {
+        if (!response.success) throw new Error('Could not load dispatched serial numbers.');
+        if (active) {
+          setSerials(response.data.map((serial) => ({
+            _id: serial._id,
+            serialNo: serial.serialNo,
+          })));
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load dispatched serial numbers:', error);
+        if (active) setLoadError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [productId]);
+
+  return (
+    <div className="mt-2 space-y-1">
+      <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+        Returned serials ({selectedSerials.length}/{quantity})
+      </label>
+      <select
+        multiple
+        size={Math.min(Math.max(quantity, 3), 6)}
+        value={selectedSerials}
+        onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value).slice(0, quantity))}
+        disabled={loading || quantity <= 0}
+        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+        aria-label={`Select ${quantity} returned serial number(s)`}
+      >
+        {serials.map((serial) => (
+          <option key={serial._id} value={serial._id}>{serial.serialNo}</option>
+        ))}
+      </select>
+      {loading && <p className="text-xs text-slate-500">Loading dispatched serial numbers...</p>}
+      {loadError && <p role="alert" className="text-xs text-rose-600">Could not load dispatched serial numbers. Reopen the credit note and retry.</p>}
+      {!loading && !loadError && serials.length === 0 && (
+        <p className="text-xs text-amber-700">No dispatched serial numbers were found for this product.</p>
+      )}
+    </div>
+  );
+}
 
 export default function CreditNoteCreatePage() {
   const { t } = useTranslation();
@@ -226,6 +296,7 @@ export default function CreditNoteCreatePage() {
               lineSubtotal: 0,
               lineTax: 0,
               lineTotal: 0,
+              serialNumbers: line.serialNumbers || [],
             }));
             setLines(creditNoteLines);
           }
@@ -264,6 +335,7 @@ export default function CreditNoteCreatePage() {
     lineSubtotal: 0,
     lineTax: 0,
     lineTotal: 0,
+    serialNumbers: line.serialNumbers || [],
   }));
 
   const handleInvoiceSelect = useCallback(async (invoiceId: string) => {
@@ -308,8 +380,11 @@ export default function CreditNoteCreatePage() {
       // Validate: credited qty cannot exceed original invoice qty
       const maxQty = toNumber(line.originalQty);
       line.quantity = Math.min(enteredQty, maxQty);
+      line.serialNumbers = (line.serialNumbers || []).slice(0, line.quantity);
     } else if (field === 'returnToWarehouse') {
       line.returnToWarehouse = value;
+    } else if (field === 'serialNumbers') {
+      line.serialNumbers = value;
     }
     
     // Recalculate totals using toNumber for Decimal handling
@@ -347,6 +422,16 @@ export default function CreditNoteCreatePage() {
       alert('Add at least one invoice line and enter the quantity to credit.');
       return;
     }
+    if (type === 'goods_return') {
+      const missingSerials = creditLines.find((line) =>
+        line.product?.trackingType === 'serial' &&
+        (line.serialNumbers || []).length !== toNumber(line.quantity),
+      );
+      if (missingSerials) {
+        toast.error(`Select exactly ${toNumber(missingSerials.quantity)} serial number(s) for ${missingSerials.productName}.`);
+        return;
+      }
+    }
 
     setSaving(true);
     try {
@@ -370,6 +455,7 @@ export default function CreditNoteCreatePage() {
           lineTax: line.lineTax,
           lineTotal: line.lineTotal,
           returnToWarehouse: line.returnToWarehouse,
+          serialNumbers: line.serialNumbers || [],
         })),
       };
 
@@ -386,6 +472,7 @@ export default function CreditNoteCreatePage() {
       }
     } catch (error) {
       console.error('Failed to save credit note:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to save credit note.');
     } finally {
       setSaving(false);
     }
@@ -397,6 +484,15 @@ export default function CreditNoteCreatePage() {
       alert(t('creditNotes.reasonRequired', 'Reason is required'));
       return;
     }
+    const missingSerials = type === 'goods_return' && lines.find((line) =>
+      toNumber(line.quantity) > 0 &&
+      line.product?.trackingType === 'serial' &&
+      (line.serialNumbers || []).length !== toNumber(line.quantity),
+    );
+    if (missingSerials) {
+      toast.error(`Select exactly ${toNumber(missingSerials.quantity)} serial number(s) for ${missingSerials.productName}, then save the credit note.`);
+      return;
+    }
 
     setConfirming(true);
     try {
@@ -406,6 +502,7 @@ export default function CreditNoteCreatePage() {
       }
     } catch (error) {
       console.error('Failed to confirm credit note:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to confirm credit note.');
     } finally {
       setConfirming(false);
     }
@@ -556,7 +653,7 @@ export default function CreditNoteCreatePage() {
                     ) : (
                       <>
                       <div className="space-y-3 p-3 xl:hidden">
-                        {lines.map((line, index) => <article key={line.invoiceLineId} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productCode}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Invoiced qty</dt><dd>{toNumber(line.originalQty)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice)}</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{toNumber(line.taxRate)}%</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to credit<Input type="number" min="0" max={toNumber(line.originalQty)} value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', e.target.value)} /></label><div className="space-y-1 text-xs text-slate-500">Return to warehouse<Select value={line.returnToWarehouse || ''} onValueChange={(value) => handleLineChange(index, 'returnToWarehouse', value)}><SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger><SelectContent>{warehouses.map((wh) => <SelectItem key={wh._id} value={wh._id}>{wh.name}</SelectItem>)}</SelectContent></Select></div><p className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</p></article>)}
+                        {lines.map((line, index) => <article key={line.invoiceLineId} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productCode}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Invoiced qty</dt><dd>{toNumber(line.originalQty)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice)}</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{toNumber(line.taxRate)}%</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to credit<Input type="number" min="0" max={toNumber(line.originalQty)} value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', e.target.value)} /></label><div className="space-y-1 text-xs text-slate-500">Return to warehouse<Select value={line.returnToWarehouse || ''} onValueChange={(value) => handleLineChange(index, 'returnToWarehouse', value)}><SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger><SelectContent>{warehouses.map((wh) => <SelectItem key={wh._id} value={wh._id}>{wh.name}</SelectItem>)}</SelectContent></Select></div>{line.product?.trackingType === 'serial' && <CreditNoteSerialSelector productId={line.product._id} selectedSerials={line.serialNumbers || []} quantity={toNumber(line.quantity)} onChange={(serials) => handleLineChange(index, 'serialNumbers', serials)} />}<p className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</p></article>)}
                       </div>
                       <div className="hidden overflow-x-auto xl:block">
                         <Table>
@@ -568,6 +665,7 @@ export default function CreditNoteCreatePage() {
                               <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Tax</TableHead>
                               <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Qty to Credit</TableHead>
                               <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Return To</TableHead>
+                              <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Returned Serials</TableHead>
                               <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Total</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -595,6 +693,16 @@ export default function CreditNoteCreatePage() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                </TableCell>
+                                <TableCell>
+                                  {line.product?.trackingType === 'serial' && (
+                                    <CreditNoteSerialSelector
+                                      productId={line.product._id}
+                                      selectedSerials={line.serialNumbers || []}
+                                      quantity={toNumber(line.quantity)}
+                                      onChange={(serials) => handleLineChange(index, 'serialNumbers', serials)}
+                                    />
+                                  )}
                                 </TableCell>
                                 <TableCell className="text-right text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(line.lineTotal)}</TableCell>
                               </TableRow>
