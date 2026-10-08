@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { creditNotesApi, invoicesApi, warehousesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCompany } from '@/hooks/useCompany';
+import { toast } from 'sonner';
 import {
   ArrowLeft,
   Save,
@@ -248,6 +249,23 @@ export default function CreditNoteCreatePage() {
     }
   }, [id, fetchCreditNote]);
 
+  const mapInvoiceLines = (invoice: Invoice): CreditNoteLine[] => invoice.lines.map((line: any) => ({
+    invoiceLineId: line._id || line.lineId,
+    product: typeof line.product === 'string'
+      ? { _id: line.product, name: line.productName || '', code: line.productCode || '' }
+      : line.product || { _id: '', name: '', code: '' },
+    productName: line.productName || line.product?.name || '',
+    productCode: line.productCode || line.product?.code || '',
+    originalQty: line.quantity || line.qty || 0,
+    quantity: 0,
+    unitPrice: toNumber(line.unitPrice) || 0,
+    unitCost: toNumber(line.unitCost) || toNumber(line.product?.averageCost) || 0,
+    taxRate: toNumber(line.taxRate) || 0,
+    lineSubtotal: 0,
+    lineTax: 0,
+    lineTotal: 0,
+  }));
+
   const handleInvoiceSelect = useCallback(async (invoiceId: string) => {
     setSelectedInvoice(invoiceId);
     if (!invoiceId) {
@@ -256,33 +274,27 @@ export default function CreditNoteCreatePage() {
     }
 
     const invoice = invoices.find(inv => inv._id === invoiceId);
-    if (!invoice) return;
+    if (invoice?.lines?.length) {
+      setLines(mapInvoiceLines(invoice));
+      return;
+    }
 
-    // Transform invoice lines to credit note lines
-    const creditNoteLines: CreditNoteLine[] = invoice.lines.map((line: any) => ({
-      invoiceLineId: line._id || line.lineId,
-      // Handle product as either ObjectId string or populated object
-      product: typeof line.product === 'string'
-        ? { _id: line.product, name: line.productName || '', code: line.productCode || '' }
-        : line.product || { _id: '', name: '', code: '' },
-      productName: line.productName || line.product?.name || '',
-      productCode: line.productCode || line.product?.code || '',
-      originalQty: line.quantity || 0, // ADDED: Store original invoice qty
-      quantity: 0, // User enters qty to credit
-      unitPrice: toNumber(line.unitPrice) || 0, // FIXED: Convert Decimal to number
-      unitCost: toNumber(line.unitCost) || toNumber(line.product?.averageCost) || 0,
-      taxRate: toNumber(line.taxRate) || 0, // FIXED: Convert Decimal to number
-      lineSubtotal: 0,
-      lineTax: 0,
-      lineTotal: 0,
-    }));
-
-    setLines(creditNoteLines);
+    try {
+      const response = await invoicesApi.getById(invoiceId, { refresh: true });
+      const invoiceData = response.data as Invoice | undefined;
+      if (!response.success || !invoiceData || !Array.isArray(invoiceData.lines)) {
+        throw new Error('The selected invoice could not be loaded with its line items.');
+      }
+      setLines(mapInvoiceLines(invoiceData));
+    } catch (error) {
+      console.error('[CreditNoteCreate] Failed to load selected invoice lines:', error);
+      setLines([]);
+      toast.error(error instanceof Error ? error.message : 'Failed to load selected invoice lines.');
+    }
   }, [invoices]);
 
   useEffect(() => {
-    if (isEdit || !preselectedInvoiceId || !invoices.length) return;
-    if (!invoices.some((invoice) => invoice._id === preselectedInvoiceId)) return;
+    if (isEdit || !preselectedInvoiceId) return;
     setReason(preselectedReason);
     void handleInvoiceSelect(preselectedInvoiceId);
   }, [handleInvoiceSelect, invoices, isEdit, preselectedInvoiceId, preselectedReason]);
