@@ -43,6 +43,7 @@ interface Product {
   taxCode?: string;
   unit?: string;
   isStockable?: boolean;
+  trackingType?: 'none' | 'batch' | 'serial';
 }
 
 interface Warehouse {
@@ -135,6 +136,16 @@ export default function RecurringInvoiceFormPage() {
   const [notes, setNotes] = useState('');
   const [lines, setLines] = useState<LineItem[]>([]);
   const [currencyCode, setCurrencyCode] = useState('RWF');
+  const hasTraceabilityTrackedProducts = lines.some((line) =>
+    line.product?.isStockable !== false
+    && (line.product?.trackingType === 'batch' || line.product?.trackingType === 'serial'),
+  );
+
+  useEffect(() => {
+    if (hasTraceabilityTrackedProducts && autoConfirm) {
+      setAutoConfirm(false);
+    }
+  }, [autoConfirm, hasTraceabilityTrackedProducts]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -321,7 +332,7 @@ export default function RecurringInvoiceFormPage() {
         },
         startDate,
         ...(endDate && { endDate }),
-        autoConfirm,
+        autoConfirm: autoConfirm && !hasTraceabilityTrackedProducts,
         notes,
         currencyCode,
         status: 'active',
@@ -354,7 +365,9 @@ export default function RecurringInvoiceFormPage() {
 
       if (response.success && response.data) {
         const savedRI = response.data as RecurringInvoice;
-        toast.success(isEdit ? 'Recurring invoice updated' : 'Recurring invoice created');
+        toast.success(hasTraceabilityTrackedProducts
+          ? `${isEdit ? 'Recurring invoice updated' : 'Recurring invoice created'}. Generated invoices will remain drafts until batch or serial traceability is assigned.`
+          : isEdit ? 'Recurring invoice updated' : 'Recurring invoice created');
         navigate(`/recurring-invoices/${savedRI._id}`);
       }
     } catch (error: any) {
@@ -565,13 +578,19 @@ export default function RecurringInvoiceFormPage() {
                   <div className="flex items-center space-x-2 rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-700 dark:bg-slate-900/30">
                     <Checkbox
                       id="autoConfirm"
-                      checked={autoConfirm}
+                      checked={autoConfirm && !hasTraceabilityTrackedProducts}
+                      disabled={hasTraceabilityTrackedProducts}
                       onCheckedChange={(checked) => setAutoConfirm(checked as boolean)}
                     />
                     <Label htmlFor="autoConfirm" className="cursor-pointer text-sm text-slate-700 dark:text-slate-300">
                       {t('recurringInvoices.autoConfirmLabel', 'Auto-confirm generated invoices (deduct stock and create journal entries)')}
                     </Label>
                   </div>
+                  {hasTraceabilityTrackedProducts && (
+                    <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                      Auto-confirm is unavailable because this template includes batch- or serial-tracked stock. The recurring invoice will be created as a draft; assign traceability before confirming it.
+                    </p>
+                  )}
 
                   <div>
                     <Label className="text-sm text-slate-700 dark:text-slate-300">{t('recurringInvoices.notes', 'Notes')}</Label>
@@ -751,7 +770,7 @@ export default function RecurringInvoiceFormPage() {
                     <span>{formatCurrency(totalAmount)}</span>
                   </div>
 
-                  {autoConfirm && (
+                  {autoConfirm && !hasTraceabilityTrackedProducts && (
                     <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
                       <div className="flex items-start gap-2">
                         <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
