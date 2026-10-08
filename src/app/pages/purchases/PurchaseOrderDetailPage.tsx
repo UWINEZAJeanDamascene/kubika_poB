@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { purchaseOrdersApi, grnApi, bankAccountsApi } from '@/lib/api';
+import { purchaseOrdersApi, bankAccountsApi, purchaseReturnsApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import {
   ArrowLeft,
@@ -15,21 +15,17 @@ import {
   CreditCard,
   DollarSign,
   Mail,
-  Hash,
-  Building2,
-  Warehouse,
   CalendarDays,
   Banknote,
-  ReceiptText,
   ClipboardList,
-  Sparkles,
   TrendingUp,
   AlertCircle,
+  ArrowLeftRight,
   Pencil,
 } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { Checkbox } from '@/app/components/ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import {
@@ -148,6 +144,16 @@ interface GRN {
   confirmedAt?: string;
 }
 
+interface PurchaseReturn {
+  _id: string;
+  referenceNo: string;
+  grn?: { _id: string; referenceNo: string } | string;
+  status: string;
+  returnDate: string;
+  totalAmount: number | string;
+  lines?: Array<{ qtyReturned: number | string }>;
+}
+
 const STATUS_FLOW = [
   { status: 'draft', label: 'Draft' },
   { status: 'approved', label: 'Approved' },
@@ -174,11 +180,13 @@ export default function PurchaseOrderDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [purchaseOrder, setPurchaseOrder] = useState<PurchaseOrder | null>(null);
   const [grns, setGrns] = useState<GRN[]>([]);
+  const [purchaseReturns, setPurchaseReturns] = useState<PurchaseReturn[]>([]);
+  const [purchaseReturnsLoading, setPurchaseReturnsLoading] = useState(false);
+  const [purchaseReturnsError, setPurchaseReturnsError] = useState<string | null>(null);
   
   // Email notification states
   const [sendEmailApprove, setSendEmailApprove] = useState(true);
   const [sendEmailCancel, setSendEmailCancel] = useState(true);
-  const [sendEmailReceive, setSendEmailReceive] = useState(true);
 
   const fetchPurchaseOrder = useCallback(async () => {
     if (!id) {
@@ -205,6 +213,24 @@ export default function PurchaseOrderDetailPage() {
         }
         setPurchaseOrder(po as PurchaseOrder);
         setGrns(Array.isArray(response.grns) ? response.grns as GRN[] : []);
+        setPurchaseReturnsLoading(true);
+        setPurchaseReturnsError(null);
+        try {
+          const returnResponse = await purchaseReturnsApi.getAll({
+            purchase_order_id: id,
+            page: 1,
+            limit: 100,
+          });
+          if (!returnResponse.success) throw new Error("Could not load purchase returns for this order.");
+          const returnData = returnResponse.data as any;
+          setPurchaseReturns(Array.isArray(returnData) ? returnData : Array.isArray(returnData?.data) ? returnData.data : []);
+        } catch (returnError) {
+          console.error("[PurchaseOrderDetailPage] Failed to fetch returns:", returnError);
+          setPurchaseReturns([]);
+          setPurchaseReturnsError(returnError instanceof Error ? returnError.message : "Failed to load purchase returns.");
+        } finally {
+          setPurchaseReturnsLoading(false);
+        }
       } else {
         setError('Failed to load purchase order: ' + (response.message || 'Unknown error'));
         setPurchaseOrder(null);
@@ -465,7 +491,10 @@ export default function PurchaseOrderDetailPage() {
 
   const currentStatusStep = getStatusStep(purchaseOrder.status);
   const totalPaid = purchaseOrder.payments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
-  const balance = Number(purchaseOrder.totalAmount) - totalPaid;
+  const confirmedPurchaseReturns = purchaseReturns.filter((purchaseReturn) => purchaseReturn.status === 'confirmed');
+  const purchaseReturnTotal = confirmedPurchaseReturns.reduce((sum, purchaseReturn) => sum + (Number(purchaseReturn.totalAmount) || 0), 0);
+  const netPurchaseAmount = Math.max(0, Number(purchaseOrder.totalAmount) - purchaseReturnTotal);
+  const balance = Math.max(0, netPurchaseAmount - totalPaid);
 
   return (
     <Layout>
@@ -509,11 +538,16 @@ export default function PurchaseOrderDetailPage() {
               </div>
               <div className="flex flex-col justify-center rounded-lg border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-950/40">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                  {t('purchase.detail.total', 'Total Amount')}
+                  {purchaseReturnTotal > 0 ? 'Net after purchase returns' : t('purchase.detail.total', 'Total Amount')}
                 </p>
                 <p className="mt-1 text-3xl font-bold text-slate-950 dark:text-white">
-                  {formatCurrency(purchaseOrder.totalAmount, purchaseOrder.currencyCode)}
+                  {formatCurrency(netPurchaseAmount, purchaseOrder.currencyCode)}
                 </p>
+                {purchaseReturnTotal > 0 && (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    Original: {formatCurrency(purchaseOrder.totalAmount, purchaseOrder.currencyCode)} - Returns: {formatCurrency(purchaseReturnTotal, purchaseOrder.currencyCode)}
+                  </p>
+                )}
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <Badge variant="outline" className="text-xs dark:border-slate-700 dark:text-slate-400">
                     {purchaseOrder.lines?.length || 0} {t('purchase.detail.lines', 'items')}
@@ -658,8 +692,8 @@ export default function PurchaseOrderDetailPage() {
           {/* Metric Tiles */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <MetricTile
-              title={t('purchase.detail.total', 'Total Amount')}
-              value={formatCurrency(purchaseOrder.totalAmount, purchaseOrder.currencyCode)}
+              title={purchaseReturnTotal > 0 ? 'Net after returns' : t('purchase.detail.total', 'Total Amount')}
+              value={formatCurrency(netPurchaseAmount, purchaseOrder.currencyCode)}
               icon={<Banknote className="h-5 w-5" />}
               tone="blue"
             />
@@ -700,6 +734,18 @@ export default function PurchaseOrderDetailPage() {
                 {grns.length > 0 && (
                   <Badge variant="secondary" className="ml-2 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
                     {grns.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger
+                value="returns"
+                className="flex-shrink-0 data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white"
+              >
+                <ArrowLeftRight className="mr-1.5 h-4 w-4" />
+                Purchase Returns
+                {purchaseReturns.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    {purchaseReturns.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -845,9 +891,21 @@ export default function PurchaseOrderDetailPage() {
                         </div>
                       )}
                       <div className="text-right">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('purchase.detail.total', 'Total')}</p>
-                        <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(purchaseOrder.totalAmount, purchaseOrder.currencyCode)}</p>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Original total</p>
+                        <p className="mt-1 text-sm font-medium text-slate-950 dark:text-white">{formatCurrency(purchaseOrder.totalAmount, purchaseOrder.currencyCode)}</p>
                       </div>
+                      {purchaseReturnTotal > 0 && (
+                        <>
+                          <div className="text-right">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Purchase return deduction</p>
+                            <p className="mt-1 text-sm font-medium text-rose-600 dark:text-rose-400">-{formatCurrency(purchaseReturnTotal, purchaseOrder.currencyCode)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Net after returns</p>
+                            <p className="mt-1 text-lg font-bold text-slate-950 dark:text-white">{formatCurrency(netPurchaseAmount, purchaseOrder.currencyCode)}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -932,6 +990,72 @@ export default function PurchaseOrderDetailPage() {
               </Card>
             </TabsContent>
 
+            <TabsContent value="returns" className="mt-4">
+              <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <CardHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
+                  <PanelTitle icon={<ArrowLeftRight className="h-4 w-4" />} title="Purchase Returns" />
+                </CardHeader>
+                <CardContent className="p-5">
+                  {purchaseReturnsLoading ? (
+                    <div className="flex min-h-[140px] items-center justify-center gap-2 text-sm text-slate-500">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading purchase returns...
+                    </div>
+                  ) : purchaseReturnsError ? (
+                    <p role="alert" className="py-8 text-center text-sm text-rose-600 dark:text-rose-400">{purchaseReturnsError}</p>
+                  ) : purchaseReturns.length === 0 ? (
+                    <div className="flex min-h-[140px] flex-col items-center justify-center text-slate-500 dark:text-slate-400">
+                      <ArrowLeftRight className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+                      <p className="text-sm">No purchase returns recorded for this order.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-5 flex flex-wrap justify-end gap-6 border-b border-slate-100 pb-4 dark:border-slate-800">
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Original amount</p>
+                          <p className="font-medium">{formatCurrency(purchaseOrder.totalAmount, purchaseOrder.currencyCode)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Confirmed returns</p>
+                          <p className="font-medium text-rose-600 dark:text-rose-400">-{formatCurrency(purchaseReturnTotal, purchaseOrder.currencyCode)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Net after returns</p>
+                          <p className="font-bold">{formatCurrency(netPurchaseAmount, purchaseOrder.currencyCode)}</p>
+                        </div>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Return reference</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>GRN</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {purchaseReturns.map((purchaseReturn) => {
+                              const sourceGrn = typeof purchaseReturn.grn === 'object' ? purchaseReturn.grn.referenceNo : '-';
+                              return (
+                                <TableRow key={purchaseReturn._id} className="cursor-pointer" onClick={() => navigate(`/purchase-returns/${purchaseReturn._id}`)}>
+                                  <TableCell className="font-medium">{purchaseReturn.referenceNo}</TableCell>
+                                  <TableCell>{formatDate(purchaseReturn.returnDate)}</TableCell>
+                                  <TableCell>{sourceGrn}</TableCell>
+                                  <TableCell><Badge variant="outline" className="capitalize">{purchaseReturn.status}</Badge></TableCell>
+                                  <TableCell className="text-right font-medium">{formatCurrency(Number(purchaseReturn.totalAmount) || 0, purchaseOrder.currencyCode)}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             <TabsContent value="payments" className="mt-4">
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="flex flex-row items-center justify-between border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
@@ -951,8 +1075,8 @@ export default function PurchaseOrderDetailPage() {
                   {/* Payment Summary Tiles */}
                   <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <MetricTile
-                      title={t('purchase.detail.totalAmount', 'Total Amount')}
-                      value={formatCurrency(purchaseOrder.totalAmount, purchaseOrder.currencyCode)}
+                      title={purchaseReturnTotal > 0 ? 'Net after returns' : t('purchase.detail.totalAmount', 'Total Amount')}
+                      value={formatCurrency(netPurchaseAmount, purchaseOrder.currencyCode)}
                       icon={<Banknote className="h-5 w-5" />}
                       tone="blue"
                     />
@@ -1086,7 +1210,7 @@ export default function PurchaseOrderDetailPage() {
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
                       placeholder={String(convertAmount(
-                        Math.max(0, Number(purchaseOrder.balance ?? (Number(purchaseOrder.totalAmount) - totalPaid))),
+                        balance,
                         purchaseOrder.currencyCode,
                       ))}
                       className="mt-1 border-slate-200 bg-white text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-white"

@@ -64,6 +64,10 @@ interface PurchaseReturnDetail {
     _id: string;
     referenceNo: string;
   };
+  purchase?: {
+    _id: string;
+    purchaseNumber: string;
+  };
   supplier?: {
     _id: string;
     name: string;
@@ -302,7 +306,11 @@ export default function PurchaseReturnDetailPage() {
                   <StatusBadge status={purchaseReturn.status} />
                 </div>
                 <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {purchaseReturn.grn?.referenceNo ? `Linked to GRN ${purchaseReturn.grn.referenceNo}` : t("purchaseReturns.noGRN", "No GRN linked")}
+                  {purchaseReturn.grn?.referenceNo
+                    ? `Linked to GRN ${purchaseReturn.grn.referenceNo}`
+                    : purchaseReturn.purchase?.purchaseNumber
+                      ? `Linked to direct purchase ${purchaseReturn.purchase.purchaseNumber}`
+                      : "No purchase source linked"}
                 </p>
               </div>
             </div>
@@ -400,8 +408,8 @@ export default function PurchaseReturnDetailPage() {
                       {purchaseReturn.warehouse?.code && <p className="text-xs text-slate-500 dark:text-slate-400">{purchaseReturn.warehouse.code}</p>}
                     </div>
                     <div className="space-y-2">
-                      <p className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">{t("purchaseReturns.grn", "GRN")}</p>
-                      <p className="text-sm text-slate-900 dark:text-white">{purchaseReturn.grn?.referenceNo || "-"}</p>
+                      <p className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">Source</p>
+                      <p className="text-sm text-slate-900 dark:text-white">{purchaseReturn.grn?.referenceNo || purchaseReturn.purchase?.purchaseNumber || "Direct purchase"}</p>
                     </div>
                     <div className="space-y-2">
                       <p className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">{t("purchaseReturns.reason", "Reason")}</p>

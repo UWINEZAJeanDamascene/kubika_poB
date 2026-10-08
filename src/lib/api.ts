@@ -3378,6 +3378,9 @@ export const purchaseReturnsApi = {
   getAll: (params?: {
     supplier_id?: string;
     status?: string;
+    grn_id?: string;
+    purchase_id?: string;
+    purchase_order_id?: string;
     date_from?: string;
     date_to?: string;
     page?: number;
@@ -3394,12 +3397,14 @@ export const purchaseReturnsApi = {
     ),
   create: (data: {
     referenceNo?: string;
-    grn: string;
+    grn?: string;
+    purchase?: string;
     reason: string;
     returnDate?: string;
     supplierCreditNoteNo?: string;
     lines: Array<{
-      grnLine: string;
+      grnLine?: string;
+      purchaseLine?: string;
       qtyReturned: number;
       serialNumbers?: string[];
     }>;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router";
-import { purchasesApi, bankAccountsApi } from "@/lib/api";
+import { purchasesApi, bankAccountsApi, purchaseReturnsApi } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
 import {
   ArrowLeft,
@@ -19,6 +19,7 @@ import {
   Pencil,
   AlertCircle,
   Receipt,
+  ArrowLeftRight,
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/app/components/ui/button";
@@ -44,7 +45,7 @@ import {
 } from "@/app/components/ui/select";
 import { Label } from "@/app/components/ui/label";
 import { useTranslation } from "react-i18next";
-import { formatDocumentCurrency, parseCurrencyValue } from "@/lib/currencyUtils";
+import { parseCurrencyValue } from "@/lib/currencyUtils";
 import { useCurrency } from "@/contexts/CurrencyContext";
 
 interface PurchaseItem {
@@ -87,6 +88,17 @@ interface BankAccount {
   currentBalance?: number;
   cachedBalance?: number;
   isActive: boolean;
+}
+
+interface PurchaseReturn {
+  _id: string;
+  referenceNo: string;
+  purchase?: string | { _id: string; purchaseNumber: string };
+  grn?: { _id: string; referenceNo: string } | string;
+  status: string;
+  returnDate: string;
+  totalAmount: string | number;
+  lines?: Array<{ qtyReturned: number | string }>;
 }
 
 interface Purchase {
@@ -143,6 +155,9 @@ export default function PurchaseDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [sendEmail, setSendEmail] = useState(false);
   const [purchase, setPurchase] = useState<Purchase | null>(null);
+  const [purchaseReturns, setPurchaseReturns] = useState<PurchaseReturn[]>([]);
+  const [purchaseReturnsLoading, setPurchaseReturnsLoading] = useState(false);
+  const [purchaseReturnsError, setPurchaseReturnsError] = useState<string | null>(null);
 
   // Payment form state
   const [showPaymentForm, setShowPaymentForm] = useState(false);
@@ -186,9 +201,28 @@ export default function PurchaseDetailPage() {
     }
   }, []);
 
+  const fetchPurchaseReturns = useCallback(async () => {
+    if (!id) return;
+    setPurchaseReturnsLoading(true);
+    setPurchaseReturnsError(null);
+    try {
+      const response = await purchaseReturnsApi.getAll({ purchase_id: id, page: 1, limit: 100 });
+      if (!response.success) throw new Error("Could not load purchase returns for this purchase.");
+      const data = response.data as any;
+      setPurchaseReturns(Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : []);
+    } catch (error) {
+      console.error("Failed to fetch direct purchase returns:", error);
+      setPurchaseReturns([]);
+      setPurchaseReturnsError(error instanceof Error ? error.message : "Failed to load purchase returns.");
+    } finally {
+      setPurchaseReturnsLoading(false);
+    }
+  }, [id]);
+
   useEffect(() => {
     fetchPurchase();
-  }, [fetchPurchase]);
+    fetchPurchaseReturns();
+  }, [fetchPurchase, fetchPurchaseReturns]);
 
   const handleReceive = async () => {
     if (!id) return;
@@ -294,7 +328,10 @@ export default function PurchaseDetailPage() {
 
   const needsBankAccount = paymentMethod === 'bank_transfer' || paymentMethod === 'cheque' || paymentMethod === 'mobile_money';
   const totalPaid = purchase?.payments?.reduce((sum, p) => sum + parseCurrencyValue(p.amount ?? p.amountPaid), 0) || 0;
-  const remainingBalance = Math.max(0, parseCurrencyValue(purchase?.grandTotal) - totalPaid);
+  const confirmedPurchaseReturns = purchaseReturns.filter((purchaseReturn) => purchaseReturn.status === 'confirmed');
+  const purchaseReturnTotal = confirmedPurchaseReturns.reduce((sum, purchaseReturn) => sum + parseCurrencyValue(purchaseReturn.totalAmount), 0);
+  const netPurchaseAmount = Math.max(0, parseCurrencyValue(purchase?.grandTotal) - purchaseReturnTotal);
+  const remainingBalance = Math.max(0, netPurchaseAmount - totalPaid);
 
   const handlePrint = () => window.print();
 
@@ -387,8 +424,9 @@ export default function PurchaseDetailPage() {
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('purchases.detail.total', 'Grand Total')}</p>
-                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(purchase.grandTotal)}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{purchaseReturnTotal > 0 ? 'Net after returns' : t('purchases.detail.total', 'Grand Total')}</p>
+                  <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(netPurchaseAmount)}</p>
+                  {purchaseReturnTotal > 0 && <p className="mt-1 text-xs text-slate-500">Original: {formatCurrency(purchase.grandTotal)} · Returns: -{formatCurrency(purchaseReturnTotal)}</p>}
                 </div>
               </CardContent>
             </Card>
@@ -565,6 +603,15 @@ export default function PurchaseDetailPage() {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="returns" className="data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
+                <ArrowLeftRight className="mr-1.5 h-4 w-4" />
+                Purchase Returns
+                {purchaseReturns.length > 0 && (
+                  <Badge variant="secondary" className="ml-2 bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                    {purchaseReturns.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="details" className="mt-4">
@@ -643,9 +690,21 @@ export default function PurchaseDetailPage() {
                         <p className="font-medium text-slate-900 dark:text-white">{formatCurrency(purchase.totalTax)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-bold text-slate-900 dark:text-white">{t('purchases.detail.grandTotal', 'Grand Total')}</p>
-                        <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(purchase.grandTotal)}</p>
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">Original total</p>
+                        <p className="text-base font-medium text-slate-900 dark:text-white">{formatCurrency(purchase.grandTotal)}</p>
                       </div>
+                      {purchaseReturnTotal > 0 && (
+                        <>
+                          <div className="text-right">
+                            <p className="text-xs text-slate-500 dark:text-slate-400">Purchase return deduction</p>
+                            <p className="font-medium text-rose-600 dark:text-rose-400">-{formatCurrency(purchaseReturnTotal)}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">Net after returns</p>
+                            <p className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(netPurchaseAmount)}</p>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -654,6 +713,79 @@ export default function PurchaseDetailPage() {
                       <p className="text-xs font-medium uppercase text-slate-500 dark:text-slate-400">{t('purchases.detail.notes', 'Notes')}</p>
                       <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">{purchase.notes}</p>
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="returns" className="mt-4">
+              <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                <CardHeader className="border-b border-slate-100 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
+                  <CardTitle className="flex items-center gap-2 text-base text-slate-800 dark:text-slate-100">
+                    <ArrowLeftRight className="h-4 w-4 text-slate-500" />
+                    Purchase Returns
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-5">
+                  {purchaseReturnsLoading ? (
+                    <div className="flex min-h-[140px] items-center justify-center gap-2 text-sm text-slate-500">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading purchase returns...
+                    </div>
+                  ) : purchaseReturnsError ? (
+                    <p role="alert" className="py-8 text-center text-sm text-rose-600 dark:text-rose-400">{purchaseReturnsError}</p>
+                  ) : purchaseReturns.length === 0 ? (
+                    <div className="flex min-h-[140px] flex-col items-center justify-center text-slate-500 dark:text-slate-400">
+                      <ArrowLeftRight className="mb-2 h-8 w-8 text-slate-300 dark:text-slate-600" />
+                      <p className="text-sm">No purchase returns recorded for this purchase.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="mb-5 flex flex-wrap justify-end gap-6 border-b border-slate-100 pb-4 dark:border-slate-800">
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Original amount</p>
+                          <p className="font-medium">{formatCurrency(purchase.grandTotal)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Confirmed returns</p>
+                          <p className="font-medium text-rose-600 dark:text-rose-400">-{formatCurrency(purchaseReturnTotal)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs uppercase tracking-wide text-slate-500">Net after returns</p>
+                          <p className="font-bold">{formatCurrency(netPurchaseAmount)}</p>
+                        </div>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Return reference</TableHead>
+                              <TableHead>Date</TableHead>
+                              <TableHead>Source</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Amount</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {purchaseReturns.map((purchaseReturn) => {
+                              const sourceLabel = typeof purchaseReturn.purchase === 'object'
+                                ? purchaseReturn.purchase.purchaseNumber
+                                : typeof purchaseReturn.grn === 'object'
+                                  ? purchaseReturn.grn.referenceNo
+                                  : 'Direct purchase';
+                              return (
+                                <TableRow key={purchaseReturn._id} className="cursor-pointer" onClick={() => navigate(`/purchase-returns/${purchaseReturn._id}`)}>
+                                  <TableCell className="font-medium">{purchaseReturn.referenceNo}</TableCell>
+                                  <TableCell>{formatDate(purchaseReturn.returnDate)}</TableCell>
+                                  <TableCell>{sourceLabel}</TableCell>
+                                  <TableCell><Badge variant="outline" className="capitalize">{purchaseReturn.status}</Badge></TableCell>
+                                  <TableCell className="text-right font-medium">{formatCurrency(purchaseReturn.totalAmount)}</TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </>
                   )}
                 </CardContent>
               </Card>

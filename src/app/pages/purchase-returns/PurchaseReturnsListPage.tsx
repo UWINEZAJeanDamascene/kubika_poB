@@ -49,6 +49,10 @@ interface PurchaseReturn {
     _id: string;
     referenceNo: string;
   };
+  purchase?: {
+    _id: string;
+    purchaseNumber: string;
+  };
   supplier?: {
     _id: string;
     name: string;
@@ -318,7 +322,7 @@ export default function PurchaseReturnsListPage() {
                   {returnList.map((pr) => (
                     <article key={pr._id} className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900">
                       <div className="flex items-start justify-between gap-3"><div className="min-w-0"><h2 className="break-all text-sm font-semibold text-slate-900 dark:text-white">{pr.referenceNo || 'N/A'}</h2><p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{pr.supplier?.name || '-'}</p></div><StatusBadge status={pr.status} /></div>
-                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">{t('purchaseReturn.grnReference', 'GRN')}</dt><dd className="mt-0.5 break-all">{pr.grn?.referenceNo || '-'}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('purchaseReturn.returnDate', 'Return Date')}</dt><dd className="mt-0.5">{formatDate(pr.returnDate)}</dd></div><div className="col-span-2"><dt className="text-slate-500 dark:text-slate-400">{t('purchaseReturn.totalAmount', 'Total')}</dt><dd className="mt-0.5 font-semibold text-slate-900 dark:text-white">{formatCurrency(numericAmount(pr.totalAmount))}</dd></div></dl>
+                      <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500 dark:text-slate-400">Source</dt><dd className="mt-0.5 break-all">{pr.grn?.referenceNo || pr.purchase?.purchaseNumber || 'Direct purchase'}</dd></div><div><dt className="text-slate-500 dark:text-slate-400">{t('purchaseReturn.returnDate', 'Return Date')}</dt><dd className="mt-0.5">{formatDate(pr.returnDate)}</dd></div><div className="col-span-2"><dt className="text-slate-500 dark:text-slate-400">{t('purchaseReturn.totalAmount', 'Total')}</dt><dd className="mt-0.5 font-semibold text-slate-900 dark:text-white">{formatCurrency(numericAmount(pr.totalAmount))}</dd></div></dl>
                       <div className="mt-3 flex justify-end border-t border-slate-200 pt-2 dark:border-slate-700"><Button variant="ghost" size="icon" onClick={() => navigate(`/purchase-returns/${pr._id}`)} title={t('common.view', 'View')} aria-label={`${t('common.view', 'View')} ${pr.referenceNo}`}><Eye className="h-4 w-4 text-slate-500" /></Button></div>
                     </article>
                   ))}
@@ -328,7 +332,7 @@ export default function PurchaseReturnsListPage() {
                     <TableHeader>
                       <TableRow className="bg-slate-50 hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-900">
                         <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("purchaseReturn.reference", "Reference")}</TableHead>
-                        <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("purchaseReturn.grnReference", "GRN")}</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">Source</TableHead>
                         <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("purchaseReturn.supplier", "Supplier")}</TableHead>
                         <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("purchaseReturn.returnDate", "Return Date")}</TableHead>
                         <TableHead className="text-xs font-semibold uppercase text-slate-500 dark:text-slate-400">{t("purchaseReturn.status", "Status")}</TableHead>
@@ -357,7 +361,7 @@ export default function PurchaseReturnsListPage() {
                                 {pr.referenceNo || "N/A"}
                               </div>
                             </TableCell>
-                            <TableCell className="text-sm text-slate-600 dark:text-slate-300">{pr.grn?.referenceNo || "-"}</TableCell>
+                            <TableCell className="text-sm text-slate-600 dark:text-slate-300">{pr.grn?.referenceNo || pr.purchase?.purchaseNumber || "Direct purchase"}</TableCell>
                             <TableCell className="text-sm text-slate-600 dark:text-slate-300">{pr.supplier?.name || "-"}</TableCell>
                             <TableCell className="text-sm text-slate-600 dark:text-slate-300">{formatDate(pr.returnDate)}</TableCell>
                             <TableCell><StatusBadge status={pr.status} /></TableCell>

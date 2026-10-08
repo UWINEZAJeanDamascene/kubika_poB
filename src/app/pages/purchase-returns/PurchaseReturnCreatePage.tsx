@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router";
-import { purchaseReturnsApi, grnApi } from "@/lib/api";
+import { purchaseReturnsApi, grnApi, purchasesApi } from "@/lib/api";
 import { Layout } from "../../layout/Layout";
 import {
   ArrowLeft,
@@ -69,8 +69,25 @@ interface GRN {
   }>;
 }
 
+interface DirectPurchase {
+  _id: string;
+  purchaseNumber: string;
+  supplier: { _id: string; name: string } | string;
+  warehouse?: { _id: string; name: string } | string;
+  stockAdded?: boolean;
+  items: Array<{
+    _id: string;
+    product: { _id: string; name: string; sku: string; trackingType?: string } | string;
+    quantity?: number;
+    qty?: number;
+    unitCost: number;
+    taxRate?: number;
+  }>;
+}
+
 interface ReturnLine {
-  grnLine: string;
+  grnLine?: string;
+  purchaseLine?: string;
   product: string;
   productName?: string;
   productSku?: string;
@@ -96,9 +113,13 @@ export default function PurchaseReturnCreatePage() {
   const [grnFetchError, setGrnFetchError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [grns, setGrns] = useState<GRN[]>([]);
+  const [purchases, setPurchases] = useState<DirectPurchase[]>([]);
 
+  const [sourceType, setSourceType] = useState<"grn" | "purchase">("grn");
   const [selectedGRNId, setSelectedGRNId] = useState<string>("");
   const [selectedGRN, setSelectedGRN] = useState<GRN | null>(null);
+  const [selectedPurchaseId, setSelectedPurchaseId] = useState<string>("");
+  const [selectedPurchase, setSelectedPurchase] = useState<DirectPurchase | null>(null);
   const [referenceNo, setReferenceNo] = useState<string>("");
   const [returnDate, setReturnDate] = useState<string>(new Date().toISOString().split("T")[0]);
   const [reason, setReason] = useState<string>("");
@@ -119,16 +140,36 @@ export default function PurchaseReturnCreatePage() {
             ? (response.data as any).data
             : [];
         setGrns(list as GRN[]);
-        if (list.length === 0) {
-          setGrnFetchError("No confirmed GRNs found. Confirm a GRN before creating a return.");
+        let purchaseRows: DirectPurchase[] = [];
+        let purchaseLoadFailed = false;
+        try {
+          const purchaseResponse = await purchasesApi.getAll({ status: "received", limit: 100 });
+          if (!purchaseResponse.success) throw new Error("Could not load received direct purchases.");
+          const rows = Array.isArray(purchaseResponse.data)
+            ? purchaseResponse.data
+            : Array.isArray((purchaseResponse.data as any)?.data)
+              ? (purchaseResponse.data as any).data
+              : [];
+          purchaseRows = (rows as DirectPurchase[]).filter((purchase) => purchase.stockAdded !== false);
+          setPurchases(purchaseRows);
+        } catch (purchaseError) {
+          purchaseLoadFailed = true;
+          console.error("[PurchaseReturnCreatePage] Failed to fetch direct purchases:", purchaseError);
+          setPurchases([]);
+          setGrnFetchError(purchaseError instanceof Error ? purchaseError.message : "Could not load received direct purchases.");
+        }
+        if (list.length === 0 && purchaseRows.length === 0 && !purchaseLoadFailed) {
+          setGrnFetchError("No confirmed GRNs or received direct purchases are available for return.");
         }
       } else {
         setGrns([]);
+        setPurchases([]);
         setGrnFetchError("Could not load confirmed GRNs.");
       }
     } catch (error: any) {
       console.error("[PurchaseReturnCreatePage] Failed to fetch GRNs:", error);
       setGrns([]);
+      setPurchases([]);
       setGrnFetchError(error?.message || "Failed to fetch confirmed GRNs");
     } finally {
       setLoadingGrns(false);
@@ -141,7 +182,10 @@ export default function PurchaseReturnCreatePage() {
 
   /* ── GRN select ── */
   const handleGRNSelect = async (grnId: string) => {
+    setSourceType("grn");
     setSelectedGRNId(grnId);
+    setSelectedPurchaseId("");
+    setSelectedPurchase(null);
     if (!grnId) {
       setSelectedGRN(null);
       setLines([]);
@@ -182,9 +226,52 @@ export default function PurchaseReturnCreatePage() {
     }
   };
 
+  const handlePurchaseSelect = async (purchaseId: string) => {
+    setSourceType("purchase");
+    setSelectedPurchaseId(purchaseId);
+    setSelectedGRNId("");
+    setSelectedGRN(null);
+    if (!purchaseId) {
+      setSelectedPurchase(null);
+      setLines([]);
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await purchasesApi.getById(purchaseId);
+      if (!response.success || !response.data) throw new Error("Could not load purchase details.");
+      const purchase = response.data as DirectPurchase;
+      setSelectedPurchase(purchase);
+      setLines((purchase.items || []).map((item) => {
+        const product = typeof item.product === "object" ? item.product : null;
+        return {
+          purchaseLine: item._id,
+          product: product?._id || (typeof item.product === "string" ? item.product : ""),
+          productName: product?.name,
+          productSku: product?.sku,
+          qtyReceived: Number(item.quantity ?? item.qty) || 0,
+          qtyPreviouslyReturned: 0,
+          qtyToReturn: 0,
+          trackingType: product?.trackingType || "none",
+          returnableSerialNumbers: [],
+          serialNumbersToReturn: [],
+          unitCost: Number(item.unitCost) || 0,
+          taxRate: Number(item.taxRate) || 0,
+        };
+      }));
+    } catch (error) {
+      console.error("Failed to fetch direct purchase details:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to load purchase details.");
+      setSelectedPurchase(null);
+      setLines([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLineChange = (index: number, qtyToReturn: number) => {
     const newLines = [...lines];
-    if (newLines[index].trackingType === "serial") return;
+    if (newLines[index].trackingType === "serial" || (sourceType === "purchase" && newLines[index].trackingType !== "none")) return;
     const availableQty = newLines[index].qtyReceived - newLines[index].qtyPreviouslyReturned;
     newLines[index].qtyToReturn = Math.max(0, Math.min(qtyToReturn, availableQty));
     setLines(newLines);
@@ -202,7 +289,7 @@ export default function PurchaseReturnCreatePage() {
   };
 
   const renderSerialSelector = (line: ReturnLine, index: number) => {
-    if (line.trackingType !== "serial") return null;
+    if (sourceType !== "grn" || line.trackingType !== "serial") return null;
     return (
       <fieldset className="mt-3 rounded-md border border-slate-200 p-3 dark:border-slate-700">
         <legend className="px-1 text-xs font-medium text-slate-600 dark:text-slate-300">
@@ -237,14 +324,14 @@ export default function PurchaseReturnCreatePage() {
   const validLinesCount = lines.filter((l) => l.qtyToReturn > 0).length;
 
   const handleSave = async (confirmImmediately = false) => {
-    if (!selectedGRNId || !reason.trim()) return;
+    if ((sourceType === "grn" ? !selectedGRNId : !selectedPurchaseId) || !reason.trim()) return;
 
     setSaving(true);
     try {
       const validLines = lines
         .filter((line) => line.qtyToReturn > 0)
         .map((line) => ({
-          grnLine: line.grnLine,
+          ...(sourceType === "grn" ? { grnLine: line.grnLine } : { purchaseLine: line.purchaseLine }),
           qtyReturned: line.qtyToReturn,
           ...(line.trackingType === "serial" ? { serialNumbers: line.serialNumbersToReturn } : {}),
         }));
@@ -262,13 +349,13 @@ export default function PurchaseReturnCreatePage() {
 
       const returnData = {
         ...(referenceNo.trim() ? { referenceNo: referenceNo.trim() } : {}),
-        grn: selectedGRNId,
+        ...(sourceType === "grn" ? { grn: selectedGRNId } : { purchase: selectedPurchaseId }),
         returnDate,
         reason,
         lines: validLines,
       };
 
-      const response = await purchaseReturnsApi.create(returnData as any, sendEmail);
+      const response = await purchaseReturnsApi.create(returnData, sendEmail);
       if (!response.success || !response.data) {
         throw new Error("The purchase return could not be created.");
       }
@@ -314,7 +401,7 @@ export default function PurchaseReturnCreatePage() {
                   </div>
                   <h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">{t("purchaseReturn.create", "Create Purchase Return")}</h1>
                 </div>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("purchaseReturn.createDescription", "Return goods against a confirmed GRN")}</p>
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{t("purchaseReturn.createDescription", "Return received goods against a confirmed GRN or direct purchase")}</p>
               </div>
             </div>
           </div>
@@ -322,26 +409,44 @@ export default function PurchaseReturnCreatePage() {
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
             {/* Main Content */}
             <div className="space-y-6 xl:col-span-2">
-              {/* GRN Selection */}
+              {/* Source Selection */}
               <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader className="pb-2">
                   <CardTitle className="flex items-center gap-2 text-base text-slate-800 dark:text-slate-100">
                     <ClipboardList className="h-4 w-4 text-slate-500" />
-                    {t("purchaseReturn.selectGRN", "Select GRN")}
+                    {t("purchaseReturn.selectSource", "Select return source")}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant={sourceType === "grn" ? "default" : "outline"} onClick={() => {
+                      setSourceType("grn");
+                      setSelectedPurchaseId("");
+                      setSelectedPurchase(null);
+                      setLines([]);
+                    }}>
+                      {t("purchaseReturn.grnSource", "Confirmed GRN")}
+                    </Button>
+                    <Button type="button" size="sm" variant={sourceType === "purchase" ? "default" : "outline"} onClick={() => {
+                      setSourceType("purchase");
+                      setSelectedGRNId("");
+                      setSelectedGRN(null);
+                      setLines([]);
+                    }}>
+                      {t("purchaseReturn.directPurchaseSource", "Direct purchase")}
+                    </Button>
+                  </div>
                   {loadingGrns ? (
                     <div className="flex items-center gap-2 py-2 text-sm text-slate-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading confirmed GRNs...
+                      Loading return sources...
                     </div>
                   ) : loading ? (
                     <div className="flex items-center gap-2 py-2 text-sm text-slate-500">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Loading GRN details...
+                      Loading source details...
                     </div>
-                  ) : (
+                  ) : sourceType === "grn" ? (
                     <Select value={selectedGRNId || undefined} onValueChange={handleGRNSelect}>
                       <SelectTrigger className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">
                         <SelectValue placeholder={t("purchaseReturn.selectGRNPlaceholder", "Select a confirmed GRN...")} />
@@ -358,6 +463,23 @@ export default function PurchaseReturnCreatePage() {
                         )}
                       </SelectContent>
                     </Select>
+                  ) : (
+                    <Select value={selectedPurchaseId || undefined} onValueChange={handlePurchaseSelect}>
+                      <SelectTrigger className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                        <SelectValue placeholder={t("purchaseReturn.selectPurchasePlaceholder", "Select a received direct purchase...")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {purchases.length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-slate-500">No received direct purchases available</div>
+                        ) : (
+                          purchases.map((purchase) => (
+                            <SelectItem key={purchase._id} value={purchase._id}>
+                              {purchase.purchaseNumber} - {typeof purchase.supplier === "object" ? purchase.supplier.name : "Supplier"}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
                   )}
                   {grnFetchError && (
                     <p className="text-sm text-amber-600 dark:text-amber-400">{grnFetchError}</p>
@@ -366,7 +488,7 @@ export default function PurchaseReturnCreatePage() {
               </Card>
 
               {/* Line Items */}
-              {selectedGRN && lines.length > 0 && (
+              {(selectedGRN || selectedPurchase) && lines.length > 0 && (
                 <Card className="border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-base text-slate-800 dark:text-slate-100">
@@ -375,6 +497,11 @@ export default function PurchaseReturnCreatePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
+                    {sourceType === "purchase" && lines.some((line) => line.trackingType !== "none") && (
+                      <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
+                        Tracked products must be returned against their confirmed GRN so their batch or serial numbers can be validated.
+                      </p>
+                    )}
                     <div className="space-y-3 xl:hidden">
                       {lines.map((line, index) => {
                         const availableQty = line.qtyReceived - line.qtyPreviouslyReturned;
@@ -389,7 +516,7 @@ export default function PurchaseReturnCreatePage() {
                           </dl>
                           <div className="mt-3 flex items-center justify-between gap-3 border-t border-slate-200 pt-3 dark:border-slate-700">
                             <label className="text-xs text-slate-500">{t("purchaseReturn.qtyToReturn", "Quantity to return")}</label>
-                            {line.trackingType === "serial"
+                            {line.trackingType === "serial" || (sourceType === "purchase" && line.trackingType !== "none")
                               ? <span className="text-sm font-medium">{line.qtyToReturn}</span>
                               : <Input type="number" min={0} max={availableQty} value={line.qtyToReturn} onChange={(e) => handleLineChange(index, parseFloat(e.target.value) || 0)} className="h-9 w-28 text-right" disabled={availableQty <= 0} />}
                           </div>
@@ -424,7 +551,7 @@ export default function PurchaseReturnCreatePage() {
                                 <TableCell className="text-right text-slate-600 dark:text-slate-300">{line.qtyPreviouslyReturned}</TableCell>
                                 <TableCell className="text-right text-slate-600 dark:text-slate-300">{availableQty}</TableCell>
                                 <TableCell className="text-right">
-                                  {line.trackingType === "serial"
+                                  {line.trackingType === "serial" || (sourceType === "purchase" && line.trackingType !== "none")
                                     ? line.qtyToReturn
                                     : <Input
                                       type="number"
@@ -449,7 +576,7 @@ export default function PurchaseReturnCreatePage() {
                 </Card>
               )}
 
-              {!selectedGRN && (
+              {!selectedGRN && !selectedPurchase && (
                 <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-slate-300 py-12 text-slate-500 dark:border-slate-700 dark:text-slate-400">
                   <Truck className="h-10 w-10 text-slate-300 dark:text-slate-600" />
                   <p className="text-sm">{t("purchaseReturn.selectGRNHint", "Select a confirmed GRN to start a return")}</p>
@@ -475,7 +602,9 @@ export default function PurchaseReturnCreatePage() {
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-300">{t("purchaseReturn.warehouse", "Warehouse")}</Label>
                     <p className="rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200">
-                      {selectedGRN?.warehouse?.name || t("purchaseReturn.selectGRNPlaceholder", "Select a confirmed GRN...")}
+                      {selectedGRN?.warehouse?.name
+                        || (typeof selectedPurchase?.warehouse === "object" ? selectedPurchase.warehouse.name : "")
+                        || "Select a confirmed GRN or received direct purchase"}
                     </p>
                   </div>
                   <div className="space-y-1.5">
