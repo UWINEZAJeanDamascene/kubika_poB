@@ -21,14 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/ca
 import { Badge } from '@/app/components/ui/badge';
 import { Label } from '@/app/components/ui/label';
 import { Textarea } from '@/app/components/ui/textarea';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from '@/app/components/ui/table';
 import {
   Select,
   SelectContent,
@@ -498,7 +490,7 @@ export default function CreditNoteCreatePage() {
 
       const serialIdsByInvoiceLine = new Map<string, string[]>();
       for (const deliveryNote of deliveryNotesResponse.data || []) {
-        if (!['confirmed', 'delivered'].includes(String(deliveryNote.status || '').toLowerCase())) continue;
+        if (!['confirmed', 'delivered', 'dispatched'].includes(String(deliveryNote.status || '').toLowerCase())) continue;
         for (const deliveryLine of deliveryNote.lines || []) {
           const invoiceLineId = deliveryLine.invoiceLineId;
           if (!invoiceLineId || !Array.isArray(deliveryLine.serialNumbers)) continue;
@@ -850,77 +842,87 @@ export default function CreditNoteCreatePage() {
                         <p className="text-sm">Select an invoice to see line items</p>
                       </div>
                     ) : (
-                      <>
-                      <div className="space-y-3 p-3 xl:hidden">
-                        {lines.map((line, index) => <article key={line.invoiceLineId} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productCode}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Invoiced qty</dt><dd>{toNumber(line.originalQty)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice)}</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{toNumber(line.taxRate)}%</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to credit<Input type="number" min="0" max={toNumber(line.originalQty)} value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', e.target.value)} /></label><div className="space-y-1 text-xs text-slate-500">Return to warehouse<Select value={line.returnToWarehouse || ''} onValueChange={(value) => handleLineChange(index, 'returnToWarehouse', value)}><SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger><SelectContent>{warehouses.map((wh) => <SelectItem key={wh._id} value={wh._id}>{wh.name}</SelectItem>)}</SelectContent></Select></div>{line.product?.trackingType === 'batch' && <CreditNoteBatchSelector productId={line.product._id} selectedBatchId={line.batchId} quantity={toNumber(line.quantity)} onChange={(batchId) => handleLineChange(index, 'batchId', batchId)} />}{line.product?.trackingType === 'serial' && <CreditNoteSerialSelector productId={line.product._id} selectedSerials={line.serialNumbers || []} quantity={toNumber(line.quantity)} onChange={(serials) => handleLineChange(index, 'serialNumbers', serials)} />}<p className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</p></article>)}
+                      <div className="space-y-4 p-4">
+                        {lines.map((line, index) => (
+                          <article key={line.invoiceLineId} className="min-w-0 space-y-4 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
+                            <div className="flex min-w-0 items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <h3 className="break-words text-sm font-semibold text-slate-900 dark:text-white">{line.productName}</h3>
+                                {line.productCode && <p className="mt-0.5 break-all text-xs text-slate-500 dark:text-slate-400">{line.productCode}</p>}
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Line total</p>
+                                <p className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(line.lineTotal)}</p>
+                              </div>
+                            </div>
+
+                            <dl className="grid grid-cols-2 gap-3 rounded-md bg-slate-50 p-3 text-sm dark:bg-slate-800/70 sm:grid-cols-4">
+                              <div>
+                                <dt className="text-xs text-slate-500 dark:text-slate-400">Invoiced</dt>
+                                <dd className="mt-1 font-medium text-slate-900 dark:text-white">{toNumber(line.originalQty)}</dd>
+                              </div>
+                              <div>
+                                <dt className="text-xs text-slate-500 dark:text-slate-400">Unit price</dt>
+                                <dd className="mt-1 font-medium text-slate-900 dark:text-white">{formatCurrency(line.unitPrice)}</dd>
+                              </div>
+                              <div>
+                                <dt className="text-xs text-slate-500 dark:text-slate-400">Tax</dt>
+                                <dd className="mt-1 font-medium text-slate-900 dark:text-white">{toNumber(line.taxRate)}%</dd>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-slate-500 dark:text-slate-400">Qty to credit</Label>
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  max={toNumber(line.originalQty)}
+                                  value={line.quantity}
+                                  onChange={(event) => handleLineChange(index, 'quantity', event.target.value)}
+                                  className="h-9 bg-white text-right dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                                />
+                              </div>
+                            </dl>
+
+                            <div className="grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2">
+                              <div className="min-w-0 space-y-1.5">
+                                <Label className="text-xs text-slate-600 dark:text-slate-300">Return to warehouse</Label>
+                                <Select value={line.returnToWarehouse || ''} onValueChange={(value) => handleLineChange(index, 'returnToWarehouse', value)}>
+                                  <SelectTrigger className="w-full bg-white dark:border-slate-700 dark:bg-slate-900 dark:text-white">
+                                    <SelectValue placeholder="Select warehouse" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {warehouses.map((warehouse) => (
+                                      <SelectItem key={warehouse._id} value={warehouse._id}>{warehouse.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+
+                              {line.product?.trackingType === 'batch' && (
+                                <div className="min-w-0 space-y-1.5">
+                                  <Label className="text-xs text-slate-600 dark:text-slate-300">Returned batch</Label>
+                                  <CreditNoteBatchSelector
+                                    productId={line.product._id}
+                                    selectedBatchId={line.batchId}
+                                    quantity={toNumber(line.quantity)}
+                                    onChange={(batchId) => handleLineChange(index, 'batchId', batchId)}
+                                  />
+                                </div>
+                              )}
+
+                              {line.product?.trackingType === 'serial' && (
+                                <div className="min-w-0 md:col-span-2">
+                                  <CreditNoteSerialSelector
+                                    productId={line.product._id}
+                                    selectedSerials={line.serialNumbers || []}
+                                    quantity={toNumber(line.quantity)}
+                                    onChange={(serials) => handleLineChange(index, 'serialNumbers', serials)}
+                                  />
+                                </div>
+                              )}
+                            </div>
+                          </article>
+                        ))}
                       </div>
-                      <div className="hidden overflow-x-auto xl:block">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="border-b-slate-200 hover:bg-transparent dark:border-b-slate-800">
-                              <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Product</TableHead>
-                              <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Invoiced</TableHead>
-                              <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Price</TableHead>
-                              <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Tax</TableHead>
-                              <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Qty to Credit</TableHead>
-                              <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Return To</TableHead>
-                              <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Returned Batch</TableHead>
-                              <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Returned Serials</TableHead>
-                              <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Total</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {lines.map((line, index) => (
-                              <TableRow key={line.invoiceLineId} className="border-b-slate-100 transition-colors hover:bg-slate-50 dark:border-b-slate-800/60 dark:hover:bg-slate-800/50">
-                                <TableCell>
-                                  <div className="text-sm font-medium text-slate-900 dark:text-white">{line.productName}</div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400">{line.productCode}</div>
-                                </TableCell>
-                                <TableCell className="text-right text-sm text-slate-500 dark:text-slate-400">{toNumber(line.originalQty)}</TableCell>
-                                <TableCell className="text-right text-sm text-slate-900 dark:text-white">{formatCurrency(line.unitPrice)}</TableCell>
-                                <TableCell className="text-right text-sm text-slate-900 dark:text-white">{toNumber(line.taxRate)}%</TableCell>
-                                <TableCell>
-                                  <Input type="number" min="0" max={toNumber(line.originalQty)} value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', e.target.value)} className="w-20 text-right bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white" placeholder={`Max: ${toNumber(line.originalQty)}`} />
-                                </TableCell>
-                                <TableCell>
-                                  <Select value={line.returnToWarehouse || ''} onValueChange={(v) => handleLineChange(index, 'returnToWarehouse', v)}>
-                                    <SelectTrigger className="w-[130px] bg-white dark:border-slate-800 dark:bg-slate-900 dark:text-white">
-                                      <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent className="dark:border-slate-800 dark:bg-slate-950">
-                                      {warehouses.map(wh => (
-                                        <SelectItem key={wh._id} value={wh._id} className="dark:text-slate-200">{wh.name}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell>
-                                  {line.product?.trackingType === 'batch' && (
-                                    <CreditNoteBatchSelector
-                                      productId={line.product._id}
-                                      selectedBatchId={line.batchId}
-                                      quantity={toNumber(line.quantity)}
-                                      onChange={(batchId) => handleLineChange(index, 'batchId', batchId)}
-                                    />
-                                  )}
-                                </TableCell>
-                                <TableCell>
-                                  {line.product?.trackingType === 'serial' && (
-                                    <CreditNoteSerialSelector
-                                      productId={line.product._id}
-                                      selectedSerials={line.serialNumbers || []}
-                                      quantity={toNumber(line.quantity)}
-                                      onChange={(serials) => handleLineChange(index, 'serialNumbers', serials)}
-                                    />
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(line.lineTotal)}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                      </>
                     )}
                   </CardContent>
                 </Card>
