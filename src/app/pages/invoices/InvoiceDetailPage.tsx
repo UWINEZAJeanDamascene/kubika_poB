@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { invoicesApi, bankAccountsApi, creditNotesApi, deliveryNotesApi, journalEntriesApi } from '@/lib/api';
+import { invoicesApi, bankAccountsApi, creditNotesApi, deliveryNotesApi, journalEntriesApi, arReceiptsApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import {
@@ -172,6 +172,21 @@ interface CreditNote {
   status: string;
 }
 
+interface AllocatedReceipt {
+  _id: string;
+  referenceNo?: string;
+  reference?: string;
+  receiptDate?: string;
+  postedAt?: string;
+  status: string;
+  paymentMethod: string;
+  allocations: Array<{
+    invoiceId?: string;
+    invoice?: { _id?: string } | string;
+    amountAllocated: number;
+  }>;
+}
+
 interface DeliveryNote {
   _id: string;
   referenceNo: string;
@@ -207,7 +222,7 @@ const STATUS_FLOW = [
   { status: 'fully_paid', label: 'Fully Paid' },
 ];
 
-function getInvoiceOutstandingAmount(invoice: Invoice | null): number {
+function getInvoiceOutstandingAmount(invoice: Invoice | null, creditNoteTotal = 0, receiptPaymentTotal = 0): number {
   if (!invoice) return 0;
 
   const amount = (value: unknown) => {
@@ -236,14 +251,12 @@ function getInvoiceOutstandingAmount(invoice: Invoice | null): number {
   }, 0);
   const total = amount(invoice.grandTotal) || lineTotal || subtotal + tax;
   const paymentTotal = (invoice.payments || []).reduce((sum, payment) => sum + amount(payment.amount), 0);
-  const paid = amount(invoice.amountPaid) || paymentTotal ||
-    (invoice.status === 'fully_paid' || invoice.status === 'paid' ? total : 0);
-
+  const paid = Math.max(amount(invoice.amountPaid), paymentTotal + receiptPaymentTotal);
   const recordedBalance = invoice.amountOutstanding ?? invoice.balance;
   if (recordedBalance !== undefined && recordedBalance !== null) {
     return Math.max(0, amount(recordedBalance));
   }
-  return Math.max(0, total - paid);
+  return Math.max(0, total - creditNoteTotal - paid);
 }
 
 export default function InvoiceDetailPage() {
@@ -257,6 +270,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [creditNotes, setCreditNotes] = useState<CreditNote[]>([]);
   const [deliveryNotes, setDeliveryNotes] = useState<DeliveryNote[]>([]);
+  const [receiptPayments, setReceiptPayments] = useState<AllocatedReceipt[]>([]);
   const [journalEntries, setJournalEntries] = useState<InvoiceJournalEntry[]>([]);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -320,6 +334,16 @@ export default function InvoiceDetailPage() {
       console.error('Failed to fetch invoice related documents:', error);
       setCreditNotes([]);
       setDeliveryNotes([]);
+    }
+    try {
+      const receiptsResponse = await arReceiptsApi.getAll({ invoiceId: id, status: 'posted', limit: 100 });
+      if (!receiptsResponse.success) throw new Error('Could not load posted invoice receipts.');
+      const responseData = receiptsResponse.data as any;
+      const receiptRows = Array.isArray(responseData) ? responseData : responseData?.data || [];
+      setReceiptPayments(receiptRows as AllocatedReceipt[]);
+    } catch (error) {
+      console.error('Failed to fetch invoice receipt allocations:', error);
+      setReceiptPayments([]);
     }
   }, [id]);
 
@@ -484,7 +508,7 @@ export default function InvoiceDetailPage() {
   };
 
   const handleRecordPayment = () => {
-    const outstanding = getInvoiceOutstandingAmount(invoice);
+    const outstanding = outstandingAmount;
     if (outstanding <= 0) {
       toast.info('Invoice is already fully paid');
       return;
@@ -498,7 +522,7 @@ export default function InvoiceDetailPage() {
 
   const handlePaymentSubmit = async () => {
     if (!paymentAmount || !id) return;
-    const outstanding = getInvoiceOutstandingAmount(invoice);
+    const outstanding = outstandingAmount;
     const payAmount = parseFloat(paymentAmount);
     if (!Number.isFinite(payAmount) || payAmount <= 0) {
       toast.error('Enter a valid payment amount');
@@ -525,7 +549,7 @@ export default function InvoiceDetailPage() {
       toast.success('Payment recorded successfully');
       setShowPaymentDialog(false);
       setBankAccountId('');
-      fetchInvoice();
+      await Promise.all([fetchInvoice(true), fetchRelatedDocuments()]);
     } catch (error: any) {
       console.error('Failed to record payment:', error);
       toast.error(error?.message || 'Failed to record payment');
@@ -687,6 +711,25 @@ export default function InvoiceDetailPage() {
     return sum + (total || subtotal + money(line.lineTax ?? line.taxAmount));
   }, 0);
   const paymentTotal = (invoice.payments || []).reduce((sum, payment) => sum + money(payment.amount), 0);
+  const invoiceReceiptPayments = receiptPayments.flatMap((receipt) =>
+    receipt.allocations
+      .filter((allocation) => {
+        const allocatedInvoiceId = typeof allocation.invoice === 'object' && allocation.invoice
+          ? allocation.invoice._id
+          : allocation.invoice || allocation.invoiceId;
+        return allocatedInvoiceId === id;
+      })
+      .map((allocation, index) => ({
+        _id: `${receipt._id}-${index}`,
+        amount: money(allocation.amountAllocated),
+        paymentMethod: receipt.paymentMethod,
+        paidDate: receipt.receiptDate || receipt.postedAt || '',
+        recordedAt: receipt.postedAt,
+        reference: receipt.referenceNo || receipt.reference,
+        recordedBy: null,
+      })),
+  );
+  const receiptPaymentTotal = invoiceReceiptPayments.reduce((sum, payment) => sum + payment.amount, 0);
   const subtotalAmount = money(invoice.subtotal) || lineSubtotal;
   const taxAmount = money(invoice.totalTax) || money(invoice.taxAmount) || lineTax;
   const totalAmount = money(invoice.grandTotal) || lineTotal || subtotalAmount + taxAmount;
@@ -712,8 +755,12 @@ export default function InvoiceDetailPage() {
       : 0;
     return [delivery.id, Math.max(0, delivery.total - allocatedCredit)];
   }));
-  const paidAmount = money(invoice.amountPaid) || paymentTotal || (invoice.status === 'fully_paid' || invoice.status === 'paid' ? totalAmount : 0);
-  const outstandingAmount = getInvoiceOutstandingAmount(invoice);
+  const paidAmount = Math.max(money(invoice.amountPaid), paymentTotal + receiptPaymentTotal);
+  const outstandingAmount = getInvoiceOutstandingAmount(invoice, creditNoteTotal, receiptPaymentTotal);
+  const paymentHistory = [
+    ...(invoice.payments || []),
+    ...invoiceReceiptPayments,
+  ];
   const linkedJournalEntries: InvoiceJournalEntry[] = [
     ...journalEntries,
     ...(invoice.revenueJournalEntry ? [{
@@ -1033,9 +1080,9 @@ export default function InvoiceDetailPage() {
               <TabsTrigger value="payments" className="gap-1.5 text-xs data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 dark:data-[state=active]:bg-emerald-950/40 dark:data-[state=active]:text-emerald-300 dark:text-slate-400">
                 <DollarSign className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Payments</span>
-                {invoice.payments && invoice.payments.length > 0 && (
+                {paymentHistory.length > 0 && (
                   <span className="ml-1 inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-slate-100 px-1 text-[10px] font-bold text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    {invoice.payments.length}
+                    {paymentHistory.length}
                   </span>
                 )}
               </TabsTrigger>
@@ -1176,10 +1223,10 @@ export default function InvoiceDetailPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                  {invoice.payments && invoice.payments.length > 0 ? (
+                  {paymentHistory.length > 0 ? (
                     <>
                     <div className="space-y-3 p-3 xl:hidden">
-                      {invoice.payments.map((payment, idx) => <article key={payment._id || `pay-card-${idx}`} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><span className="text-sm text-slate-500">{formatDate(payment.paidDate || payment.recordedAt || '')}</span><span className="text-xs capitalize text-slate-600 dark:text-slate-300">{payment.paymentMethod?.replace('_', ' ') || '-'}</span></div><p className="mt-2 text-lg font-semibold">{formatCurrency(money(payment.amount))}</p><p className="mt-1 text-xs text-slate-500">{payment.reference || '-'} · {typeof payment.recordedBy === 'object' && payment.recordedBy ? payment.recordedBy.name : '-'}</p></article>)}
+                      {paymentHistory.map((payment, idx) => <article key={payment._id || `pay-card-${idx}`} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><span className="text-sm text-slate-500">{formatDate(payment.paidDate || payment.recordedAt || '')}</span><span className="text-xs capitalize text-slate-600 dark:text-slate-300">{payment.paymentMethod?.replace('_', ' ') || '-'}</span></div><p className="mt-2 text-lg font-semibold">{formatCurrency(money(payment.amount))}</p><p className="mt-1 text-xs text-slate-500">{payment.reference || '-'} · {typeof payment.recordedBy === 'object' && payment.recordedBy ? payment.recordedBy.name : '-'}</p></article>)}
                     </div>
                     <div className="hidden overflow-x-auto xl:block">
                       <Table className="table-fixed">
@@ -1193,7 +1240,7 @@ export default function InvoiceDetailPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {invoice.payments.map((payment, idx) => {
+                          {paymentHistory.map((payment, idx) => {
                             const recordedByName =
                               typeof payment.recordedBy === 'object' && payment.recordedBy
                                 ? payment.recordedBy.name
