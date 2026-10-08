@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { creditNotesApi, invoicesApi, warehousesApi, serialNumberApi } from '@/lib/api';
+import { creditNotesApi, invoicesApi, warehousesApi, serialNumberApi, stockBatchApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
@@ -59,6 +59,7 @@ interface CreditNoteLine {
   lineTax: number;
   lineTotal: number;
   returnToWarehouse?: string;
+  batchId?: string;
   serialNumbers?: string[];
 }
 
@@ -128,7 +129,7 @@ function CreditNoteSerialSelector({
   quantity: number;
   onChange: (serialIds: string[]) => void;
 }) {
-  const [serials, setSerials] = useState<Array<{ _id: string; serialNo: string }>>([]);
+  const [serials, setSerials] = useState<Array<{ _id: string; serialNo: string; status: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
 
@@ -136,13 +137,15 @@ function CreditNoteSerialSelector({
     let active = true;
     setLoading(true);
     setLoadError(false);
-    serialNumberApi.getDispatchedForReturn(productId)
+    serialNumberApi.getAll({ product: productId, limit: 500 })
       .then((response) => {
         if (!response.success) throw new Error('Could not load dispatched serial numbers.');
         if (active) {
-          setSerials(response.data.map((serial) => ({
+          const payload = response.data as Array<{ _id: string; serialNo: string; status: string }>;
+          setSerials(payload.map((serial) => ({
             _id: serial._id,
             serialNo: serial.serialNo,
+            status: serial.status,
           })));
         }
       })
@@ -157,28 +160,118 @@ function CreditNoteSerialSelector({
     return () => { active = false; };
   }, [productId]);
 
+  const selectedSerialLabels = selectedSerials.map((serialId) =>
+    serials.find((serial) => serial._id === serialId)?.serialNo || serialId,
+  );
+  const selectableSerials = serials.filter((serial) =>
+    serial.status === 'dispatched' || selectedSerials.includes(serial._id),
+  );
+
   return (
     <div className="mt-2 space-y-1">
       <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
         Returned serials ({selectedSerials.length}/{quantity})
       </label>
+      {selectedSerialLabels.length > 0 && (
+        <p className="text-xs text-slate-700 dark:text-slate-200">
+          Selected: {selectedSerialLabels.join(', ')}
+        </p>
+      )}
       <select
         multiple
         size={Math.min(Math.max(quantity, 3), 6)}
         value={selectedSerials}
         onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value).slice(0, quantity))}
-        disabled={loading || quantity <= 0}
+        disabled={loading || (quantity <= 0 && selectedSerials.length === 0)}
         className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
         aria-label={`Select ${quantity} returned serial number(s)`}
       >
-        {serials.map((serial) => (
-          <option key={serial._id} value={serial._id}>{serial.serialNo}</option>
+        {selectableSerials.map((serial) => (
+          <option key={serial._id} value={serial._id} disabled={serial.status !== 'dispatched'}>
+            {serial.serialNo}{serial.status === 'dispatched' ? '' : ' (already returned)'}
+          </option>
         ))}
       </select>
       {loading && <p className="text-xs text-slate-500">Loading dispatched serial numbers...</p>}
       {loadError && <p role="alert" className="text-xs text-rose-600">Could not load dispatched serial numbers. Reopen the credit note and retry.</p>}
-      {!loading && !loadError && serials.length === 0 && (
-        <p className="text-xs text-amber-700">No dispatched serial numbers were found for this product.</p>
+      {!loading && !loadError && selectableSerials.filter((serial) => serial.status === 'dispatched').length === 0 && (
+        <p className="text-xs text-amber-700">
+          {serials.length === 0
+            ? 'No serial records were found for this product. Verify the delivery note recorded its serials.'
+            : 'No dispatched serial numbers are available. Verify the delivery note was confirmed.'}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function CreditNoteBatchSelector({
+  productId,
+  selectedBatchId,
+  quantity,
+  onChange,
+}: {
+  productId: string;
+  selectedBatchId?: string;
+  quantity: number;
+  onChange: (batchId: string) => void;
+}) {
+  const [batches, setBatches] = useState<Array<{ _id: string; batchNo: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+    stockBatchApi.getAll({ product: productId, limit: 500 })
+      .then((response) => {
+        if (!response.success) throw new Error('Could not load batches for return.');
+        if (active) {
+          setBatches(response.data.map((batch) => ({
+            _id: batch._id,
+            batchNo: batch.batchNo,
+          })));
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load batches for credit note:', error);
+        if (active) setLoadError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [productId]);
+
+  const selectedBatchNo = batches.find((batch) => batch._id === selectedBatchId)?.batchNo;
+  const selectedBatchUnavailable = Boolean(selectedBatchId && !selectedBatchNo);
+
+  return (
+    <div className="mt-2 space-y-1">
+      <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+        Returned batch{selectedBatchNo ? `: ${selectedBatchNo}` : selectedBatchId ? `: ${selectedBatchId}` : ''}
+      </label>
+      <select
+        value={selectedBatchId || ''}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        disabled={loading || (quantity <= 0 && !selectedBatchId)}
+        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+        aria-label="Select returned batch"
+      >
+        <option value="">Select returned batch</option>
+        {selectedBatchUnavailable && (
+          <option value={selectedBatchId} disabled>{selectedBatchId} (saved selection)</option>
+        )}
+        {batches.map((batch) => (
+          <option key={batch._id} value={batch._id}>{batch.batchNo}</option>
+        ))}
+      </select>
+      {loading && <p className="text-xs text-slate-500">Loading batches...</p>}
+      {loadError && <p role="alert" className="text-xs text-rose-600">Could not load batches. Reopen the credit note and retry.</p>}
+      {!loading && !loadError && batches.length === 0 && !selectedBatchId && (
+        <p className="text-xs text-amber-700">No batches were found for this product.</p>
       )}
     </div>
   );
@@ -296,6 +389,7 @@ export default function CreditNoteCreatePage() {
               lineSubtotal: 0,
               lineTax: 0,
               lineTotal: 0,
+              batchId: line.batchId || undefined,
               serialNumbers: line.serialNumbers || [],
             }));
             setLines(creditNoteLines);
@@ -335,6 +429,7 @@ export default function CreditNoteCreatePage() {
     lineSubtotal: 0,
     lineTax: 0,
     lineTotal: 0,
+    batchId: line.batchId || undefined,
     serialNumbers: line.serialNumbers || [],
   }));
 
@@ -383,6 +478,8 @@ export default function CreditNoteCreatePage() {
       line.serialNumbers = (line.serialNumbers || []).slice(0, line.quantity);
     } else if (field === 'returnToWarehouse') {
       line.returnToWarehouse = value;
+    } else if (field === 'batchId') {
+      line.batchId = value;
     } else if (field === 'serialNumbers') {
       line.serialNumbers = value;
     }
@@ -431,6 +528,13 @@ export default function CreditNoteCreatePage() {
         toast.error(`Select exactly ${toNumber(missingSerials.quantity)} serial number(s) for ${missingSerials.productName}.`);
         return;
       }
+      const missingBatch = creditLines.find((line) =>
+        line.product?.trackingType === 'batch' && !line.batchId,
+      );
+      if (missingBatch) {
+        toast.error(`Select the returned batch for ${missingBatch.productName}.`);
+        return;
+      }
     }
 
     setSaving(true);
@@ -455,6 +559,7 @@ export default function CreditNoteCreatePage() {
           lineTax: line.lineTax,
           lineTotal: line.lineTotal,
           returnToWarehouse: line.returnToWarehouse,
+          batchId: line.batchId || null,
           serialNumbers: line.serialNumbers || [],
         })),
       };
@@ -491,6 +596,15 @@ export default function CreditNoteCreatePage() {
     );
     if (missingSerials) {
       toast.error(`Select exactly ${toNumber(missingSerials.quantity)} serial number(s) for ${missingSerials.productName}, then save the credit note.`);
+      return;
+    }
+    const missingBatch = type === 'goods_return' && lines.find((line) =>
+      toNumber(line.quantity) > 0 &&
+      line.product?.trackingType === 'batch' &&
+      !line.batchId,
+    );
+    if (missingBatch) {
+      toast.error(`Select the returned batch for ${missingBatch.productName}, then save the credit note.`);
       return;
     }
 
@@ -653,7 +767,7 @@ export default function CreditNoteCreatePage() {
                     ) : (
                       <>
                       <div className="space-y-3 p-3 xl:hidden">
-                        {lines.map((line, index) => <article key={line.invoiceLineId} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productCode}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Invoiced qty</dt><dd>{toNumber(line.originalQty)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice)}</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{toNumber(line.taxRate)}%</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to credit<Input type="number" min="0" max={toNumber(line.originalQty)} value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', e.target.value)} /></label><div className="space-y-1 text-xs text-slate-500">Return to warehouse<Select value={line.returnToWarehouse || ''} onValueChange={(value) => handleLineChange(index, 'returnToWarehouse', value)}><SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger><SelectContent>{warehouses.map((wh) => <SelectItem key={wh._id} value={wh._id}>{wh.name}</SelectItem>)}</SelectContent></Select></div>{line.product?.trackingType === 'serial' && <CreditNoteSerialSelector productId={line.product._id} selectedSerials={line.serialNumbers || []} quantity={toNumber(line.quantity)} onChange={(serials) => handleLineChange(index, 'serialNumbers', serials)} />}<p className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</p></article>)}
+                        {lines.map((line, index) => <article key={line.invoiceLineId} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productCode}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Invoiced qty</dt><dd>{toNumber(line.originalQty)}</dd></div><div><dt className="text-slate-500">Unit price</dt><dd>{formatCurrency(line.unitPrice)}</dd></div><div><dt className="text-slate-500">Tax</dt><dd>{toNumber(line.taxRate)}%</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to credit<Input type="number" min="0" max={toNumber(line.originalQty)} value={line.quantity} onChange={(e) => handleLineChange(index, 'quantity', e.target.value)} /></label><div className="space-y-1 text-xs text-slate-500">Return to warehouse<Select value={line.returnToWarehouse || ''} onValueChange={(value) => handleLineChange(index, 'returnToWarehouse', value)}><SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger><SelectContent>{warehouses.map((wh) => <SelectItem key={wh._id} value={wh._id}>{wh.name}</SelectItem>)}</SelectContent></Select></div>{line.product?.trackingType === 'batch' && <CreditNoteBatchSelector productId={line.product._id} selectedBatchId={line.batchId} quantity={toNumber(line.quantity)} onChange={(batchId) => handleLineChange(index, 'batchId', batchId)} />}{line.product?.trackingType === 'serial' && <CreditNoteSerialSelector productId={line.product._id} selectedSerials={line.serialNumbers || []} quantity={toNumber(line.quantity)} onChange={(serials) => handleLineChange(index, 'serialNumbers', serials)} />}<p className="border-t border-slate-200 pt-2 text-right text-sm font-semibold dark:border-slate-700">{formatCurrency(line.lineTotal)}</p></article>)}
                       </div>
                       <div className="hidden overflow-x-auto xl:block">
                         <Table>
@@ -665,6 +779,7 @@ export default function CreditNoteCreatePage() {
                               <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Tax</TableHead>
                               <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Qty to Credit</TableHead>
                               <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Return To</TableHead>
+                              <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Returned Batch</TableHead>
                               <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400">Returned Serials</TableHead>
                               <TableHead className="text-right text-xs font-semibold text-slate-500 dark:text-slate-400">Total</TableHead>
                             </TableRow>
@@ -693,6 +808,16 @@ export default function CreditNoteCreatePage() {
                                       ))}
                                     </SelectContent>
                                   </Select>
+                                </TableCell>
+                                <TableCell>
+                                  {line.product?.trackingType === 'batch' && (
+                                    <CreditNoteBatchSelector
+                                      productId={line.product._id}
+                                      selectedBatchId={line.batchId}
+                                      quantity={toNumber(line.quantity)}
+                                      onChange={(batchId) => handleLineChange(index, 'batchId', batchId)}
+                                    />
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   {line.product?.trackingType === 'serial' && (
