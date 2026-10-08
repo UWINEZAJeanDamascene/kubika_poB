@@ -63,6 +63,19 @@ const getQty = (item: any): number => {
   return 0;
 };
 
+const getLineSubtotal = (item: DeliveryNoteItem): number => {
+  const lineSubtotal = toNumber(item.lineSubtotal);
+  if (lineSubtotal > 0) return lineSubtotal;
+  const gross = getQty(item) * toNumber(item.unitPrice);
+  return Math.round(gross * (1 - toNumber(item.discountPct) / 100) * 100) / 100;
+};
+
+const getLineTax = (item: DeliveryNoteItem): number => {
+  const lineTax = toNumber(item.lineTax);
+  if (lineTax > 0) return lineTax;
+  return Math.round(getLineSubtotal(item) * toNumber(item.taxRate) / 100 * 100) / 100;
+};
+
 interface DeliveryNoteItem {
   _id: string;
   product: {
@@ -293,6 +306,10 @@ export default function DeliveryNoteDetailPage() {
   );
 
   const { formatCurrency } = useCurrency();
+  const noteLines = deliveryNote?.lines || [];
+  const subtotal = noteLines.reduce((sum, line) => sum + getLineSubtotal(line), 0);
+  const taxAmount = noteLines.reduce((sum, line) => sum + getLineTax(line), 0);
+  const totalAmount = subtotal + taxAmount;
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
@@ -510,7 +527,7 @@ export default function DeliveryNoteDetailPage() {
                 </CardHeader>
                 <CardContent className="p-0">
                   <div className="space-y-3 p-3 xl:hidden">
-                    {(deliveryNote.lines || []).map((item: DeliveryNoteItem) => <article key={item._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{item.product?.name || item.productName || item.description || '—'}</h3><p className="text-xs text-slate-500">{item.product?.sku || item.productCode || ''}</p><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{item.description || item.productName || '—'}</p><div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><span>Quantity</span><strong>{getQty(item)} {item.unit || 'pcs'}</strong></div></article>)}
+                    {noteLines.map((item: DeliveryNoteItem) => <article key={item._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><h3 className="font-medium text-slate-900 dark:text-white">{item.product?.name || item.productName || item.description || '—'}</h3><p className="text-xs text-slate-500">{item.product?.sku || item.productCode || ''}</p><p className="mt-2 text-sm text-slate-600 dark:text-slate-300">{item.description || item.productName || '—'}</p><div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-sm dark:border-slate-700"><span>Quantity</span><strong>{getQty(item)} {item.unit || 'pcs'}</strong></div><div className="mt-2 flex justify-between text-sm"><span>Subtotal</span><strong>{formatCurrency(getLineSubtotal(item))}</strong></div><div className="mt-1 flex justify-between text-sm"><span>Tax ({toNumber(item.taxRate)}%)</span><strong>{formatCurrency(getLineTax(item))}</strong></div><div className="mt-1 flex justify-between text-sm"><span>Total</span><strong>{formatCurrency(getLineSubtotal(item) + getLineTax(item))}</strong></div></article>)}
                   </div>
                   <div className="hidden overflow-x-auto xl:block">
                     <table className="w-full">
@@ -520,6 +537,9 @@ export default function DeliveryNoteDetailPage() {
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Description</th>
                           <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Qty</th>
                           <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Unit</th>
+                          <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Subtotal</th>
+                          <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tax</th>
+                          <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -540,6 +560,9 @@ export default function DeliveryNoteDetailPage() {
                             </td>
                             <td className="px-5 py-3 text-right text-sm font-semibold text-slate-900 dark:text-white">{getQty(item)}</td>
                             <td className="px-5 py-3 text-sm text-slate-600 dark:text-slate-300">{item.unit || 'pcs'}</td>
+                            <td className="px-5 py-3 text-right text-sm text-slate-700 dark:text-slate-300">{formatCurrency(getLineSubtotal(item))}</td>
+                            <td className="px-5 py-3 text-right text-sm text-slate-700 dark:text-slate-300">{formatCurrency(getLineTax(item))} <span className="text-xs text-slate-500">({toNumber(item.taxRate)}%)</span></td>
+                            <td className="px-5 py-3 text-right text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(getLineSubtotal(item) + getLineTax(item))}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -690,18 +713,19 @@ export default function DeliveryNoteDetailPage() {
                   <Separator className="dark:bg-slate-800" />
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-slate-500 dark:text-slate-400">Items:</span>
-                    <span className="font-medium text-slate-900 dark:text-white">{(deliveryNote.lines || []).length || 0}</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{noteLines.length || 0}</span>
                   </div>
-                  <div className="flex items-center justify-between text-xl font-bold text-slate-900 dark:text-white">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Subtotal:</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(subtotal)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-slate-500 dark:text-slate-400">Tax:</span>
+                    <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(taxAmount)}</span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-xl font-bold text-slate-900 dark:border-slate-700 dark:text-white">
                     <span>Total</span>
-                    <span>{formatCurrency(toNumber(
-                      deliveryNote.grandTotal
-                      ?? (deliveryNote as DeliveryNote & { totalAmount?: number }).totalAmount
-                      ?? (deliveryNote.lines || []).reduce((sum, l: any) => {
-                        const qty = getQty(l);
-                        return sum + (toNumber(l.lineTotal) || toNumber(l.unitPrice) * qty || toNumber(l.unitCost) * qty);
-                      }, 0)
-                    ))}</span>
+                    <span>{formatCurrency(totalAmount)}</span>
                   </div>
                   <Separator className="dark:bg-slate-800" />
                   <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
