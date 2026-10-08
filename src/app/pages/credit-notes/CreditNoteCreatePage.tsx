@@ -342,6 +342,11 @@ export default function CreditNoteCreatePage() {
       alert(t('creditNotes.reasonRequired', 'Reason is required'));
       return;
     }
+    const creditLines = lines.filter((line) => toNumber(line.quantity) > 0);
+    if (creditLines.length === 0) {
+      alert('Add at least one invoice line and enter the quantity to credit.');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -352,7 +357,7 @@ export default function CreditNoteCreatePage() {
         reason,
         notes,
         currencyCode: companyCurrency || 'RWF',
-        lines: lines.map(line => ({
+        lines: creditLines.map(line => ({
           invoiceLineId: line.invoiceLineId,
           product: typeof line.product === 'string' ? line.product : line.product?._id,
           productName: line.productName,
