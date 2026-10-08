@@ -567,7 +567,12 @@ export default function PurchaseDetailPage() {
                   )}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t('purchases.payment.reference', 'Reference')}</Label>
-                    <Input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder="Payment reference" className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                    <Input value={paymentReference} onChange={(e) => setPaymentReference(e.target.value)} placeholder={t('purchases.payment.referenceAutoGenerate', 'Auto-generated if left blank')} className="h-9 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white" />
+                    {!paymentReference && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('purchases.payment.referenceAutoGenerateHint', 'A payment reference will be generated when you submit. You can enter your own reference instead.')}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="space-y-1.5">
