@@ -168,6 +168,7 @@ interface CreditNote {
   creditNoteNumber?: string;
   createdAt: string;
   grandTotal: number;
+  totalAmount?: number;
   status: string;
 }
 
@@ -179,6 +180,7 @@ interface DeliveryNote {
   grandTotal: number;
   status: string;
   lines?: Array<{
+    lineTotal?: number;
     lineTax?: number;
     taxRate?: number;
     lineSubtotal?: number;
@@ -237,8 +239,11 @@ function getInvoiceOutstandingAmount(invoice: Invoice | null): number {
   const paid = amount(invoice.amountPaid) || paymentTotal ||
     (invoice.status === 'fully_paid' || invoice.status === 'paid' ? total : 0);
 
-  const recordedBalance = amount(invoice.balance ?? invoice.amountOutstanding);
-  return Math.max(0, total > 0 ? total - paid : recordedBalance);
+  const recordedBalance = invoice.amountOutstanding ?? invoice.balance;
+  if (recordedBalance !== undefined && recordedBalance !== null) {
+    return Math.max(0, amount(recordedBalance));
+  }
+  return Math.max(0, total - paid);
 }
 
 export default function InvoiceDetailPage() {
@@ -685,6 +690,28 @@ export default function InvoiceDetailPage() {
   const subtotalAmount = money(invoice.subtotal) || lineSubtotal;
   const taxAmount = money(invoice.totalTax) || money(invoice.taxAmount) || lineTax;
   const totalAmount = money(invoice.grandTotal) || lineTotal || subtotalAmount + taxAmount;
+  const confirmedCreditNotes = creditNotes.filter((note) =>
+    ['confirmed', 'issued', 'applied', 'partially_refunded'].includes(note.status),
+  );
+  const creditNoteTotal = confirmedCreditNotes.reduce(
+    (sum, note) => sum + money(note.totalAmount ?? note.grandTotal),
+    0,
+  );
+  const netTotalAmount = Math.max(0, totalAmount - creditNoteTotal);
+  const deliveryGrossTotals = deliveryNotes.map((note) => {
+    const linesTotal = (note.lines || []).reduce((sum, line) => {
+      const lineTotal = money(line.lineTotal);
+      return sum + (lineTotal || money(line.lineSubtotal) + money(line.lineTax));
+    }, 0);
+    return { id: note._id, total: money(note.grandTotal) || linesTotal };
+  });
+  const totalDeliveryValue = deliveryGrossTotals.reduce((sum, delivery) => sum + delivery.total, 0);
+  const deliveryNetTotals = new Map(deliveryGrossTotals.map((delivery) => {
+    const allocatedCredit = totalDeliveryValue > 0
+      ? Math.min(delivery.total, creditNoteTotal * delivery.total / totalDeliveryValue)
+      : 0;
+    return [delivery.id, Math.max(0, delivery.total - allocatedCredit)];
+  }));
   const paidAmount = money(invoice.amountPaid) || paymentTotal || (invoice.status === 'fully_paid' || invoice.status === 'paid' ? totalAmount : 0);
   const outstandingAmount = getInvoiceOutstandingAmount(invoice);
   const linkedJournalEntries: InvoiceJournalEntry[] = [
@@ -819,8 +846,13 @@ export default function InvoiceDetailPage() {
 
                 {/* Total */}
                 <div className="rounded-lg bg-slate-50 p-4 text-right dark:bg-slate-800/60 lg:min-w-[200px]">
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Grand Total</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{creditNoteTotal > 0 ? 'Net after Credit Notes' : 'Grand Total'}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(netTotalAmount)}</p>
+                  {creditNoteTotal > 0 && (
+                    <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      Original: {formatCurrency(totalAmount)} - Credits: {formatCurrency(creditNoteTotal)}
+                    </p>
+                  )}
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Currency: {invoice.currencyCode}</p>
                 </div>
               </div>
@@ -962,8 +994,8 @@ export default function InvoiceDetailPage() {
                   <TrendingUp className="h-5 w-5" />
                 </div>
                 <div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Net Total</p>
+                  <p className="text-base font-bold text-slate-900 dark:text-white">{formatCurrency(netTotalAmount)}</p>
                 </div>
               </CardContent>
             </Card>
@@ -1079,9 +1111,21 @@ export default function InvoiceDetailPage() {
                         <span className="text-slate-500 dark:text-slate-400">Tax</span>
                         <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(taxAmount)}</span>
                       </div>
+                      {creditNoteTotal > 0 && (
+                        <>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500 dark:text-slate-400">Original invoice total</span>
+                            <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-500 dark:text-slate-400">Confirmed Credit Notes</span>
+                            <span className="font-medium text-rose-600 dark:text-rose-400">-{formatCurrency(creditNoteTotal)}</span>
+                          </div>
+                        </>
+                      )}
                       <div className="flex justify-between border-t border-slate-100 pt-2 dark:border-slate-800">
-                        <span className="font-semibold text-slate-900 dark:text-white">Total</span>
-                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(totalAmount)}</span>
+                        <span className="font-semibold text-slate-900 dark:text-white">Net Total</span>
+                        <span className="text-lg font-bold text-slate-900 dark:text-white">{formatCurrency(netTotalAmount)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-slate-500 dark:text-slate-400">Amount Paid</span>
@@ -1322,7 +1366,7 @@ export default function InvoiceDetailPage() {
                   {deliveryNotes.length > 0 ? (
                     <>
                     <div className="space-y-3 p-3 xl:hidden">
-                      {deliveryNotes.map((dn) => <article key={dn._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><h3 className="font-medium">{dn.referenceNo || dn.deliveryNoteNumber}</h3><span className="text-xs capitalize text-slate-500">{dn.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(dn.createdAt)}</p><p className="mt-2 text-right font-semibold">{formatCurrency(dn.grandTotal)}</p></article>)}
+                      {deliveryNotes.map((dn) => <article key={dn._id} className="rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div className="flex items-center justify-between gap-2"><h3 className="font-medium">{dn.referenceNo || dn.deliveryNoteNumber}</h3><span className="text-xs capitalize text-slate-500">{dn.status}</span></div><p className="mt-1 text-xs text-slate-500">{formatDate(dn.createdAt)}</p><p className="mt-2 text-right text-xs text-slate-500">Original: {formatCurrency(money(dn.grandTotal))}</p><p className="text-right font-semibold">Net after credits: {formatCurrency(deliveryNetTotals.get(dn._id) ?? money(dn.grandTotal))}</p></article>)}
                     </div>
                     <div className="hidden overflow-x-auto xl:block">
                       <Table>
@@ -1340,7 +1384,10 @@ export default function InvoiceDetailPage() {
                               <TableCell className="font-medium text-slate-900 dark:text-white">{dn.referenceNo || dn.deliveryNoteNumber}</TableCell>
                               <TableCell className="text-slate-700 dark:text-slate-300">{formatDate(dn.createdAt)}</TableCell>
                               <TableCell className="text-slate-700 dark:text-slate-300">{dn.status}</TableCell>
-                              <TableCell className="text-right font-semibold text-slate-900 dark:text-white">{formatCurrency(dn.grandTotal)}</TableCell>
+                              <TableCell className="text-right text-slate-900 dark:text-white">
+                                <div className="text-xs text-slate-500 dark:text-slate-400">Original: {formatCurrency(money(dn.grandTotal))}</div>
+                                <div className="font-semibold">Net after credits: {formatCurrency(deliveryNetTotals.get(dn._id) ?? money(dn.grandTotal))}</div>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { deliveryNotesApi, invoicesApi } from '@/lib/api';
+import { deliveryNotesApi, invoicesApi, creditNotesApi } from '@/lib/api';
 import { Layout } from '../../layout/Layout';
 import {
   ArrowLeft,
@@ -129,7 +129,7 @@ interface DeliveryNote {
   currencyCode: string;
   items?: DeliveryNoteItem[];
   lines?: DeliveryNoteItem[];
-  invoice?: {
+  invoice?: string | {
     _id: string;
     referenceNo?: string;
     status?: string;
@@ -138,10 +138,17 @@ interface DeliveryNote {
   updatedAt: string;
 }
 
+interface InvoiceCreditAmounts {
+  grossTotal: number;
+  allocatedCredit: number;
+  netTotal: number;
+}
+
 export default function DeliveryNoteDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [deliveryNote, setDeliveryNote] = useState<DeliveryNote | null>(null);
+  const [invoiceCreditAmounts, setInvoiceCreditAmounts] = useState<InvoiceCreditAmounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [sendEmail, setSendEmail] = useState(false);
 
@@ -160,7 +167,51 @@ export default function DeliveryNoteDetailPage() {
           console.log('First line:', (response.data as any).lines[0]);
           console.log('qtyToDeliver raw:', (response.data as any).lines[0].qtyToDeliver);
         }
-        setDeliveryNote(response.data as DeliveryNote);
+        const loadedNote = response.data as DeliveryNote;
+        setDeliveryNote(loadedNote);
+        setInvoiceCreditAmounts(null);
+
+        const invoiceId = typeof loadedNote.invoice === 'string'
+          ? loadedNote.invoice
+          : loadedNote.invoice?._id;
+        if (invoiceId) {
+          try {
+            const [creditResponse, deliveryResponse] = await Promise.all([
+              creditNotesApi.getAll({ invoiceId, page: 1, limit: 100 }),
+              deliveryNotesApi.getAll({ invoiceId, page: 1, limit: 100 }),
+            ]);
+            if (!creditResponse.success || !deliveryResponse.success) {
+              throw new Error('Could not load the invoice credit or delivery history.');
+            }
+            const unwrap = (value: any) => Array.isArray(value) ? value : Array.isArray(value?.data) ? value.data : [];
+            const creditData = unwrap(creditResponse.data) as Array<{ status?: string; totalAmount?: number; grandTotal?: number }>;
+            const deliveryData = unwrap(deliveryResponse.data) as DeliveryNote[];
+            const eligibleStatuses = new Set(['confirmed', 'issued', 'applied', 'partially_refunded']);
+            const creditTotal = creditData
+              .filter((note) => eligibleStatuses.has(String(note.status || '').toLowerCase()))
+              .reduce((sum, note) => sum + toNumber(note.totalAmount ?? note.grandTotal), 0);
+            const eligibleDeliveries = deliveryData.filter((note) =>
+              ['confirmed', 'dispatched', 'delivered'].includes(String(note.status || '').toLowerCase()),
+            );
+            const deliveryTotal = (note: DeliveryNote) => (note.lines || []).reduce((sum, line) => {
+              const lineTotal = toNumber(line.lineTotal);
+              return sum + (lineTotal || toNumber(line.lineSubtotal) + toNumber(line.lineTax));
+            }, 0);
+            const allDeliveryValue = eligibleDeliveries.reduce((sum, note) => sum + deliveryTotal(note), 0);
+            const currentDeliveryValue = deliveryTotal(loadedNote);
+            const allocatedCredit = allDeliveryValue > 0
+              ? Math.min(currentDeliveryValue, creditTotal * currentDeliveryValue / allDeliveryValue)
+              : 0;
+            setInvoiceCreditAmounts({
+              grossTotal: currentDeliveryValue,
+              allocatedCredit,
+              netTotal: Math.max(0, currentDeliveryValue - allocatedCredit),
+            });
+          } catch (relatedError) {
+            console.error('Failed to calculate delivery note value after invoice credit notes:', relatedError);
+            toast.error('Could not load invoice credit-note deductions for this delivery note.');
+          }
+        }
       } else {
         toast.error('Failed to load delivery note');
       }
@@ -310,6 +361,9 @@ export default function DeliveryNoteDetailPage() {
   const subtotal = noteLines.reduce((sum, line) => sum + getLineSubtotal(line), 0);
   const taxAmount = noteLines.reduce((sum, line) => sum + getLineTax(line), 0);
   const totalAmount = subtotal + taxAmount;
+  const displayedGrossAmount = invoiceCreditAmounts?.grossTotal ?? totalAmount;
+  const displayedCreditAmount = invoiceCreditAmounts?.allocatedCredit ?? 0;
+  const displayedNetAmount = invoiceCreditAmounts?.netTotal ?? totalAmount;
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
@@ -723,9 +777,21 @@ export default function DeliveryNoteDetailPage() {
                     <span className="text-slate-500 dark:text-slate-400">Tax:</span>
                     <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(taxAmount)}</span>
                   </div>
+                  {invoiceCreditAmounts && displayedCreditAmount > 0 && (
+                    <>
+                      <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-sm dark:border-slate-700">
+                        <span className="text-slate-500 dark:text-slate-400">Original delivery total:</span>
+                        <span className="font-medium text-slate-900 dark:text-white">{formatCurrency(displayedGrossAmount)}</span>
+                      </div>
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-slate-500 dark:text-slate-400">Allocated Credit Note deduction:</span>
+                        <span className="font-medium text-rose-600 dark:text-rose-400">-{formatCurrency(displayedCreditAmount)}</span>
+                      </div>
+                    </>
+                  )}
                   <div className="flex items-center justify-between border-t border-slate-200 pt-3 text-xl font-bold text-slate-900 dark:border-slate-700 dark:text-white">
-                    <span>Total</span>
-                    <span>{formatCurrency(totalAmount)}</span>
+                    <span>{displayedCreditAmount > 0 ? 'Net after Credit Notes' : 'Total'}</span>
+                    <span>{formatCurrency(displayedNetAmount)}</span>
                   </div>
                   <Separator className="dark:bg-slate-800" />
                   <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400">
