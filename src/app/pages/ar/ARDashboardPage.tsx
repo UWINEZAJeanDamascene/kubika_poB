@@ -60,12 +60,12 @@ import { useToast } from '@/hooks/use-toast';
 
 interface AgingBucket {
   client: { _id: string; name: string; code: string };
-  totalBalance: number;
-  current: number;
-  '1-30': number;
-  '31-60': number;
-  '61-90': number;
-  '90+': number;
+  totalBalance: number | string;
+  current: number | string;
+  '1-30': number | string;
+  '31-60': number | string;
+  '61-90': number | string;
+  '90+': number | string;
 }
 
 interface InvoiceDetail {
@@ -98,6 +98,11 @@ interface ARTransaction {
   client: { _id: string; name: string };
   invoice?: { _id: string; referenceNo?: string; invoiceNumber?: string };
   reconciliationStatus: string;
+}
+
+function toAmount(value: number | string | null | undefined): number {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
 }
 
 export default function ARDashboardPage() {
@@ -154,12 +159,12 @@ export default function ARDashboardPage() {
         const buckets = res.data || res || [];
         const summary = { current: 0, '1-30': 0, '31-60': 0, '61-90': 0, '90+': 0, total: 0 };
         buckets.forEach((b: AgingBucket) => {
-          summary.current += b.current || 0;
-          summary['1-30'] += b['1-30'] || 0;
-          summary['31-60'] += b['31-60'] || 0;
-          summary['61-90'] += b['61-90'] || 0;
-          summary['90+'] += b['90+'] || 0;
-          summary.total += b.totalBalance || 0;
+          summary.current += toAmount(b.current);
+          summary['1-30'] += toAmount(b['1-30']);
+          summary['31-60'] += toAmount(b['31-60']);
+          summary['61-90'] += toAmount(b['61-90']);
+          summary['90+'] += toAmount(b['90+']);
+          summary.total += toAmount(b.totalBalance);
         });
         setAgingSummary(summary);
       }
