@@ -4364,10 +4364,10 @@ export const inventoryBatchApi = {
 // Stock API - Serial Numbers
 export const serialNumberApi = {
   getDispatchedForReturn: (productId: string) =>
-    request<{ success: boolean; data: Array<{ _id: string; serialNo: string }> }>(
-      `/serial-numbers?${buildQuery({
-        product: productId,
-        status: 'dispatched',
+    request<{ success: boolean; data: Array<{ _id: string; serialNo?: string; serialNumber?: string; status: string }> }>(
+      `/stock/advanced/serial-numbers?${buildQuery({
+        productId,
+        status: 'sold',
         limit: 500,
       })}`,
     ),

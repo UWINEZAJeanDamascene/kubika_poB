@@ -137,14 +137,13 @@ function CreditNoteSerialSelector({
     let active = true;
     setLoading(true);
     setLoadError(false);
-    serialNumberApi.getAll({ product: productId, limit: 500 })
+    serialNumberApi.getDispatchedForReturn(productId)
       .then((response) => {
         if (!response.success) throw new Error('Could not load dispatched serial numbers.');
         if (active) {
-          const payload = response.data as Array<{ _id: string; serialNo: string; status: string }>;
-          setSerials(payload.map((serial) => ({
+          setSerials(response.data.map((serial) => ({
             _id: serial._id,
-            serialNo: serial.serialNo,
+            serialNo: serial.serialNo || serial.serialNumber,
             status: serial.status,
           })));
         }
@@ -164,7 +163,7 @@ function CreditNoteSerialSelector({
     serials.find((serial) => serial._id === serialId)?.serialNo || serialId,
   );
   const selectableSerials = serials.filter((serial) =>
-    serial.status === 'dispatched' || selectedSerials.includes(serial._id),
+    serial.status === 'sold' || serial.status === 'dispatched' || selectedSerials.includes(serial._id),
   );
 
   return (
@@ -187,14 +186,14 @@ function CreditNoteSerialSelector({
         aria-label={`Select ${quantity} returned serial number(s)`}
       >
         {selectableSerials.map((serial) => (
-          <option key={serial._id} value={serial._id} disabled={serial.status !== 'dispatched'}>
-            {serial.serialNo}{serial.status === 'dispatched' ? '' : ' (already returned)'}
+          <option key={serial._id} value={serial._id} disabled={serial.status !== 'sold' && serial.status !== 'dispatched'}>
+            {serial.serialNo}{serial.status === 'sold' || serial.status === 'dispatched' ? '' : ' (already returned)'}
           </option>
         ))}
       </select>
       {loading && <p className="text-xs text-slate-500">Loading dispatched serial numbers...</p>}
       {loadError && <p role="alert" className="text-xs text-rose-600">Could not load dispatched serial numbers. Reopen the credit note and retry.</p>}
-      {!loading && !loadError && selectableSerials.filter((serial) => serial.status === 'dispatched').length === 0 && (
+      {!loading && !loadError && selectableSerials.filter((serial) => serial.status === 'sold' || serial.status === 'dispatched').length === 0 && (
         <p className="text-xs text-amber-700">
           {serials.length === 0
             ? 'No serial records were found for this product. Verify the delivery note recorded its serials.'
