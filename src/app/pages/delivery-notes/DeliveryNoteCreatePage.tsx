@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { deliveryNotesApi, invoicesApi, clientsApi, warehousesApi, stockBatchApi } from '@/lib/api';
+import { deliveryNotesApi, invoicesApi, clientsApi, warehousesApi, stockBatchApi, serialNumberApi } from '@/lib/api';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Layout } from '../../layout/Layout';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
@@ -63,6 +63,8 @@ interface Invoice {
       _id: string;
       name: string;
       sku: string;
+      trackingType?: 'none' | 'batch' | 'serial';
+      isStockable?: boolean;
       trackBatches?: boolean;
       trackSerials?: boolean;
     };
@@ -92,6 +94,7 @@ interface DeliveryNoteLine {
   lineTotal: number;
   trackBatches?: boolean;
   trackSerials?: boolean;
+  trackingType?: 'none' | 'batch' | 'serial';
   batchId?: string;
   serialNumbers?: string[];
 }
@@ -115,6 +118,131 @@ interface BatchAutocompleteProps {
   value?: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+}
+
+interface SerialNumberSelectorProps {
+  productId: string;
+  warehouseId: string;
+  value: string[];
+  onChange: (value: string[]) => void;
+  expectedCount: number;
+  disabled?: boolean;
+}
+
+function SerialNumberSelector({
+  productId,
+  warehouseId,
+  value,
+  onChange,
+  expectedCount,
+  disabled,
+}: SerialNumberSelectorProps) {
+  const [serials, setSerials] = useState<Array<{ _id: string; serialNo: string }>>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!productId || !warehouseId) {
+      setSerials([]);
+      setLoadError(false);
+      return () => { active = false; };
+    }
+
+    setLoading(true);
+    setLoadError(false);
+    serialNumberApi.getAll({ product: productId, warehouse: warehouseId, status: 'in_stock', limit: 500 })
+      .then((response) => {
+        if (!active) return;
+        const payload = response.data as any;
+        const rows = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.items)
+            ? payload.items
+            : Array.isArray(payload?.data)
+              ? payload.data
+              : [];
+        setSerials(rows.map((serial: any) => ({ _id: serial._id, serialNo: serial.serialNo })));
+      })
+      .catch((error) => {
+        console.error('Failed to load available serial numbers:', error);
+        if (active) setLoadError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [productId, warehouseId]);
+
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+        Serial numbers ({value.length}/{expectedCount})
+      </label>
+      <select
+        multiple
+        size={Math.min(Math.max(expectedCount, 3), 6)}
+        value={value}
+        onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value))}
+        disabled={disabled || loading || !warehouseId}
+        className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+        aria-label={`Select ${expectedCount} serial number(s)`}
+      >
+        {serials.map((serial) => (
+          <option key={serial._id} value={serial._id}>{serial.serialNo}</option>
+        ))}
+      </select>
+      {loading && <p className="text-xs text-slate-500">Loading available serial numbers...</p>}
+      {loadError && <p role="alert" className="text-xs text-rose-600">Could not load serial numbers. Retry by reopening this picking form.</p>}
+      {!loading && !loadError && serials.length === 0 && (
+        <p className="text-xs text-amber-700">No in-stock serial numbers are available for this warehouse.</p>
+      )}
+    </div>
+  );
+}
+
+function LineTraceabilityFields({
+  line,
+  warehouseId,
+  onBatchChange,
+  onSerialNumbersChange,
+}: {
+  line: DeliveryNoteLine;
+  warehouseId: string;
+  onBatchChange: (value: string) => void;
+  onSerialNumbersChange: (value: string[]) => void;
+}) {
+  const trackingType = line.trackingType
+    || (line.trackBatches ? 'batch' : line.trackSerials ? 'serial' : 'none');
+
+  if (trackingType === 'batch') {
+    return (
+      <div className="space-y-1">
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-300">Batch</span>
+        <BatchAutocomplete
+          productId={line.product}
+          warehouseId={warehouseId}
+          value={line.batchId}
+          onChange={onBatchChange}
+          disabled={!warehouseId || !line.product || line.qtyToDeliver === 0}
+        />
+      </div>
+    );
+  }
+  if (trackingType === 'serial') {
+    return (
+      <SerialNumberSelector
+        productId={line.product}
+        warehouseId={warehouseId}
+        value={line.serialNumbers || []}
+        onChange={onSerialNumbersChange}
+        expectedCount={line.qtyToDeliver}
+        disabled={!warehouseId || !line.product || line.qtyToDeliver === 0}
+      />
+    );
+  }
+  return null;
 }
 
 function BatchAutocomplete({ productId, warehouseId, value, onChange, disabled }: BatchAutocompleteProps) {
@@ -202,6 +330,7 @@ function DeliveryNoteCreatePageContent() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const invoiceId = searchParams.get('invoice');
+  const prepareForInvoiceConfirmation = searchParams.get('prepareForInvoiceConfirmation') === 'true';
   const isEditMode = Boolean(id);
 
   const [loading, setLoading] = useState(false);
@@ -247,8 +376,9 @@ function DeliveryNoteCreatePageContent() {
                 qtyToDeliver: (parseFloat(line.qty) || parseFloat(line.quantity) || 0) - (line.qtyDelivered || 0),
                 unitPrice: parseFloat(line.unitPrice) || 0,
                 lineTotal: parseFloat(line.lineTotal) || 0,
-                trackBatches: line.product?.trackBatches,
-                trackSerials: line.product?.trackSerials,
+                trackBatches: line.product?.trackingType === 'batch' || line.product?.trackBatches,
+                trackSerials: line.product?.trackingType === 'serial' || line.product?.trackSerials,
+                trackingType: line.product?.trackingType,
               })) : [],
             }));
           }
@@ -384,8 +514,9 @@ function DeliveryNoteCreatePageContent() {
               qtyToDeliver,
               unitPrice: parseFloat(line.unitPrice) || 0,
               lineTotal: parseFloat(line.lineTotal) || (qtyToDeliver * parseFloat(line.unitPrice || 0)),
-              trackBatches: line.product?.trackBatches,
-              trackSerials: line.product?.trackSerials,
+              trackBatches: line.product?.trackingType === 'batch' || line.product?.trackBatches,
+              trackSerials: line.product?.trackingType === 'serial' || line.product?.trackSerials,
+              trackingType: line.product?.trackingType,
             };
           }) : [],
         });
@@ -428,8 +559,9 @@ function DeliveryNoteCreatePageContent() {
         qtyToDeliver: (parseFloat(line.qty as any) || parseFloat(line.quantity as any) || 0),
         unitPrice: parseFloat(line.unitPrice as any) || 0,
         lineTotal: parseFloat(line.lineTotal as any) || 0,
-        trackBatches: line.product?.trackBatches,
-        trackSerials: line.product?.trackSerials,
+        trackBatches: line.product?.trackingType === 'batch' || line.product?.trackBatches,
+        trackSerials: line.product?.trackingType === 'serial' || line.product?.trackSerials,
+        trackingType: line.product?.trackingType,
       }));
 
       setFormData(prev => ({
@@ -481,6 +613,25 @@ function DeliveryNoteCreatePageContent() {
       alert(t('deliveryNote.enterDeliveryQty', 'Please enter quantity to deliver for at least one line'));
       return;
     }
+    const incompleteTraceability = prepareForInvoiceConfirmation && formData.lines.find((line) => {
+      const trackingType = line.trackingType
+        || (line.trackBatches ? 'batch' : line.trackSerials ? 'serial' : 'none');
+      if (trackingType === 'batch' && line.qtyToDeliver > 0) {
+        return !line.batchId
+          || Math.abs(line.qtyToDeliver - (line.qtyOrdered - line.qtyDelivered)) > 0.0001;
+      }
+      if (trackingType === 'serial' && line.qtyToDeliver > 0) {
+        return (line.serialNumbers || []).length !== line.qtyToDeliver
+          || Math.abs(line.qtyToDeliver - (line.qtyOrdered - line.qtyDelivered)) > 0.0001;
+      }
+      return false;
+    });
+    if (incompleteTraceability) {
+      const trackingType = incompleteTraceability.trackingType
+        || (incompleteTraceability.trackBatches ? 'batch' : 'serial');
+      alert(`To confirm this tracked invoice, pick the full remaining quantity and assign ${trackingType === 'batch' ? 'a batch' : 'one serial number per unit'} for ${incompleteTraceability.productName}.`);
+      return;
+    }
 
     setSaving(true);
     try {
@@ -508,6 +659,7 @@ function DeliveryNoteCreatePageContent() {
             invoiceLineId: line._id,
             product: line.product,
             deliveredQty: line.qtyToDeliver,
+            qtyToDeliver: line.qtyToDeliver,
             unitPrice: line.unitPrice,
             batchId: line.batchId,
             serialNumbers: line.serialNumbers,
@@ -527,7 +679,7 @@ function DeliveryNoteCreatePageContent() {
         if (confirmImmediately && dnId) {
           await deliveryNotesApi.confirm(dnId, {});
         }
-        navigate('/delivery-notes');
+        navigate(invoiceId ? `/invoices/${invoiceId}` : '/delivery-notes');
       }
     } catch (error) {
       console.error('Failed to save delivery note:', error);
@@ -753,7 +905,7 @@ function DeliveryNoteCreatePageContent() {
                   ) : (
                     <>
                     <div className="space-y-3 p-3 xl:hidden">
-                      {formData.lines.map((line, index) => <article key={index} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productSku}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Ordered</dt><dd>{line.qtyOrdered}</dd></div><div><dt className="text-slate-500">Delivered</dt><dd>{line.qtyDelivered}</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to deliver<Input type="number" min="0" max={line.qtyOrdered - line.qtyDelivered} value={line.qtyToDeliver} onChange={(e) => handleLineChange(index, 'qtyToDeliver', e.target.value)} disabled={line.qtyOrdered - line.qtyDelivered === 0} /></label><p className="text-right text-xs text-slate-500">Maximum: {line.qtyOrdered - line.qtyDelivered}</p>{line.trackBatches && <div className="space-y-1 text-xs text-slate-500"><span>Batch</span><BatchAutocomplete productId={line.product} warehouseId={warehouse} value={line.batchId} onChange={(value) => handleLineChange(index, 'batchId', value)} disabled={!warehouse || !line.product || line.qtyToDeliver === 0} /></div>}<div className="flex justify-between border-t border-slate-200 pt-2 text-sm dark:border-slate-700"><span className="text-slate-500">Unit {formatCurrency(line.unitPrice)}</span><strong>{formatCurrency(line.lineTotal)}</strong></div></article>)}
+                      {formData.lines.map((line, index) => <article key={index} className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700 dark:bg-slate-900"><div><h3 className="font-medium text-slate-900 dark:text-white">{line.productName}</h3><p className="text-xs text-slate-500">{line.productSku}</p></div><dl className="grid grid-cols-2 gap-2 border-t border-slate-200 pt-3 text-xs dark:border-slate-700"><div><dt className="text-slate-500">Ordered</dt><dd>{line.qtyOrdered}</dd></div><div><dt className="text-slate-500">Delivered</dt><dd>{line.qtyDelivered}</dd></div></dl><label className="block space-y-1 text-xs text-slate-500">Quantity to deliver<Input type="number" min="0" max={line.qtyOrdered - line.qtyDelivered} value={line.qtyToDeliver} onChange={(e) => handleLineChange(index, 'qtyToDeliver', e.target.value)} disabled={line.qtyOrdered - line.qtyDelivered === 0} /></label><p className="text-right text-xs text-slate-500">Maximum: {line.qtyOrdered - line.qtyDelivered}</p><LineTraceabilityFields line={line} warehouseId={warehouse} onBatchChange={(value) => handleLineChange(index, 'batchId', value)} onSerialNumbersChange={(value) => handleLineChange(index, 'serialNumbers', value)} /><div className="flex justify-between border-t border-slate-200 pt-2 text-sm dark:border-slate-700"><span className="text-slate-500">Unit {formatCurrency(line.unitPrice)}</span><strong>{formatCurrency(line.lineTotal)}</strong></div></article>)}
                     </div>
                     <div className="hidden overflow-x-auto xl:block">
                       <Table>
@@ -763,7 +915,7 @@ function DeliveryNoteCreatePageContent() {
                             <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Ordered</TableHead>
                             <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Delivered</TableHead>
                             <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">To Deliver</TableHead>
-                            <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Batch</TableHead>
+                            <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Traceability</TableHead>
                             <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Unit Price</TableHead>
                             <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Total</TableHead>
                           </TableRow>
@@ -793,15 +945,12 @@ function DeliveryNoteCreatePageContent() {
                                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">Max: {line.qtyOrdered - line.qtyDelivered}</div>
                               </TableCell>
                               <TableCell>
-                                {line.trackBatches && (
-                                  <BatchAutocomplete
-                                    productId={line.product}
-                                    warehouseId={warehouse}
-                                    value={line.batchId}
-                                    onChange={(value) => handleLineChange(index, 'batchId', value)}
-                                    disabled={!warehouse || !line.product || line.qtyToDeliver === 0}
-                                  />
-                                )}
+                                <LineTraceabilityFields
+                                  line={line}
+                                  warehouseId={warehouse}
+                                  onBatchChange={(value) => handleLineChange(index, 'batchId', value)}
+                                  onSerialNumbersChange={(value) => handleLineChange(index, 'serialNumbers', value)}
+                                />
                               </TableCell>
                               <TableCell className="text-right text-sm text-slate-700 dark:text-slate-300">{formatCurrency(line.unitPrice)}</TableCell>
                               <TableCell className="text-right text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(line.lineTotal)}</TableCell>

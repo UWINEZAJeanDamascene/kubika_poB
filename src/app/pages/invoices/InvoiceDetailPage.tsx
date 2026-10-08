@@ -107,6 +107,8 @@ interface Invoice {
       name: string;
       sku: string;
       unit?: string;
+      trackingType?: 'none' | 'batch' | 'serial';
+      isStockable?: boolean;
     };
     qty?: number;
     quantity?: number;
@@ -259,6 +261,12 @@ export default function InvoiceDetailPage() {
   const [bankAccounts, setBankAccounts] = useState<Array<{_id: string; name: string; accountType: string}>>([]);
   const [verifyingTin, setVerifyingTin] = useState(false);
   const [ebmSubmitting, setEbmSubmitting] = useState<"sale" | "proforma" | "copy" | null>(null);
+
+  const hasTraceabilityTrackedLines = (invoice?.lines || []).some((line) =>
+    line.product?.isStockable !== false
+    && (line.product?.trackingType === 'batch' || line.product?.trackingType === 'serial'),
+  );
+  const draftDeliveryNote = deliveryNotes.find((deliveryNote) => deliveryNote.status === 'draft');
 
   const fetchInvoice = useCallback(async (refresh = false) => {
     if (!id) return;
@@ -870,6 +878,20 @@ export default function InvoiceDetailPage() {
                 )}
                 {invoice.status === 'draft' && (
                   <>
+                    {hasTraceabilityTrackedLines && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => navigate(draftDeliveryNote
+                          ? `/delivery-notes/${draftDeliveryNote._id}/edit?prepareForInvoiceConfirmation=true`
+                          : `/delivery-notes/new?invoice=${id}&prepareForInvoiceConfirmation=true`)}
+                        disabled={actionLoading}
+                        className="gap-1.5 border-amber-300 text-amber-800 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-300 dark:hover:bg-amber-950/30"
+                      >
+                        <Truck className="h-4 w-4" />
+                        {draftDeliveryNote ? 'Continue picking' : 'Assign traceability'}
+                      </Button>
+                    )}
                     <Button size="sm" onClick={handleConfirm} disabled={actionLoading} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
                       <CheckCircle className="h-4 w-4" />
                       Confirm
