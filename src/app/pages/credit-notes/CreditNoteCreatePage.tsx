@@ -135,7 +135,7 @@ function CreditNoteSerialSelector({
         if (active) {
           setSerials(response.data.map((serial) => ({
             _id: serial._id,
-            serialNo: serial.serialNo || serial.serialNumber,
+            serialNo: serial.serialNo || serial.serialNumber || serial._id,
             status: serial.status,
           })));
         }
