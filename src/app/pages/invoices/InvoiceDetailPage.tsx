@@ -193,6 +193,7 @@ interface InvoiceJournalEntry {
   sourceId?: string;
   sourceReference?: string;
   status?: string;
+  totalDebit?: number;
 }
 
 const STATUS_FLOW = [
@@ -312,15 +313,24 @@ export default function InvoiceDetailPage() {
   const fetchJournalEntries = useCallback(async () => {
     if (!id) return;
     try {
-      const response = await journalEntriesApi.getAll({ sourceType: 'invoice', search: invoice?.referenceNo, limit: 100 });
-      if (response.success) {
-        const entries = (response.data || []) as InvoiceJournalEntry[];
+      const [invoiceResponse, correctionResponse] = await Promise.all([
+        journalEntriesApi.getAll({ sourceType: 'invoice', search: invoice?.referenceNo, limit: 100 }),
+        journalEntriesApi.getAll({ sourceType: 'invoice_tax_correction', search: invoice?.referenceNo, limit: 100 }),
+      ]);
+      if (invoiceResponse.success && correctionResponse.success) {
+        const entries = [
+          ...(invoiceResponse.data || []),
+          ...(correctionResponse.data || []),
+        ] as InvoiceJournalEntry[];
         const reference = invoice?.referenceNo;
-        setJournalEntries(entries.filter((entry) => {
+        const relatedEntries = entries.filter((entry) => {
           return entry.sourceId === id || (reference && (
             entry.sourceReference === reference || entry.description?.includes(reference)
           ));
-        }));
+        });
+        setJournalEntries(relatedEntries.filter((entry, index) =>
+          relatedEntries.findIndex((candidate) => candidate._id === entry._id) === index,
+        ));
       }
     } catch (error) {
       console.error('Failed to fetch invoice journal entries:', error);
@@ -1344,15 +1354,22 @@ export default function InvoiceDetailPage() {
                     <div className="space-y-3">
                       {linkedJournalEntries.map((entry) => {
                         const isCogs = entry.description?.toLowerCase().includes('cogs');
+                        const isTaxCorrection = entry.sourceType === 'invoice_tax_correction';
+                        const entryLabel = isTaxCorrection
+                          ? 'Tax Correction'
+                          : isCogs ? 'COGS Entry' : 'Revenue Entry';
                         return (
                         <div key={entry._id} className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/50">
                           <div className="flex items-center gap-3">
-                            <div className={`rounded-lg p-2 ${isCogs ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
+                            <div className={`rounded-lg p-2 ${isCogs ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300' : isTaxCorrection ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300'}`}>
                               {isCogs ? <BookOpen className="h-4 w-4" /> : <Receipt className="h-4 w-4" />}
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-white">{isCogs ? 'COGS Entry' : 'Revenue Entry'}</p>
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">{entryLabel}</p>
                               <p className="text-xs text-slate-500 dark:text-slate-400">Entry #: {entry.entryNumber || entry._id}</p>
+                              {isTaxCorrection && entry.totalDebit != null && (
+                                <p className="text-xs text-slate-500 dark:text-slate-400">Adjustment: {formatCurrency(entry.totalDebit)}</p>
+                              )}
                             </div>
                           </div>
                           <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">{entry.status || 'Posted'}</span>
