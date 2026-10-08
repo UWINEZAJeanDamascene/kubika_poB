@@ -204,7 +204,7 @@ export default function PettyCashTransactionsPage() {
   return (
     <Layout>
       <div className="min-h-screen bg-slate-50 px-4 py-5 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-[1400px] space-y-6">
+        <div className="mx-auto w-full max-w-[2200px] space-y-6">
           {/* Hero Header */}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
             <div className="grid gap-5 p-5 xl:grid-cols-[1fr_auto] xl:items-center">
