@@ -147,8 +147,19 @@ export default function PickPackPackPage() {
       });
 
       if (response.success) {
-        toast.success('Packing completed - Delivery Note created');
-        navigate(`/pick-packs/${id}`);
+        const deliveryNote = (response.data as {
+          deliveryNote?: { _id?: string; id?: string } | string;
+        } | undefined)?.deliveryNote;
+        const deliveryNoteId = typeof deliveryNote === 'string'
+          ? deliveryNote
+          : deliveryNote?._id || deliveryNote?.id;
+
+        if (!deliveryNoteId) {
+          throw new Error('Packing completed, but no delivery note was returned. Open the Pick & Pack task to access it.');
+        }
+
+        toast.success('Packing completed - opening the Delivery Note');
+        navigate(`/delivery-notes/${encodeURIComponent(deliveryNoteId)}`);
       } else {
         toast.error((response as any).message || 'Failed to complete packing');
       }

@@ -211,7 +211,7 @@ export default function DeliveryNoteDetailPage() {
 
       if (response.success) {
         toast.success('Delivery note confirmed successfully');
-        fetchDeliveryNote();
+        navigate(`/invoices/${encodeURIComponent(invoiceId)}`);
       } else {
         toast.error((response as any).message || 'Failed to confirm delivery note');
       }
