@@ -166,13 +166,17 @@ export default function PickPackPickPage() {
       for (const line of pickPack!.lines) {
         const qtyToRecord = pickingLines[line._id] || 0;
         const currentPicked = toNumber(line.qtyPicked);
+        const selectedBatch = selectedBatches[line._id] || '';
+        const currentBatch = line.batchId || '';
+        const batchChanged = line.product?.trackingType === 'batch'
+          && selectedBatch !== currentBatch;
 
-        if (qtyToRecord !== currentPicked || line.product?.trackingType === 'serial') {
+        if (qtyToRecord !== currentPicked || line.product?.trackingType === 'serial' || batchChanged) {
           const pickRes = await pickPackApi.pickItems(id!, {
             lineId: line._id,
             qtyPicked: qtyToRecord,
             serialNumbers: selectedSerials[line._id] || [],
-            batchId: selectedBatches[line._id] || undefined,
+            batchId: selectedBatch || undefined,
             notes: '',
           });
           if (!pickRes.success) {
