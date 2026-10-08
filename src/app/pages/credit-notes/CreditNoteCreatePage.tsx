@@ -162,9 +162,24 @@ function CreditNoteSerialSelector({
   const selectedSerialLabels = selectedSerials.map((serialId) =>
     serials.find((serial) => serial._id === serialId)?.serialNo || serialId,
   );
+  const selectedSerialIds = selectedSerials.filter((serialId) =>
+    serials.some((serial) => serial._id === serialId),
+  );
+  const manuallyEnteredSerials = loading
+    ? []
+    : selectedSerials.filter((serialValue) =>
+      !serials.some((serial) => serial._id === serialValue),
+    );
   const selectableSerials = serials.filter((serial) =>
     serial.status === 'sold' || serial.status === 'dispatched' || selectedSerials.includes(serial._id),
   );
+  const updateManualSerials = (value: string) => {
+    const manualSerials = value
+      .split(/[\n,;]+/)
+      .map((serial) => serial.trim())
+      .filter(Boolean);
+    onChange([...selectedSerialIds, ...manualSerials].slice(0, quantity));
+  };
 
   return (
     <div className="mt-2 space-y-1">
@@ -179,9 +194,12 @@ function CreditNoteSerialSelector({
       <select
         multiple
         size={Math.min(Math.max(quantity, 3), 6)}
-        value={selectedSerials}
-        onChange={(event) => onChange(Array.from(event.currentTarget.selectedOptions, (option) => option.value).slice(0, quantity))}
-        disabled={loading || (quantity <= 0 && selectedSerials.length === 0)}
+        value={selectedSerialIds}
+        onChange={(event) => onChange([
+          ...Array.from(event.currentTarget.selectedOptions, (option) => option.value),
+          ...manuallyEnteredSerials,
+        ].slice(0, quantity))}
+        disabled={loading || quantity <= 0}
         className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
         aria-label={`Select ${quantity} returned serial number(s)`}
       >
@@ -191,13 +209,24 @@ function CreditNoteSerialSelector({
           </option>
         ))}
       </select>
+      <label className="block space-y-1 text-xs text-slate-600 dark:text-slate-300">
+        If the sold serial record is missing, enter the physical serial number(s), one per line. Confirming the credit note restores missing serial records to stock.
+        <textarea
+          rows={Math.min(Math.max(quantity, 2), 4)}
+          value={manuallyEnteredSerials.join('\n')}
+          onChange={(event) => updateManualSerials(event.currentTarget.value)}
+          disabled={quantity <= 0}
+          className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+          aria-label="Enter returned serial numbers not listed"
+        />
+      </label>
       {loading && <p className="text-xs text-slate-500">Loading dispatched serial numbers...</p>}
       {loadError && <p role="alert" className="text-xs text-rose-600">Could not load dispatched serial numbers. Reopen the credit note and retry.</p>}
       {!loading && !loadError && selectableSerials.filter((serial) => serial.status === 'sold' || serial.status === 'dispatched').length === 0 && (
         <p className="text-xs text-amber-700">
           {serials.length === 0
-            ? 'No serial records were found for this product. Verify the delivery note recorded its serials.'
-            : 'No dispatched serial numbers are available. Verify the delivery note was confirmed.'}
+            ? 'No dispatched serial records were found. Enter the serial number(s) being returned below.'
+            : 'No dispatched serials are available. Enter the serial number(s) being returned below.'}
         </p>
       )}
     </div>
