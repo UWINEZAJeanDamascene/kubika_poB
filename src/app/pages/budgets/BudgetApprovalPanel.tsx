@@ -23,6 +23,7 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
   const currentUserId = useAuthStore(state => state.user?._id || state.user?.id || "");
   const [approvals, setApprovals] = useState<BudgetApproval[]>([]);
   const [loading, setLoading] = useState(true);
+  const [approvalLoadError, setApprovalLoadError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [workflowMatch, setWorkflowMatch] = useState<BudgetWorkflowConfig | null>(null);
   const [workflowChecked, setWorkflowChecked] = useState(false);
@@ -46,13 +47,17 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
   }, [budgetStatus, budgetAmount, departmentId]);
 
   const fetchApprovals = async () => {
+    setApprovalLoadError(null);
     try {
       const response = await budgetsApi.getApprovalHistory(budgetId);
       if (response.success) {
         setApprovals(response.data || []);
+      } else {
+        setApprovalLoadError("Could not load approval history.");
       }
     } catch (error) {
       console.error("Failed to fetch approvals:", error);
+      setApprovalLoadError("Could not load approval history. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -386,12 +391,26 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
       ) : (
         <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
           <CardContent className="py-10 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50">
-              <CheckCircle2 className="h-6 w-6 text-emerald-500 dark:text-emerald-400" />
-            </div>
-            <p className="mt-4 text-sm font-medium text-slate-900 dark:text-white">No pending approvals</p>
-            {budgetStatus === "approved" && (
-              <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">This budget has been approved</p>
+            {approvalLoadError ? (
+              <>
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/50">
+                  <AlertCircle className="h-6 w-6 text-red-500 dark:text-red-400" />
+                </div>
+                <p className="mt-4 text-sm font-medium text-slate-900 dark:text-white">{approvalLoadError}</p>
+                <Button variant="outline" size="sm" className="mt-3" onClick={fetchApprovals}>
+                  Retry
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-950/50">
+                  <CheckCircle2 className="h-6 w-6 text-emerald-500 dark:text-emerald-400" />
+                </div>
+                <p className="mt-4 text-sm font-medium text-slate-900 dark:text-white">No pending approvals</p>
+                {budgetStatus === "approved" && (
+                  <p className="mt-1 text-xs text-emerald-600 dark:text-emerald-400">This budget has been approved</p>
+                )}
+              </>
             )}
           </CardContent>
         </Card>
