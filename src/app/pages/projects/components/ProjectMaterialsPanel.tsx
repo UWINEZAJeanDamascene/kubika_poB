@@ -6,7 +6,7 @@ import { Label } from "@/app/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Plus, RefreshCw } from "lucide-react";
+import { Loader2, Plus, RefreshCw, Trash2 } from "lucide-react";
 
 type MaterialLineDraft = { product_id: string; warehouse_id: string; task_id: string; planned_quantity: string };
 type MaterialQuantityAction = {
@@ -32,6 +32,7 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
   const [quantityAction, setQuantityAction] = useState<MaterialQuantityAction | null>(null);
   const [quantity, setQuantity] = useState("");
   const [quantityError, setQuantityError] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
 
   const refresh = async () => {
     setLoading(true);
@@ -102,6 +103,26 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
     finally { setBusyAction(null); }
   };
 
+  const deleteRequisition = async () => {
+    if (!deleteTarget || busyAction) return;
+    const target = deleteTarget;
+    const deleteKey = `delete:${target.id}`;
+    setBusyAction(deleteKey);
+    try {
+      const result = await projectsApi.deleteMaterialRequisition(project._id, target.id);
+      const outcome = result.data.archived
+        ? "Material requisition archived. Stock and accounting history were preserved."
+        : "Material requisition deleted.";
+      toast.success(outcome);
+      setDeleteTarget(null);
+      await refresh();
+    } catch (error: any) {
+      toast.error(error?.message || "Could not delete material requisition");
+    } finally {
+      setBusyAction(null);
+    }
+  };
+
   const reconcileBudgetActuals = async () => {
     if (busyAction || !window.confirm("Reconcile already-issued materials to approved project budget lines? This corrects missing or mismatched budget actuals and does not change stock.")) return;
     setBusyAction("reconcile");
@@ -135,6 +156,7 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div><h4 className="font-semibold">{requisition.requisitionNo}</h4><p className="text-xs text-muted-foreground">{requisition.status} · {requisition.requiredDate ? new Date(requisition.requiredDate).toLocaleDateString() : "No required date"}</p></div><div className="flex gap-2">
           {requisition.status === "planned" && <Button size="sm" disabled={!!busyAction} onClick={() => void runRequisitionAction(approveKey, () => projectsApi.approveMaterialRequisition(project._id, requisition.id), "Stock reserved for requisition", "Could not approve requisition")}>{busyAction === approveKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === approveKey ? "Reserving..." : "Approve & reserve"}</Button>}
           {["planned", "approved", "partially_issued"].includes(requisition.status) && <Button size="sm" variant="destructive" disabled={!!busyAction} onClick={() => void runRequisitionAction(cancelKey, () => projectsApi.cancelMaterialRequisition(project._id, requisition.id), "Material requisition cancelled", "Could not cancel requisition")}>{busyAction === cancelKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === cancelKey ? "Cancelling..." : "Cancel"}</Button>}
+          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" disabled={!!busyAction} onClick={() => setDeleteTarget(requisition)}><Trash2 className="mr-1.5 h-4 w-4" />Delete</Button>
         </div></div>
         <div className="space-y-2">{requisition.lines.map((line: any) => {
           const currentlyIssued = Math.max(0, Number(line.issuedQuantity) - Number(line.returnedQuantity));
@@ -194,6 +216,25 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
           <Button type="button" disabled={!quantityAction || !!busyAction} onClick={() => void submitQuantityAction()}>
             {busyAction && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {busyAction ? quantityAction?.title === "Issue" ? "Issuing..." : "Returning..." : quantityAction?.title}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    <Dialog open={Boolean(deleteTarget)} onOpenChange={(open) => { if (!open && !busyAction) setDeleteTarget(null); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete material requisition?</DialogTitle>
+          <DialogDescription>
+            {deleteTarget?.lines?.some((line: any) => Number(line.issuedQuantity) > 0 || Number(line.returnedQuantity) > 0)
+              ? "This requisition has stock movement history. It will be archived and hidden from this panel; inventory, budget, journal, and audit history will be preserved."
+              : "This will permanently delete this requisition and release any stock reserved for it."}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={!!busyAction} onClick={() => setDeleteTarget(null)}>Keep requisition</Button>
+          <Button type="button" variant="destructive" disabled={!deleteTarget || !!busyAction} onClick={() => void deleteRequisition()}>
+            {busyAction?.startsWith("delete:") && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {busyAction?.startsWith("delete:") ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </DialogContent>

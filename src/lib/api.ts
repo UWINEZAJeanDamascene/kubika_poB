@@ -13075,6 +13075,7 @@ export const projectsApi = {
   createMaterialRequisition: (id: string, body: unknown) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions`, { method: "POST", body }),
   approveMaterialRequisition: (id: string, requisitionId: string) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions/${requisitionId}/approve`, { method: "POST" }),
   cancelMaterialRequisition: (id: string, requisitionId: string) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions/${requisitionId}/cancel`, { method: "POST" }),
+  deleteMaterialRequisition: (id: string, requisitionId: string) => request<{ success: boolean; data: { id: string; deleted: boolean; archived: boolean } }>(`/projects/${id}/material-requisitions/${requisitionId}`, { method: "DELETE" }),
   issueProjectMaterial: (id: string, requisitionId: string, lineId: string, quantity: number) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions/${requisitionId}/lines/${lineId}/issue`, { method: "POST", body: { quantity } }),
   returnProjectMaterial: (id: string, requisitionId: string, lineId: string, quantity: number) => request<{ success: boolean; data: any }>(`/projects/${id}/material-requisitions/${requisitionId}/lines/${lineId}/return`, { method: "POST", body: { quantity } }),
   getClosureChecklist: (id: string) => request<{ success: boolean; data: any }>(`/projects/${id}/closure-checklist`),
