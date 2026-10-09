@@ -85,24 +85,23 @@ export default function ProjectsListPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("");
-  const [typeFilter, setTypeFilter] = useState<string>("");
   const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     fetchProjects();
-  }, [statusFilter, typeFilter, showArchived]);
+  }, [statusFilter, showArchived]);
 
   const fetchProjects = async () => {
     try {
       setLoading(true);
       const filters: Record<string, string> = {};
       if (statusFilter) filters.status = statusFilter;
-      if (typeFilter) filters.type = typeFilter;
+      filters.type = "project";
       filters.is_active = showArchived ? "false" : "true";
 
       const response: any = await projectsApi.getAll(filters);
       if (response.success) {
-        setProjects(response.data || []);
+        setProjects((response.data || []).filter((project: Project) => project.type === "project"));
       }
     } catch (error) {
       toast.error(t("projects.fetchError", "Failed to fetch projects"));
@@ -378,22 +377,6 @@ export default function ProjectsListPage() {
                 <SelectItem value="blocked">Blocked</SelectItem>
                 <SelectItem value="completed">{t("projects.statusValues.completed", "Completed")}</SelectItem>
                 <SelectItem value="cancelled">{t("projects.statusValues.cancelled", "Cancelled")}</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={typeFilter || ALL_FILTER_VALUE}
-              onValueChange={(value) => setTypeFilter(value === ALL_FILTER_VALUE ? "" : value)}
-            >
-              <SelectTrigger className="w-[160px] dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                <SelectValue placeholder={t("projects.filterType", "Type")} />
-              </SelectTrigger>
-              <SelectContent className="dark:border-slate-700 dark:bg-slate-900">
-                <SelectItem value={ALL_FILTER_VALUE}>{t("common.all", "All")}</SelectItem>
-                <SelectItem value="project">{t("projects.typeValues.project", "Project")}</SelectItem>
-                <SelectItem value="job">{t("projects.typeValues.job", "Job")}</SelectItem>
-                <SelectItem value="phase">{t("projects.typeValues.phase", "Phase")}</SelectItem>
-                <SelectItem value="work_package">{t("projects.typeValues.work_package", "Work Package")}</SelectItem>
-                <SelectItem value="task">{t("projects.typeValues.task", "Task")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
