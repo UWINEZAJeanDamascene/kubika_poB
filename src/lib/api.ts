@@ -12987,7 +12987,10 @@ export interface ProjectBudgetSummary {
     total_remaining: number;
   };
   line_count: number;
-  budget_lines: BudgetLine[];
+  approved_line_count: number;
+  budget_lines: Array<Omit<BudgetLine, "budget_id"> & {
+    budget_id: string | { _id: string; name: string; fiscal_year: number; status: string };
+  }>;
   labor_summary: {
     total_hours: number;
     total_entries: number;

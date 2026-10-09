@@ -569,7 +569,7 @@ export default function ProjectDetailPage() {
               <Card className="overflow-hidden border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
                 <CardHeader>
                   <CardTitle className="text-lg text-slate-950 dark:text-white">{t("projects.budgetLines", "Budget Lines")}</CardTitle>
-                  <CardDescription>Project totals include budget lines assigned to this project and its WBS children. Project budgets follow the approval workflows configured in Budget Settings.</CardDescription>
+                  <CardDescription>All budget lines linked to this project and its WBS children are listed below. Project totals include only approved, locked, or closed budgets.</CardDescription>
                   <div className="flex flex-wrap gap-2"><Button variant="default" size="sm" onClick={() => navigate(`/budgets/new?type=project&project_id=${project._id}`)}>Create Project Budget</Button><Button variant="outline" size="sm" onClick={() => navigate("/budgets")}>Open Budgets</Button><Button variant="outline" size="sm" onClick={() => navigate("/budgets/settings")}>Budget Settings</Button></div>
                 </CardHeader>
                 <CardContent>
@@ -580,6 +580,7 @@ export default function ProjectDetailPage() {
                         <article key={line._id} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                           <p className="text-sm font-semibold text-slate-950 dark:text-white">{typeof line.account_id === "object" ? `${line.account_id.code} - ${line.account_id.name}` : line.account_id}</p>
                           <p className="mt-1 text-xs text-slate-500">{line.project_id && typeof line.project_id === "object" ? `${line.project_id.wbs_code} · ${line.project_id.name}` : line.wbs_code || project.wbs_code} · {line.period_month}/{line.period_year}</p>
+                          <p className="mt-1 text-xs text-slate-500">{typeof line.budget_id === "object" ? `${line.budget_id.name} · ${line.budget_id.status.replace(/_/g, " ")}` : "Budget status unavailable"}</p>
                           <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3 text-xs dark:border-slate-800">
                             <div className="text-slate-500">Budgeted<p className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{formatCurrency(line.budgeted_amount)}</p></div>
                             <div className="text-slate-500">Actual<p className="mt-1 text-sm font-medium text-red-600 dark:text-red-400">{formatCurrency(line.actual_amount || 0)}</p></div>
@@ -596,6 +597,7 @@ export default function ProjectDetailPage() {
                             <TableHead className="text-slate-600 dark:text-slate-400">Project / WBS</TableHead>
                             <TableHead className="text-slate-600 dark:text-slate-400">{t("budgets.month", "Month")}</TableHead>
                             <TableHead className="text-slate-600 dark:text-slate-400">{t("budgets.year", "Year")}</TableHead>
+                            <TableHead className="text-slate-600 dark:text-slate-400">Budget Status</TableHead>
                             <TableHead className="text-right text-slate-600 dark:text-slate-400">{t("budgets.budgetedAmount", "Budgeted")}</TableHead>
                             <TableHead className="text-right text-slate-600 dark:text-slate-400">{t("budgets.actual", "Actual")}</TableHead>
                             <TableHead className="text-slate-600 dark:text-slate-400">{t("budgets.category", "Category")}</TableHead>
@@ -612,6 +614,9 @@ export default function ProjectDetailPage() {
                               <TableCell className="text-slate-950 dark:text-white">{line.project_id && typeof line.project_id === "object" ? `${line.project_id.wbs_code} · ${line.project_id.name}` : line.wbs_code || project.wbs_code}</TableCell>
                               <TableCell className="text-slate-950 dark:text-white">{line.period_month}</TableCell>
                               <TableCell className="text-slate-950 dark:text-white">{line.period_year}</TableCell>
+                              <TableCell className="capitalize text-slate-600 dark:text-slate-300">
+                                {typeof line.budget_id === "object" ? line.budget_id.status.replace(/_/g, " ") : "Unavailable"}
+                              </TableCell>
                               <TableCell className="text-right font-medium text-slate-950 dark:text-white">
                                 {formatCurrency(line.budgeted_amount)}
                               </TableCell>
