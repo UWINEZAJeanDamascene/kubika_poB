@@ -934,192 +934,221 @@ export default function BudgetDetailPage() {
 
                 {/* Add Line Form */}
                 {showAddLine && budget.status === "draft" && (
-                  <div className="mb-4 rounded-lg border border-slate-200 bg-muted/30 p-4 dark:border-slate-800">
-                    <div className="mb-4 flex items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm font-semibold">
-                          <FolderTree className="h-4 w-4 text-indigo-600" />
-                          Budget line allocation
+                  <div className="mb-5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                    <div className="border-b border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-950/40">
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 rounded-lg bg-indigo-100 p-2 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300">
+                          <FolderTree className="h-4 w-4" />
                         </div>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          Create a line and optionally link it to a project or WBS node so budget, actual, and encumbrance reporting stay aligned.
-                        </p>
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                            Budget line allocation
+                          </h3>
+                          <p className="mt-1 max-w-3xl text-sm leading-5 text-slate-600 dark:text-slate-400">
+                            Allocate an amount to an account and period. Link a project or WBS node to keep budget, actual, and encumbrance reporting aligned.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-8">
-                      <div className="md:col-span-2">
-                        <Label className="text-xs">
-                          {t("budgets.account", "Account")} *
-                        </Label>
-                        <Select
-                          value={newLine.account_id}
-                          onValueChange={(value) =>
-                            setNewLine({ ...newLine, account_id: value })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue
-                              placeholder={t(
-                                "budgets.selectAccount",
-                                "Select account",
-                              )}
-                            />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {accounts.map((acc) => (
-                              <SelectItem key={acc._id} value={acc._id}>
-                                {acc.code} - {acc.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-xs">
-                          Allocation Scope: Project / WBS
-                        </Label>
-                        <p className="mb-2 text-xs text-muted-foreground">
-                          Leave blank only when this line is not tied to a specific project.
+
+                    <div className="space-y-5 p-5">
+                      <div>
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Allocation details
                         </p>
-                        <Select
-                          value={newLine.project_id || "__none__"}
-                          onValueChange={(value) =>
-                            setNewLine({
-                              ...newLine,
-                              project_id: value === "__none__" ? "" : value,
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue
-                              placeholder={t(
-                                "projects.selectProject",
-                                "Select project (optional)",
-                              )}
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
+                          <div className="space-y-1.5 xl:col-span-4">
+                            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              {t("budgets.account", "Account")} <span className="text-red-500">*</span>
+                            </Label>
+                            <Select
+                              value={newLine.account_id}
+                              onValueChange={(value) =>
+                                setNewLine({ ...newLine, account_id: value })
+                              }
+                            >
+                              <SelectTrigger className="h-10 bg-white dark:bg-slate-950">
+                                <SelectValue
+                                  placeholder={t("budgets.selectAccount", "Select account")}
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {accounts.map((acc) => (
+                                  <SelectItem key={acc._id} value={acc._id}>
+                                    {acc.code} - {acc.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5 xl:col-span-5">
+                            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              Project / WBS <span className="font-normal text-slate-500">(optional)</span>
+                            </Label>
+                            <Select
+                              value={newLine.project_id || "__none__"}
+                              onValueChange={(value) =>
+                                setNewLine({
+                                  ...newLine,
+                                  project_id: value === "__none__" ? "" : value,
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-10 bg-white dark:bg-slate-950">
+                                <SelectValue
+                                  placeholder={t(
+                                    "projects.selectProject",
+                                    "Select project (optional)",
+                                  )}
+                                />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__">
+                                  Unassigned / shared budget
+                                </SelectItem>
+                                {projects.map((p) => (
+                                  <SelectItem key={p._id} value={p._id}>
+                                    <span className="font-mono text-xs">{p.wbs_code}</span>{" "}
+                                    {p.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs leading-4 text-slate-500 dark:text-slate-400">
+                              Leave unassigned for costs shared across projects.
+                            </p>
+                          </div>
+
+                          <div className="space-y-1.5 xl:col-span-3">
+                            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              Category
+                            </Label>
+                            <Input
+                              className="h-10 bg-white dark:bg-slate-950"
+                              value={newLine.category}
+                              onChange={(e) =>
+                                setNewLine({
+                                  ...newLine,
+                                  category: e.target.value,
+                                })
+                              }
+                              placeholder="e.g. Payroll"
                             />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="__none__">
-                              Unassigned / shared budget
-                            </SelectItem>
-                            {projects.map((p) => (
-                              <SelectItem key={p._id} value={p._id}>
-                                <span className="font-mono text-xs">{p.wbs_code}</span> {p.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <Label className="text-xs">
-                          Category
-                        </Label>
-                        <Input
-                          value={newLine.category}
-                          onChange={(e) =>
-                            setNewLine({
-                              ...newLine,
-                              category: e.target.value,
-                            })
-                          }
-                          placeholder="Payroll"
-                        />
+
+                      <div className="border-t border-slate-100 pt-4 dark:border-slate-800">
+                        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                          Period and amount
+                        </p>
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-12">
+                          <div className="space-y-1.5 xl:col-span-3">
+                            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              {t("budgets.month", "Month")}
+                            </Label>
+                            <Select
+                              value={newLine.period_month.toString()}
+                              onValueChange={(value) =>
+                                setNewLine({
+                                  ...newLine,
+                                  period_month: parseInt(value),
+                                })
+                              }
+                            >
+                              <SelectTrigger className="h-10 bg-white dark:bg-slate-950">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {MONTHS.map((m) => (
+                                  <SelectItem key={m.value} value={m.value.toString()}>
+                                    {m.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5 xl:col-span-3">
+                            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              {t("budgets.year", "Year")}
+                            </Label>
+                            <Input
+                              className="h-10 bg-white dark:bg-slate-950"
+                              type="number"
+                              value={newLine.period_year}
+                              onChange={(e) =>
+                                setNewLine({
+                                  ...newLine,
+                                  period_year:
+                                    parseInt(e.target.value) ||
+                                    new Date().getFullYear(),
+                                })
+                              }
+                            />
+                          </div>
+
+                          <div className="space-y-1.5 xl:col-span-3">
+                            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              {t("budgets.amount", "Amount")} <span className="text-red-500">*</span>
+                            </Label>
+                            <Input
+                              className="h-10 bg-white text-right tabular-nums dark:bg-slate-950"
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={newLine.budgeted_amount || ""}
+                              onChange={(e) =>
+                                setNewLine({
+                                  ...newLine,
+                                  budgeted_amount: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              placeholder="0.00"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5 xl:col-span-3">
+                            <Label className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                              Notes <span className="font-normal text-slate-500">(optional)</span>
+                            </Label>
+                            <Input
+                              className="h-10 bg-white dark:bg-slate-950"
+                              value={newLine.notes}
+                              onChange={(e) =>
+                                setNewLine({
+                                  ...newLine,
+                                  notes: e.target.value,
+                                })
+                              }
+                              placeholder="Planning assumption or cost driver"
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <Label className="text-xs">
-                          {t("budgets.month", "Month")}
-                        </Label>
-                        <Select
-                          value={newLine.period_month.toString()}
-                          onValueChange={(value) =>
-                            setNewLine({
-                              ...newLine,
-                              period_month: parseInt(value),
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {MONTHS.map((m) => (
-                              <SelectItem
-                                key={m.value}
-                                value={m.value.toString()}
-                              >
-                                {m.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs">
-                          {t("budgets.year", "Year")}
-                        </Label>
-                        <Input
-                          type="number"
-                          value={newLine.period_year}
-                          onChange={(e) =>
-                            setNewLine({
-                              ...newLine,
-                              period_year:
-                                parseInt(e.target.value) ||
-                                new Date().getFullYear(),
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-xs">
-                          {t("budgets.amount", "Amount")} *
-                        </Label>
-                        <Input
-                          type="number"
-                          step="0.01"
-                          value={newLine.budgeted_amount || ""}
-                          onChange={(e) =>
-                            setNewLine({
-                              ...newLine,
-                              budgeted_amount: parseFloat(e.target.value) || 0,
-                            })
-                          }
-                        />
-                      </div>
-                      <div className="md:col-span-2">
-                        <Label className="text-xs">
-                          Notes
-                        </Label>
-                        <Input
-                          value={newLine.notes}
-                          onChange={(e) =>
-                            setNewLine({
-                              ...newLine,
-                              notes: e.target.value,
-                            })
-                          }
-                          placeholder="Planning assumption or cost driver"
-                        />
-                      </div>
-                      <div className="flex items-end gap-2">
+
+                      <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 dark:border-slate-800 sm:flex-row sm:justify-end">
                         <Button
-                          size="sm"
-                          onClick={handleAddLine}
+                          type="button"
+                          variant="outline"
+                          onClick={() => setShowAddLine(false)}
                           disabled={submitting}
                         >
-                          {submitting ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Plus className="h-4 w-4" />
-                          )}
-                          <span className="ml-2">Save line</span>
+                          Cancel
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setShowAddLine(false)}
+                          type="button"
+                          onClick={handleAddLine}
+                          disabled={submitting}
+                          className="sm:min-w-32"
                         >
-                          <XCircle className="h-4 w-4" />
+                          {submitting ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Plus className="mr-2 h-4 w-4" />
+                          )}
+                          Save line
                         </Button>
                       </div>
                     </div>
