@@ -4,10 +4,17 @@ import { Button } from "@/app/components/ui/button";
 import { Input } from "@/app/components/ui/input";
 import { Label } from "@/app/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/app/components/ui/dialog";
 import { toast } from "sonner";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
 
 type MaterialLineDraft = { product_id: string; warehouse_id: string; task_id: string; planned_quantity: string };
+type MaterialQuantityAction = {
+  key: string;
+  action: (quantity: number) => Promise<unknown>;
+  title: "Issue" | "Return";
+  maximum: number;
+};
 const newLine = (): MaterialLineDraft => ({ product_id: "", warehouse_id: "", task_id: "", planned_quantity: "1" });
 const arrayData = (value: any): any[] => Array.isArray(value) ? value : Array.isArray(value?.items) ? value.items : Array.isArray(value?.products) ? value.products : Array.isArray(value?.warehouses) ? value.warehouses : [];
 const flattenTasks = (nodes: any[]): Project[] => nodes.flatMap((node) => [node, ...flattenTasks(Array.isArray(node.children) ? node.children : [])]).filter((node) => node.type === "task");
@@ -22,6 +29,9 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [quantityAction, setQuantityAction] = useState<MaterialQuantityAction | null>(null);
+  const [quantity, setQuantity] = useState("");
+  const [quantityError, setQuantityError] = useState("");
 
   const refresh = async () => {
     setLoading(true);
@@ -53,22 +63,34 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
     finally { setBusyAction(null); }
   };
 
-  const runAction = async (key: string, action: (quantity: number) => Promise<unknown>, title: string, defaultQuantity = 1) => {
-    if (busyAction) return;
-    const raw = window.prompt(`${title} quantity`, String(defaultQuantity));
-    if (raw === null) return;
-    const quantity = Number(raw);
-    if (!Number.isFinite(quantity) || quantity <= 0) { toast.error("Enter a quantity greater than zero"); return; }
-    setBusyAction(key);
+  const openQuantityDialog = (key: string, action: (quantity: number) => Promise<unknown>, title: "Issue" | "Return", maximum: number) => {
+    setQuantityAction({ key, action, title, maximum });
+    setQuantity(String(maximum));
+    setQuantityError("");
+  };
+
+  const submitQuantityAction = async () => {
+    if (!quantityAction || busyAction) return;
+    const amount = Number(quantity);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setQuantityError("Enter a quantity greater than zero.");
+      return;
+    }
+    if (amount > quantityAction.maximum) {
+      setQuantityError(`Quantity cannot exceed ${quantityAction.maximum}.`);
+      return;
+    }
+    setBusyAction(quantityAction.key);
     try {
-      const result = await action(quantity);
+      const result = await quantityAction.action(amount);
       const payload = result && typeof result === "object" && "data" in result ? result.data : null;
       const warning = payload && typeof payload === "object" && "budgetWarning" in payload ? payload.budgetWarning : null;
       if (typeof warning === "string" && warning) toast.warning(warning);
-      else toast.success(`${title} recorded`);
+      else toast.success(`${quantityAction.title} recorded`);
+      setQuantityAction(null);
       await refresh();
     }
-    catch (error: any) { toast.error(error?.message || `Could not ${title.toLowerCase()}`); }
+    catch (error: any) { toast.error(error?.message || `Could not ${quantityAction.title.toLowerCase()}`); }
     finally { setBusyAction(null); }
   };
 
@@ -125,12 +147,56 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
           return <div key={line.id} className="flex flex-wrap items-center justify-between gap-3 rounded border p-3 text-sm">
             <div><div className="font-medium">{line.product?.name || line.productId} · {currentlyIssued} currently issued / {Number(line.plannedQuantity)} planned</div><div className="text-xs text-muted-foreground">{line.warehouse?.name || line.warehouseId}{line.task ? ` · ${line.task.wbsCode} ${line.task.name}` : ""} · {Number(line.returnedQuantity)} returned</div>{trackingLabel && <div className="mt-1 text-xs text-muted-foreground">{allocations[0]?.kind === "serial" ? "Serials" : "Batches"}: {trackingLabel}</div>}</div>
             <div className="flex gap-2">
-              {["approved", "partially_issued", "issued"].includes(requisition.status) && unissued > 0 && <Button size="sm" variant="outline" disabled={!!busyAction} onClick={() => void runAction(issueKey, (qty) => projectsApi.issueProjectMaterial(project._id, requisition.id, line.id, qty), "Issue", unissued)}>{busyAction === issueKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === issueKey ? "Issuing..." : "Issue"}</Button>}
-              {unreturned > 0 && Number(line.issuedQuantity) > 0 && <Button size="sm" variant="outline" disabled={!!busyAction} onClick={() => void runAction(returnKey, (qty) => projectsApi.returnProjectMaterial(project._id, requisition.id, line.id, qty), "Return", unreturned)}>{busyAction === returnKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === returnKey ? "Returning..." : "Return"}</Button>}
+              {["approved", "partially_issued", "issued"].includes(requisition.status) && unissued > 0 && <Button size="sm" variant="outline" disabled={!!busyAction} onClick={() => openQuantityDialog(issueKey, (qty) => projectsApi.issueProjectMaterial(project._id, requisition.id, line.id, qty), "Issue", unissued)}>{busyAction === issueKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === issueKey ? "Issuing..." : "Issue"}</Button>}
+              {unreturned > 0 && Number(line.issuedQuantity) > 0 && <Button size="sm" variant="outline" disabled={!!busyAction} onClick={() => openQuantityDialog(returnKey, (qty) => projectsApi.returnProjectMaterial(project._id, requisition.id, line.id, qty), "Return", unreturned)}>{busyAction === returnKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === returnKey ? "Returning..." : "Return"}</Button>}
             </div>
           </div>;
         })}</div>
       </div>;
     })}{!loading && !rows.length && <p className="py-5 text-center text-sm text-muted-foreground">No project material plans yet.</p>}</div>
+    <Dialog
+      open={Boolean(quantityAction)}
+      onOpenChange={(open) => {
+        if (!open && !busyAction) {
+          setQuantityAction(null);
+          setQuantityError("");
+        }
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{quantityAction ? `${quantityAction.title} material` : "Material quantity"}</DialogTitle>
+          <DialogDescription>
+            Enter the quantity to {quantityAction?.title.toLowerCase()}. Maximum available: {quantityAction?.maximum}.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-2">
+          <Label htmlFor="material-quantity">Quantity</Label>
+          <Input
+            id="material-quantity"
+            type="number"
+            min="0.0001"
+            max={quantityAction?.maximum}
+            step="any"
+            value={quantity}
+            onChange={(event) => {
+              setQuantity(event.target.value);
+              setQuantityError("");
+            }}
+            aria-invalid={Boolean(quantityError)}
+            aria-describedby={quantityError ? "material-quantity-error" : undefined}
+            autoFocus
+          />
+          {quantityError && <p id="material-quantity-error" className="text-sm text-destructive">{quantityError}</p>}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="outline" disabled={!!busyAction} onClick={() => { setQuantityAction(null); setQuantityError(""); }}>Cancel</Button>
+          <Button type="button" disabled={!quantityAction || !!busyAction} onClick={() => void submitQuantityAction()}>
+            {busyAction && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {busyAction ? quantityAction?.title === "Issue" ? "Issuing..." : "Returning..." : quantityAction?.title}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>;
 }
