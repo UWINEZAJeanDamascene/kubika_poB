@@ -5,15 +5,15 @@ import {
   budgetsApi,
   chartOfAccountsApi,
   departmentsApi,
-  exchangeRatesApi,
   usersApi,
   projectsApi,
   ChartOfAccountItem,
   BudgetLine,
-  type CurrencyInfo,
   type Department,
   type Project,
 } from "@/lib/api";
+import DocumentCurrencySelect from "@/app/components/DocumentCurrencySelect";
+import { useCurrency } from "@/contexts/CurrencyContext";
 import { Layout } from "../../layout/Layout";
 import {
   ArrowLeft,
@@ -98,9 +98,22 @@ export default function BudgetFormPage() {
   const [accounts, setAccounts] = useState<ChartOfAccountItem[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
-  const [currencies, setCurrencies] = useState<CurrencyInfo[]>([]);
   const [parentBudgets, setParentBudgets] = useState<Array<{ _id: string; name: string; code?: string | null }>>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const { baseCurrency, displayCurrency } = useCurrency();
+  const [entryRate, setEntryRate] = useState<{ currency: string; rate: number | null }>({
+    currency: "",
+    rate: null,
+  });
+  const currentEntryRate = entryRate.currency === displayCurrency ? entryRate.rate : null;
+  const validEntryRate =
+    currentEntryRate != null &&
+    Number.isFinite(currentEntryRate) &&
+    currentEntryRate > 0
+      ? currentEntryRate
+      : null;
+  const hasValidEntryRate = validEntryRate != null;
+  const formatCurrency = useFormatCurrency();
 
   const currentYear = new Date().getFullYear();
 
@@ -158,10 +171,9 @@ export default function BudgetFormPage() {
       return fallback;
     };
 
-    const [departmentResult, usersResult, currenciesResult, budgetsResult, projectsResult] = await Promise.allSettled([
+    const [departmentResult, usersResult, budgetsResult, projectsResult] = await Promise.allSettled([
       departmentsApi.getAll({ isActive: true }),
       usersApi.getAll({ limit: 100, isActive: true }),
-      exchangeRatesApi.getCurrencies(),
       budgetsApi.getAll({ limit: 100 }),
       projectsApi.getAll({ is_active: "true" }),
     ]);
@@ -171,9 +183,6 @@ export default function BudgetFormPage() {
     }
     if (usersResult.status === "fulfilled") {
       setUsers(safeData<UserOption[]>(usersResult.value, []));
-    }
-    if (currenciesResult.status === "fulfilled") {
-      setCurrencies(safeData<CurrencyInfo[]>(currenciesResult.value, []));
     }
     if (budgetsResult.status === "fulfilled") {
       setParentBudgets(
@@ -220,7 +229,7 @@ export default function BudgetFormPage() {
           owner_id: typeof b.owner_id === "object" ? b.owner_id?._id || "" : b.owner_id || "",
           parent_budget_id: typeof b.parent_budget_id === "object" ? b.parent_budget_id?._id || "" : b.parent_budget_id || "",
           entity_id: typeof b.entity_id === "object" ? b.entity_id?._id || "" : b.entity_id || "",
-          base_currency: b.base_currency || "",
+          base_currency: baseCurrency,
           exchange_rate_type: b.exchange_rate_type || "spot",
           exchange_rate: Number(b.exchange_rate || 1),
           allow_multi_currency: Boolean(b.allow_multi_currency),
@@ -258,7 +267,7 @@ export default function BudgetFormPage() {
     } finally {
       setLoading(false);
     }
-  }, [id, currentYear, t]);
+  }, [id, currentYear, t, baseCurrency]);
 
   useEffect(() => {
     fetchAccounts();
@@ -312,6 +321,10 @@ export default function BudgetFormPage() {
       toast.error("Complete or remove every budget line. Each line needs an account and a positive amount.");
       return;
     }
+    if (populatedLines.length && !hasValidEntryRate) {
+      toast.error(`No exchange rate is available for ${displayCurrency}. Add a rate in Currency Settings before saving.`);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -334,9 +347,9 @@ export default function BudgetFormPage() {
           owner_id: form.owner_id || null,
           entity_id: form.entity_id || null,
           parent_budget_id: form.parent_budget_id || null,
-          base_currency: form.base_currency || null,
+          base_currency: baseCurrency,
           exchange_rate_type: form.exchange_rate_type,
-          exchange_rate: form.exchange_rate || 1,
+          exchange_rate: currentEntryRate ?? 1,
           allow_multi_currency: form.allow_multi_currency,
           allocation_method: form.allocation_method,
           notes: form.notes,
@@ -362,9 +375,9 @@ export default function BudgetFormPage() {
           owner_id: form.owner_id || null,
           entity_id: form.entity_id || null,
           parent_budget_id: form.parent_budget_id || null,
-          base_currency: form.base_currency || null,
+          base_currency: baseCurrency,
           exchange_rate_type: form.exchange_rate_type,
-          exchange_rate: form.exchange_rate || 1,
+          exchange_rate: currentEntryRate ?? 1,
           allow_multi_currency: form.allow_multi_currency,
           allocation_method: form.allocation_method,
           notes: form.notes,
@@ -412,9 +425,6 @@ export default function BudgetFormPage() {
       setSubmitting(false);
     }
   };
-
-  // Use centralized formatter
-  const formatCurrency = useFormatCurrency();
 
   const totalLineAmount = Math.round(
     lines.reduce((sum, line) => sum + (Number(line.budgeted_amount) || 0), 0) * 100,
@@ -682,22 +692,16 @@ export default function BudgetFormPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t("budgets.baseCurrency", "Base Currency")}</Label>
-                <Select value={form.base_currency || "none"} onValueChange={(value) => setForm({ ...form, base_currency: value === "none" ? "" : value })}>
-                  <SelectTrigger className="border-slate-200 bg-slate-50 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-                    <SelectItem value="none" className="text-sm text-slate-700 dark:text-slate-200">
-                      {t("budgets.companyCurrency", "Company currency")}
-                    </SelectItem>
-                    {currencies.map((currency) => (
-                      <SelectItem key={currency.code} value={currency.code} className="text-sm text-slate-700 dark:text-slate-200">
-                        {currency.code} - {currency.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-200">Entry Currency</Label>
+                <DocumentCurrencySelect onChange={(currency, rate) => {
+                  setEntryRate({ currency, rate });
+                  setForm((current) => ({
+                    ...current,
+                    base_currency: baseCurrency,
+                    exchange_rate: rate ?? 1,
+                  }));
+                }} />
+                <p className="text-xs text-slate-500 dark:text-slate-400">Budget line amounts are converted and stored in {baseCurrency}.</p>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t("budgets.exchangeRateType", "Exchange Rate Type")}</Label>
@@ -713,13 +717,13 @@ export default function BudgetFormPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t("budgets.exchangeRate", "Exchange Rate")}</Label>
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t("budgets.exchangeRate", "Exchange Rate")} ({displayCurrency} to {baseCurrency})</Label>
                 <Input
                   type="number"
                   step="0.000001"
                   min="0"
-                  value={form.exchange_rate}
-                  onChange={(e) => setForm({ ...form, exchange_rate: parseFloat(e.target.value) || 1 })}
+                  value={currentEntryRate ?? ""}
+                  readOnly
                   className="border-slate-200 bg-slate-50 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                 />
               </div>
@@ -738,9 +742,8 @@ export default function BudgetFormPage() {
               <div className="space-y-2">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t("budgets.totalAmount", "Total Amount")}</Label>
                 <Input
-                  type="number"
-                  step="0.01"
-                  value={totalLineAmount.toFixed(2)}
+                  type="text"
+                  value={formatCurrency(totalLineAmount)}
                   readOnly
                   className="border-slate-200 bg-slate-50 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400"
                 />
@@ -802,7 +805,29 @@ export default function BudgetFormPage() {
                         <div><Label className="text-xs text-slate-500">Account</Label><Select value={line.account_id} onValueChange={(value) => updateLine(index, "account_id", value)}><SelectTrigger className="mt-1 min-h-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white"><SelectValue placeholder={t("budgets.selectAccount", "Select account")}/></SelectTrigger><SelectContent>{filteredAccounts.map((acc) => <SelectItem key={acc._id} value={acc._id}>{acc.code} - {acc.name}</SelectItem>)}</SelectContent></Select></div>
                         <div><Label className="text-xs text-slate-500">Project / WBS</Label><Select value={line.project_id || "__none__"} onValueChange={(value) => updateLine(index, "project_id", value === "__none__" ? "" : value)}><SelectTrigger className="mt-1 min-h-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white"><SelectValue placeholder="No project"/></SelectTrigger><SelectContent><SelectItem value="__none__">No project</SelectItem>{projects.map((project) => <SelectItem key={project._id} value={project._id}>{project.wbs_code} · {project.name}</SelectItem>)}</SelectContent></Select></div>
                         <div className="grid grid-cols-2 gap-3"><div><Label className="text-xs text-slate-500">Month</Label><Select value={line.period_month.toString()} onValueChange={(value) => updateLine(index, "period_month", parseInt(value))}><SelectTrigger className="mt-1 min-h-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white"><SelectValue/></SelectTrigger><SelectContent>{MONTHS.map((month) => <SelectItem key={month.value} value={month.value.toString()}>{month.label}</SelectItem>)}</SelectContent></Select></div><div><Label className="text-xs text-slate-500">Year</Label><Input type="number" inputMode="numeric" className="mt-1 min-h-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white" value={line.period_year} onChange={(e) => updateLine(index, "period_year", parseInt(e.target.value) || currentYear)}/></div></div>
-                        <div><Label className="text-xs text-slate-500">Budgeted amount</Label><Input type="number" inputMode="decimal" step="0.01" className="mt-1 min-h-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder="0.00" value={line.budgeted_amount || ""} onChange={(e) => updateLine(index, "budgeted_amount", parseFloat(e.target.value) || 0)}/></div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Budgeted amount ({displayCurrency})</Label>
+                          <Input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.01"
+                            className="mt-1 min-h-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+                            placeholder="0.00"
+                            value={validEntryRate ? (Number((line.budgeted_amount / validEntryRate).toFixed(2)) || "") : ""}
+                            disabled={!hasValidEntryRate}
+                            onChange={(e) =>
+                              updateLine(
+                                index,
+                                "budgeted_amount",
+                                Math.round(
+                                  Math.max(0, parseFloat(e.target.value) || 0) *
+                                    (currentEntryRate ?? 1) *
+                                    100,
+                                ) / 100,
+                              )
+                            }
+                          />
+                        </div>
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><Label className="text-xs text-slate-500">Category</Label><Input className="mt-1 min-h-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder={t("budgets.categoryPlaceholder", "Category")} value={line.category} onChange={(e) => updateLine(index, "category", e.target.value)}/></div><div><Label className="text-xs text-slate-500">Notes</Label><Input className="mt-1 min-h-11 dark:border-slate-700 dark:bg-slate-900 dark:text-white" placeholder={t("budgets.notesPlaceholder", "Notes")} value={line.notes} onChange={(e) => updateLine(index, "notes", e.target.value)}/></div></div>
                       </div>
                     ))}
@@ -816,7 +841,7 @@ export default function BudgetFormPage() {
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Project / WBS</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.month", "Month")}</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.year", "Year")}</TableHead>
-                          <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.budgetedAmount", "Budgeted Amount")}</TableHead>
+                          <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.budgetedAmount", "Budgeted Amount")} ({displayCurrency})</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.category", "Category")}</TableHead>
                           <TableHead className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t("budgets.notes", "Notes")}</TableHead>
                           <TableHead className="w-[50px]"></TableHead>
@@ -882,8 +907,9 @@ export default function BudgetFormPage() {
                                 step="0.01"
                                 className="ml-auto w-[130px] border-slate-200 bg-slate-50 text-right text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400"
                                 placeholder="0.00"
-                                value={line.budgeted_amount || ""}
-                                onChange={(e) => updateLine(index, "budgeted_amount", parseFloat(e.target.value) || 0)}
+                                value={validEntryRate ? (Number((line.budgeted_amount / validEntryRate).toFixed(2)) || "") : ""}
+                                disabled={!hasValidEntryRate}
+                                onChange={(e) => updateLine(index, "budgeted_amount", Math.round(Math.max(0, parseFloat(e.target.value) || 0) * (currentEntryRate ?? 1) * 100) / 100)}
                               />
                             </TableCell>
                             <TableCell>

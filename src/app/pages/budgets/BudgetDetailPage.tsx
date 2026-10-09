@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import { useFormatCurrency } from "@/lib/currencyUtils";
 import {
   budgetsApi,
   chartOfAccountsApi,
@@ -386,19 +387,7 @@ export default function BudgetDetailPage() {
     }
   };
 
-  const formatCurrency = (amount: number | string | null | undefined) => {
-    // Handle Decimal128 from MongoDB (which comes as string) or null/undefined
-    const numericAmount = amount == null
-      ? 0
-      : typeof amount === 'string'
-        ? parseFloat(amount)
-        : Number(amount) || 0;
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-    }).format(numericAmount);
-  };
+  const formatCurrency = useFormatCurrency();
 
   const formatDate = (date: string | Date | null | undefined) => {
     if (!date) return "-";
