@@ -115,16 +115,17 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
           {["planned", "approved", "partially_issued"].includes(requisition.status) && <Button size="sm" variant="destructive" disabled={!!busyAction} onClick={() => void runRequisitionAction(cancelKey, () => projectsApi.cancelMaterialRequisition(project._id, requisition.id), "Material requisition cancelled", "Could not cancel requisition")}>{busyAction === cancelKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === cancelKey ? "Cancelling..." : "Cancel"}</Button>}
         </div></div>
         <div className="space-y-2">{requisition.lines.map((line: any) => {
-          const unissued = Number(line.plannedQuantity) - Number(line.issuedQuantity);
-          const unreturned = Number(line.issuedQuantity) - Number(line.returnedQuantity);
+          const currentlyIssued = Math.max(0, Number(line.issuedQuantity) - Number(line.returnedQuantity));
+          const unissued = Math.max(0, Number(line.plannedQuantity) - currentlyIssued);
+          const unreturned = currentlyIssued;
           const allocations = Array.isArray(line.trackingAllocations) ? line.trackingAllocations : [];
           const trackingLabel = allocations.filter((item: any) => item.kind === "serial").map((item: any) => item.serialNo || item.serialId).join(", ") || allocations.filter((item: any) => item.kind === "batch").map((item: any) => `${item.batchNo || item.batchId} (${Number(item.issuedQuantity || 0)}/${Number(item.quantity || 0)})`).join(", ");
           const issueKey = `issue:${line.id}`;
           const returnKey = `return:${line.id}`;
           return <div key={line.id} className="flex flex-wrap items-center justify-between gap-3 rounded border p-3 text-sm">
-            <div><div className="font-medium">{line.product?.name || line.productId} · {Number(line.issuedQuantity)} issued / {Number(line.plannedQuantity)} planned</div><div className="text-xs text-muted-foreground">{line.warehouse?.name || line.warehouseId}{line.task ? ` · ${line.task.wbsCode} ${line.task.name}` : ""} · {Number(line.returnedQuantity)} returned</div>{trackingLabel && <div className="mt-1 text-xs text-muted-foreground">{allocations[0]?.kind === "serial" ? "Serials" : "Batches"}: {trackingLabel}</div>}</div>
+            <div><div className="font-medium">{line.product?.name || line.productId} · {currentlyIssued} currently issued / {Number(line.plannedQuantity)} planned</div><div className="text-xs text-muted-foreground">{line.warehouse?.name || line.warehouseId}{line.task ? ` · ${line.task.wbsCode} ${line.task.name}` : ""} · {Number(line.returnedQuantity)} returned</div>{trackingLabel && <div className="mt-1 text-xs text-muted-foreground">{allocations[0]?.kind === "serial" ? "Serials" : "Batches"}: {trackingLabel}</div>}</div>
             <div className="flex gap-2">
-              {["approved", "partially_issued"].includes(requisition.status) && unissued > 0 && <Button size="sm" variant="outline" disabled={!!busyAction} onClick={() => void runAction(issueKey, (qty) => projectsApi.issueProjectMaterial(project._id, requisition.id, line.id, qty), "Issue", unissued)}>{busyAction === issueKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === issueKey ? "Issuing..." : "Issue"}</Button>}
+              {["approved", "partially_issued", "issued"].includes(requisition.status) && unissued > 0 && <Button size="sm" variant="outline" disabled={!!busyAction} onClick={() => void runAction(issueKey, (qty) => projectsApi.issueProjectMaterial(project._id, requisition.id, line.id, qty), "Issue", unissued)}>{busyAction === issueKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === issueKey ? "Issuing..." : "Issue"}</Button>}
               {unreturned > 0 && Number(line.issuedQuantity) > 0 && <Button size="sm" variant="outline" disabled={!!busyAction} onClick={() => void runAction(returnKey, (qty) => projectsApi.returnProjectMaterial(project._id, requisition.id, line.id, qty), "Return", unreturned)}>{busyAction === returnKey && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === returnKey ? "Returning..." : "Return"}</Button>}
             </div>
           </div>;
