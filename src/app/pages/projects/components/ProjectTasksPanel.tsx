@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Badge } from "@/app/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Pencil, RefreshCw, CheckCircle2 } from "lucide-react";
+import { ProjectTaskCompletionDialog } from "./ProjectTaskCompletionDialog";
 
 type TaskDraft = {
   name: string;
@@ -41,6 +42,7 @@ export default function ProjectTasksPanel({ project }: { project: Project }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Project | null>(null);
   const [draft, setDraft] = useState<TaskDraft>(blankTask());
+  const [completionTask, setCompletionTask] = useState<Project | null>(null);
 
   const refresh = async () => {
     try {
@@ -94,12 +96,23 @@ export default function ProjectTasksPanel({ project }: { project: Project }) {
     finally { setSaving(false); }
   };
 
-  const setStatus = async (task: Project, status: Project["status"]) => {
+  const setStatus = async (task: Project, status: Project["status"], actualHours?: number) => {
+    if (status === "completed" && Number(task.timesheet_hours || 0) <= 0 && actualHours === undefined) {
+      setCompletionTask(task);
+      return;
+    }
+    setSaving(true);
     try {
-      await projectsApi.update(task._id, { status, progress_percent: status === "completed" ? 100 : task.progress_percent });
+      await projectsApi.update(task._id, {
+        status,
+        progress_percent: status === "completed" ? 100 : task.progress_percent,
+        ...(actualHours === undefined ? {} : { actual_hours: actualHours }),
+      });
       await refresh();
       toast.success(status === "completed" ? "Task completed" : "Task status updated");
+      setCompletionTask(null);
     } catch (error: any) { toast.error(error?.response?.data?.error || error?.message || "Could not update task"); }
+    finally { setSaving(false); }
   };
 
   const ownerName = (task: Project) => {
@@ -143,7 +156,7 @@ export default function ProjectTasksPanel({ project }: { project: Project }) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2"><Label>Assignee</Label><Select value={draft.manager_id || "__none__"} onValueChange={(value) => setDraft({ ...draft, manager_id: value === "__none__" ? "" : value })}><SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger><SelectContent><SelectItem value="__none__">Unassigned</SelectItem>{(setup?.users || []).map((user) => <SelectItem key={user._id} value={user._id}>{user.name} · {user.email}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Priority</Label><Select value={draft.priority} onValueChange={(value: Project["priority"]) => setDraft({ ...draft, priority: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["low", "medium", "high", "critical"].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-            <div className="space-y-2"><Label>Status</Label><Select value={draft.status} onValueChange={(value: Project["status"]) => setDraft({ ...draft, status: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["draft", "planned", "planning", "active", "blocked", "on_hold", "completed", "cancelled"].map((value) => <SelectItem key={value} value={value}>{value.replaceAll("_", " ")}</SelectItem>)}</SelectContent></Select></div>
+            <div className="space-y-2"><Label>Status</Label><Select value={draft.status} onValueChange={(value: Project["status"]) => setDraft({ ...draft, status: value })}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{["draft", "planned", "planning", "active", "blocked", "on_hold", ...(draft.status === "completed" ? ["completed"] : []), "cancelled"].map((value) => <SelectItem key={value} value={value}>{value.replaceAll("_", " ")}</SelectItem>)}</SelectContent></Select></div>
             <div className="space-y-2"><Label>Progress (%)</Label><Input type="number" min={0} max={100} value={draft.progress_percent} onChange={(e) => setDraft({ ...draft, progress_percent: Number(e.target.value) })} /></div>
             <div className="space-y-2"><Label>Start date</Label><Input type="date" value={draft.start_date} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} /></div>
             <div className="space-y-2"><Label>Due date</Label><Input type="date" min={draft.start_date || undefined} value={draft.end_date} onChange={(e) => setDraft({ ...draft, end_date: e.target.value })} /></div>
@@ -156,5 +169,11 @@ export default function ProjectTasksPanel({ project }: { project: Project }) {
         </form>
       </DialogContent>
     </Dialog>
+    <ProjectTaskCompletionDialog
+      task={completionTask}
+      saving={saving}
+      onCancel={() => setCompletionTask(null)}
+      onConfirm={(actualHours) => { if (completionTask) void setStatus(completionTask, "completed", actualHours); }}
+    />
   </>;
 }

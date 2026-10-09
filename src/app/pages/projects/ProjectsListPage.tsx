@@ -110,6 +110,12 @@ export default function ProjectsListPage() {
     }
   };
 
+  useEffect(() => {
+    const refreshOnFocus = () => { void fetchProjects(); };
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
+  }, []);
+
   const handleArchive = async (id: string) => {
     if (!window.confirm("Archive this project? It can be restored later.")) return;
     try {
@@ -321,7 +327,7 @@ export default function ProjectsListPage() {
                       </div>
                     </div>
                     <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
-                      Actual spend to date
+                      Budget actuals plus approved project labor
                     </p>
                   </CardContent>
                 </Card>
