@@ -54,7 +54,7 @@ export function toProductStock(product: Record<string, any>): ProductStock {
   return {
     _id: product._id,
     productId: product.productId || product.product?._id || product._id,
-    sku: product.sku,
+    sku: product.sku || product.productSku || product.product?.sku || '',
     name: product.productName || product.name || product.product?.name || '',
     category: product.category,
     unit: product.unit || 'pcs',
