@@ -5957,10 +5957,11 @@ export const budgetsApi = {
       notes?: string;
       project_id?: string | null;
     }>,
+    options?: { replaceExisting?: boolean },
   ) =>
     request<{ success: boolean; data: any[] }>(`/budgets/${id}/lines`, {
       method: "POST",
-      body: { lines },
+      body: { lines, replace_existing: options?.replaceExisting ?? false },
     }),
   getLines: (
     id: string,

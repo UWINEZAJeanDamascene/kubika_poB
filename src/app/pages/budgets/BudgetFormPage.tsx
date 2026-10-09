@@ -116,7 +116,6 @@ export default function BudgetFormPage() {
     periodEnd: "",
     periodType: "yearly" as "monthly" | "quarterly" | "yearly" | "custom",
     budget_cycle: "fixed_year" as "fixed_year" | "rolling",
-    amount: 0,
     department: "",
     owner_id: "",
     parent_budget_id: "",
@@ -217,7 +216,6 @@ export default function BudgetFormPage() {
           periodEnd: b.periodEnd ? b.periodEnd.split("T")[0] : "",
           periodType: b.periodType || "yearly",
           budget_cycle: b.budget_cycle || "fixed_year",
-          amount: (b.amount as number) || 0,
           department: typeof b.department === "object" ? b.department?._id || "" : b.department || "",
           owner_id: typeof b.owner_id === "object" ? b.owner_id?._id || "" : b.owner_id || "",
           parent_budget_id: typeof b.parent_budget_id === "object" ? b.parent_budget_id?._id || "" : b.parent_budget_id || "",
@@ -303,6 +301,18 @@ export default function BudgetFormPage() {
       return;
     }
 
+    const populatedLines = lines.filter((line) =>
+      line.account_id ||
+      line.budgeted_amount !== 0 ||
+      line.category.trim() ||
+      line.notes.trim() ||
+      line.project_id,
+    );
+    if (populatedLines.some((line) => !line.account_id || line.budgeted_amount <= 0)) {
+      toast.error("Complete or remove every budget line. Each line needs an account and a positive amount.");
+      return;
+    }
+
     setSubmitting(true);
     try {
       let budgetId = id;
@@ -320,7 +330,6 @@ export default function BudgetFormPage() {
           periodEnd: form.periodEnd || undefined,
           periodType: form.periodType,
           budget_cycle: form.budget_cycle,
-          amount: form.amount,
           department: form.department || undefined,
           owner_id: form.owner_id || null,
           entity_id: form.entity_id || null,
@@ -348,7 +357,7 @@ export default function BudgetFormPage() {
           periodEnd: form.periodEnd || undefined,
           periodType: form.periodType,
           budget_cycle: form.budget_cycle,
-          amount: form.amount,
+          amount: totalLineAmount,
           department: form.department || undefined,
           owner_id: form.owner_id || null,
           entity_id: form.entity_id || null,
@@ -367,35 +376,23 @@ export default function BudgetFormPage() {
         }
       }
 
-      // Save lines if any
-      if (lines.length > 0 && budgetId) {
-        const validLines = lines.filter(
-          (l) => l.account_id && l.budgeted_amount > 0,
+      if (budgetId) {
+        const lineResponse = await budgetsApi.upsertLines(
+          budgetId,
+          populatedLines.map((line) => ({
+            line_id: line.line_id,
+            account_id: line.account_id,
+            category: line.category || undefined,
+            period_month: line.period_month,
+            period_year: line.period_year,
+            budgeted_amount: line.budgeted_amount,
+            notes: line.notes || undefined,
+            project_id: line.project_id || undefined,
+          })),
+          { replaceExisting: true },
         );
-        if (validLines.length > 0) {
-          try {
-            await budgetsApi.upsertLines(
-              budgetId,
-              validLines.map((l) => ({
-                line_id: l.line_id,
-                account_id: l.account_id,
-                category: l.category || undefined,
-                period_month: l.period_month,
-                period_year: l.period_year,
-                budgeted_amount: l.budgeted_amount,
-                notes: l.notes || undefined,
-                project_id: l.project_id || undefined,
-              })),
-            );
-          } catch (lineError) {
-            console.error("[BudgetFormPage] Failed to save lines:", lineError);
-            toast.error(
-              t(
-                "budgets.errors.linesSaveFailed",
-                "Budget saved but some lines failed to save",
-              ),
-            );
-          }
+        if (!lineResponse.success) {
+          throw new Error("Failed to save budget line items");
         }
       }
 
@@ -419,10 +416,9 @@ export default function BudgetFormPage() {
   // Use centralized formatter
   const formatCurrency = useFormatCurrency();
 
-  const totalLineAmount = lines.reduce(
-    (sum, l) => sum + (l.budgeted_amount || 0),
-    0,
-  );
+  const totalLineAmount = Math.round(
+    lines.reduce((sum, line) => sum + (Number(line.budgeted_amount) || 0), 0) * 100,
+  ) / 100;
 
   if (loading) {
     return (
@@ -744,11 +740,11 @@ export default function BudgetFormPage() {
                 <Input
                   type="number"
                   step="0.01"
-                  placeholder="0.00"
-                  value={form.amount || ""}
-                  onChange={(e) => setForm({ ...form, amount: parseFloat(e.target.value) || 0 })}
+                  value={totalLineAmount.toFixed(2)}
+                  readOnly
                   className="border-slate-200 bg-slate-50 text-sm dark:border-slate-700 dark:bg-slate-900 dark:text-white dark:placeholder:text-slate-400"
                 />
+                <p className="text-xs text-slate-500 dark:text-slate-400">Calculated automatically from the budget line items below.</p>
               </div>
               <div className="space-y-2 col-span-2">
                 <Label className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t("budgets.notes", "Notes")}</Label>
