@@ -159,6 +159,7 @@ export default function BudgetDetailPage() {
   const [closeNotes, setCloseNotes] = useState("");
   const [lineConsumptionOpen, setLineConsumptionOpen] = useState(false);
   const [selectedLine, setSelectedLine] = useState<BudgetLine | null>(null);
+  const [consumptionAccount, setConsumptionAccount] = useState<ChartOfAccountItem | null>(null);
   const [lineEncumbrances, setLineEncumbrances] = useState<Encumbrance[]>([]);
   const [lineActualConsumptions, setLineActualConsumptions] = useState<BudgetActualConsumption[]>([]);
   const [lineConsumptionLoading, setLineConsumptionLoading] = useState(false);
@@ -177,6 +178,38 @@ export default function BudgetDetailPage() {
       fetchComparison();
     }
   }, [id, budget?.status]);
+
+  useEffect(() => {
+    const accountId = selectedLine
+      ? typeof selectedLine.account_id === "object"
+        ? selectedLine.account_id?._id
+        : selectedLine.account_id
+      : null;
+    if (!accountId) {
+      setConsumptionAccount(null);
+      return;
+    }
+
+    const cachedAccount = accounts.find((account) => account._id === accountId);
+    if (cachedAccount) {
+      setConsumptionAccount(cachedAccount);
+      return;
+    }
+
+    let cancelled = false;
+    setConsumptionAccount(null);
+    chartOfAccountsApi.getById(accountId)
+      .then((response) => {
+        if (!cancelled && response.success) setConsumptionAccount(response.data);
+      })
+      .catch((error) => {
+        console.error("[BudgetDetailPage] Failed to fetch budget line account:", error);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedLine, accounts]);
 
   const fetchBudget = async () => {
     try {
@@ -440,12 +473,17 @@ export default function BudgetDetailPage() {
     );
   };
 
-  const getAccountName = (account_id: any) => {
+  const getAccountName = (account_id: any, resolvedAccount?: ChartOfAccountItem | null) => {
     if (typeof account_id === "object" && account_id?.name) {
-      return `${account_id.code || ""} - ${account_id.name}`;
+      return [account_id.code, account_id.name].filter(Boolean).join(" - ");
     }
     const acc = accounts.find((a) => a._id === account_id);
-    return acc ? `${acc.code} - ${acc.name}` : account_id || "-";
+    const account = acc || (resolvedAccount?._id === account_id ? resolvedAccount : null);
+    return account
+      ? [account.code, account.name].filter(Boolean).join(" - ")
+      : account_id
+        ? "Account details unavailable"
+        : "-";
   };
 
   const getProjectMeta = (project: BudgetLine["project_id"], wbsCode?: string) => {
@@ -1768,7 +1806,7 @@ export default function BudgetDetailPage() {
         </Dialog>
 
       <Dialog open={lineConsumptionOpen} onOpenChange={setLineConsumptionOpen}>
-        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-6xl gap-5 overflow-y-auto p-5 sm:p-6">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-1rem)] max-w-[1500px] gap-5 overflow-y-auto p-5 sm:w-[96vw] sm:p-6">
           <DialogHeader>
             <DialogTitle>Budget line consumption</DialogTitle>
             <DialogDescription>
@@ -1781,7 +1819,7 @@ export default function BudgetDetailPage() {
               <section className="grid min-w-0 gap-3 md:grid-cols-2">
                 <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Account</div>
-                  <div className="mt-2 break-words text-sm font-semibold leading-5 text-slate-900 dark:text-white">{getAccountName(selectedLine.account_id)}</div>
+                  <div className="mt-2 break-words text-sm font-semibold leading-5 text-slate-900 dark:text-white">{getAccountName(selectedLine.account_id, consumptionAccount)}</div>
                 </div>
                 <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Project / WBS</div>
