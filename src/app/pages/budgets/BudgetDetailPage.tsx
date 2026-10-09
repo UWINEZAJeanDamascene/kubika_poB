@@ -1768,7 +1768,7 @@ export default function BudgetDetailPage() {
         </Dialog>
 
       <Dialog open={lineConsumptionOpen} onOpenChange={setLineConsumptionOpen}>
-        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-[1400px] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-6xl gap-5 overflow-y-auto p-5 sm:p-6">
           <DialogHeader>
             <DialogTitle>Budget line consumption</DialogTitle>
             <DialogDescription>
@@ -1778,7 +1778,7 @@ export default function BudgetDetailPage() {
 
           {selectedLine && (
             <div className="space-y-5">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+              <section className="grid min-w-0 gap-3 md:grid-cols-2">
                 <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Account</div>
                   <div className="mt-2 break-words text-sm font-semibold leading-5 text-slate-900 dark:text-white">{getAccountName(selectedLine.account_id)}</div>
@@ -1789,24 +1789,33 @@ export default function BudgetDetailPage() {
                     {selectedLine.project_id ? getProjectMeta(selectedLine.project_id, selectedLine.wbs_code).label : "Unassigned"}
                   </div>
                 </div>
-                <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+              </section>
+
+              <section className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="min-w-0 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Budgeted</div>
-                  <div className="mt-2 break-words text-base font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(selectedLine.budgeted_amount)}</div>
+                  <div className="mt-2 whitespace-nowrap text-base font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(selectedLine.budgeted_amount)}</div>
                 </div>
                 <div className="min-w-0 rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">Committed</div>
-                  <div className="mt-2 break-words text-base font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(selectedLine.encumbered_amount || 0)}</div>
+                  <div className="mt-2 whitespace-nowrap text-base font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(selectedLine.encumbered_amount || 0)}</div>
                 </div>
-                <div className="min-w-0 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                <div className="min-w-0 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20 sm:col-span-2 xl:col-span-1">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Actual / Available</div>
-                  <div className="mt-2 space-y-1 text-sm font-bold tabular-nums text-slate-900 dark:text-white">
-                    <div>{formatCurrency(selectedLine.actual_amount || 0)} <span className="font-normal text-slate-500 dark:text-slate-400">actual</span></div>
-                    <div>{formatCurrency(getLineAvailable(selectedLine))} <span className="font-normal text-slate-500 dark:text-slate-400">available</span></div>
+                  <div className="mt-2 grid grid-cols-2 gap-3">
+                    <div className="min-w-0">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Actual</div>
+                      <div className="mt-1 whitespace-nowrap text-sm font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(selectedLine.actual_amount || 0)}</div>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Available</div>
+                      <div className="mt-1 whitespace-nowrap text-sm font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(getLineAvailable(selectedLine))}</div>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <div className="grid items-start gap-4 lg:grid-cols-2">
+              <div className="grid min-w-0 items-start gap-4 xl:grid-cols-2">
                 <Card className="min-w-0 overflow-hidden rounded-xl border-slate-200 shadow-sm dark:border-slate-800">
                   <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/60">
                     <CardTitle className="flex items-center gap-2 text-base">
