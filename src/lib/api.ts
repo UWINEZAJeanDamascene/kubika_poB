@@ -340,7 +340,9 @@ async function request<T>(
 
       throw new ApiError(
         response.status,
-        data.error?.message || data.message || "An error occurred",
+        (typeof data.error === "string" ? data.error : data.error?.message) ||
+          data.message ||
+          "An error occurred",
         errorCode,
         data,
       );

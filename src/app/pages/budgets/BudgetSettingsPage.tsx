@@ -38,7 +38,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/app/components/ui/switch';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router';
-import { budgetsApi } from '@/lib/api';
+import { accessApi, budgetsApi } from '@/lib/api';
 import { useFormatCurrency } from '@/lib/currencyUtils';
 import {
   Dialog,
@@ -111,23 +111,13 @@ const APPROVER_TYPES = [
   { value: 'specific_user', label: 'Named User' },
 ];
 
-const APPROVER_ROLES = [
-  'finance_manager',
-  'director',
-  'executive_committee',
-  'department_head',
-  'manager',
-  'cfo',
-  'ceo',
-];
-
 const defaultStep = (): WorkflowStep => ({
   step_number: 1,
   step_name: '',
   description: '',
   approver_type: 'role',
   approver_id: null,
-  approver_role: 'finance_manager',
+  approver_role: 'accountant',
   required_approvals: 1,
   min_amount: 0,
   max_amount: null,
@@ -150,6 +140,7 @@ export default function BudgetSettingsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [configs, setConfigs] = useState<WorkflowConfig[]>([]);
+  const [availableApproverRoles, setAvailableApproverRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [drawerMode, setDrawerMode] = useState<'create' | 'edit' | 'test' | null>(null);
@@ -191,7 +182,19 @@ export default function BudgetSettingsPage() {
     }
   };
 
-  useEffect(() => { fetchConfigs(); }, []);
+  const fetchApproverRoles = async () => {
+    try {
+      const response = await accessApi.getRoles() as { success: boolean; data?: Array<{ name: string }> };
+      setAvailableApproverRoles((response.data || []).map(role => role.name).filter(Boolean));
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load roles for budget approvers');
+    }
+  };
+
+  useEffect(() => {
+    fetchConfigs();
+    fetchApproverRoles();
+  }, []);
 
   const filteredConfigs = configs.filter(c =>
     c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -989,11 +992,19 @@ export default function BudgetSettingsPage() {
                                             <SelectValue />
                                           </SelectTrigger>
                                           <SelectContent className="dark:bg-slate-900 dark:border-slate-700">
-                                            {APPROVER_ROLES.map(r => (
-                                              <SelectItem key={r} value={r} className="dark:text-slate-300 dark:focus:bg-slate-800">{r.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
+                                            {[...new Set([...availableApproverRoles, ...formSteps.map(formStep => formStep.approver_role).filter((role): role is string => Boolean(role))])].sort().map(r => (
+                                              <SelectItem key={r} value={r} className="dark:text-slate-300 dark:focus:bg-slate-800">{r.replace(/[_-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</SelectItem>
                                             ))}
                                           </SelectContent>
                                         </Select>
+                                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                                          Only users assigned this exact role can approve this step. Assign this role to at least one user in User Management.
+                                        </p>
+                                        {step.approver_role && !availableApproverRoles.some(role => role.toLowerCase() === step.approver_role?.toLowerCase()) && (
+                                          <p className="text-xs text-amber-700 dark:text-amber-300">
+                                            This role is not currently available in your company. Choose an existing role or create and assign it in Role Settings.
+                                          </p>
+                                        )}
                                       </div>
                                     )}
 

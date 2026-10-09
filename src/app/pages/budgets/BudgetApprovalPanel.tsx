@@ -32,6 +32,7 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [showChangesDialog, setShowChangesDialog] = useState(false);
   const [selectedApproval, setSelectedApproval] = useState<BudgetApproval | null>(null);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
   const [comments, setComments] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [changesRequired, setChangesRequired] = useState("");
@@ -108,6 +109,7 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
 
   const handleApprove = async () => {
     if (!selectedApproval) return;
+    setApprovalError(null);
     setSubmitting(true);
     try {
       const response = await budgetsApi.approveStep(budgetId, selectedApproval._id, comments);
@@ -124,13 +126,18 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
       }
     } catch (error: any) {
       const msg = error?.message || "";
+      const step = selectedApproval.steps[selectedApproval.current_step - 1];
+      const requiredApprover = describeApprover(step);
       if (msg.includes("ALREADY_APPROVED")) {
-        toast.error("You have already approved this step");
+        setApprovalError("You have already approved this step.");
       } else if (msg.includes("authorized") || msg.includes("APPROVER_NOT_AUTHORIZED")) {
-        toast.error("You are not assigned to approve the current workflow step");
+        setApprovalError(`You are not authorized for this step. ${requiredApprover} Ask your administrator to check the workflow and the user's assigned role.`);
+      } else if (msg.includes("BUDGET_SELF_APPROVAL_NOT_ALLOWED") || msg.toLowerCase().includes("cannot approve their own")) {
+        setApprovalError(`You submitted this budget and cannot approve it. A different user must approve it. ${requiredApprover}`);
       } else {
-        toast.error(error?.message || "Failed to approve");
+        setApprovalError(error?.message || "The budget could not be approved. Please try again.");
       }
+      toast.error("Budget approval failed", { description: approvalErrorMessage(msg, requiredApprover) });
     } finally {
       setSubmitting(false);
     }
@@ -230,6 +237,37 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
   const latestChangeRequestAction = changesRequestedApproval?.actions.slice().reverse().find(action => action.action === "requested_changes");
   const changesRequesterId = typeof changesRequestedApproval?.requested_by === "object" ? changesRequestedApproval.requested_by?._id : changesRequestedApproval?.requested_by;
   const canSubmit = budgetStatus === "draft" && !pendingApproval && !changesRequestedApproval;
+  const currentApprovalStep = pendingApproval?.steps[pendingApproval.current_step - 1];
+  const requesterId = typeof pendingApproval?.requested_by === "object"
+    ? pendingApproval.requested_by?._id
+    : pendingApproval?.requested_by;
+  const isRequester = Boolean(currentUserId && requesterId && String(currentUserId) === String(requesterId));
+
+  function describeApprover(step: BudgetApproval["steps"][number] | undefined) {
+    if (!step) return "No approver is configured for this step.";
+    if (step.approver_type === "role") {
+      const role = step.approver_role?.replace(/[_-]+/g, " ") || "unspecified role";
+      return `This step requires a user assigned the "${role}" role.`;
+    }
+    if (step.approver_type === "department_head") {
+      return "This step requires a Department Head assigned to the budget's department.";
+    }
+    if (step.approver_type === "any_manager") {
+      return "This step requires a user with a manager-level role (for example Manager, Finance Manager, Director, CFO, CEO, or Admin).";
+    }
+    return "This step is assigned to a specific user; ask your administrator to check the selected approver.";
+  }
+
+  function approvalErrorMessage(message: string, requiredApprover: string) {
+    if (message.includes("BUDGET_SELF_APPROVAL_NOT_ALLOWED") || message.toLowerCase().includes("cannot approve their own")) {
+      return `You submitted this budget and cannot approve it. A different user must approve it. ${requiredApprover}`;
+    }
+    if (message.includes("authorized") || message.includes("APPROVER_NOT_AUTHORIZED")) {
+      return `You are not authorized for this step. ${requiredApprover} Ask your administrator to check the workflow and the user's assigned role.`;
+    }
+    if (message.includes("ALREADY_APPROVED")) return "You have already approved this step.";
+    return message || "The budget could not be approved. Please try again.";
+  }
 
   if (loading) {
     return (
@@ -317,7 +355,13 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
                 <div className="rounded-lg bg-white p-3 border border-slate-100 dark:bg-slate-900 dark:border-slate-800">
                   <p className="text-xs text-slate-500 dark:text-slate-400">Current Step</p>
                   <p className="text-sm font-medium text-slate-900 dark:text-white mt-0.5">
-                    {pendingApproval.steps[pendingApproval.current_step - 1]?.step_name || "Unknown"}
+                    {currentApprovalStep?.step_name || "Unknown"}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-white p-3 border border-slate-100 dark:bg-slate-900 dark:border-slate-800">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Who can approve this step?</p>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white mt-0.5">
+                    {describeApprover(currentApprovalStep)}
                   </p>
                 </div>
                 <div className="rounded-lg bg-white p-3 border border-slate-100 dark:bg-slate-900 dark:border-slate-800">
@@ -337,10 +381,22 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
                   </div>
                 )}
               </div>
+              {isRequester && (
+                <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
+                  You submitted this budget, so you cannot approve it. A different user must approve it. {describeApprover(currentApprovalStep)}
+                </div>
+              )}
+              {approvalError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+                  {approvalError}
+                </div>
+              )}
               <div className="flex gap-2 pt-1">
                 <Button
                   size="sm"
+                  disabled={isRequester}
                   onClick={() => {
+                    setApprovalError(null);
                     setSelectedApproval(pendingApproval);
                     setShowApproveDialog(true);
                   }}
@@ -516,6 +572,11 @@ export function BudgetApprovalPanel({ budgetId, budgetStatus, budgetAmount, depa
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
+            {approvalError && (
+              <div role="alert" className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">
+                {approvalError}
+              </div>
+            )}
             <Textarea
               placeholder="Optional comments..."
               value={comments}
