@@ -81,20 +81,21 @@ export default function ProjectMaterialsPanel({ project }: { project: Project })
   };
 
   const reconcileBudgetActuals = async () => {
-    if (busyAction || !window.confirm("Reconcile already-issued materials to approved project budget lines? This only adds missing budget actuals and does not change stock.")) return;
+    if (busyAction || !window.confirm("Reconcile already-issued materials to approved project budget lines? This corrects missing or mismatched budget actuals and does not change stock.")) return;
     setBusyAction("reconcile");
     try {
       const result = await projectsApi.reconcileMaterialBudgetActuals(project._id);
-      const { reconciledLines, skippedLines, amount } = result.data;
+      const { reconciledLines, skippedLines, amount, journalEntries, journalAmount } = result.data;
       const skippedNote = skippedLines ? ` ${skippedLines} line(s) had no approved project budget.` : "";
-      toast.success(`Reconciled ${reconciledLines} material line(s); budget actuals increased by ${Number(amount).toLocaleString()}.${skippedNote}`);
+      const journalNote = journalEntries ? ` Posted ${journalEntries} missing journal entry/entries for ${Number(journalAmount).toLocaleString()} gross material movements.` : "";
+      toast.success(`Reconciled ${reconciledLines} material line(s); net budget actual adjustment: ${Number(amount).toLocaleString()}.${journalNote}${skippedNote}`);
       await refresh();
     } catch (error: any) { toast.error(error?.message || "Could not reconcile material budget actuals"); }
     finally { setBusyAction(null); }
   };
 
   return <div className="space-y-5">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="font-semibold">Material planning & requisitions</h3><p className="text-sm text-muted-foreground">Plan materials by task, reserve stock, and record warehouse issues and returns. Issues are posted to budget actuals using the material's COGS account.</p></div><div className="flex flex-wrap gap-2"><Button className="min-h-10 shrink-0" variant="outline" size="sm" onClick={() => void reconcileBudgetActuals()} disabled={loading || !!busyAction}>{busyAction === "reconcile" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === "reconcile" ? "Reconciling..." : "Reconcile prior issues"}</Button><Button className="min-h-10 shrink-0" variant="outline" size="sm" onClick={() => void refresh()} disabled={loading || !!busyAction}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Refresh</Button></div></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h3 className="font-semibold">Material planning & requisitions</h3><p className="text-sm text-muted-foreground">Plan materials by task and reserve stock. Issues debit COGS and credit inventory, update budget actuals, and returns post the matching reversal.</p></div><div className="flex flex-wrap gap-2"><Button className="min-h-10 shrink-0" variant="outline" size="sm" onClick={() => void reconcileBudgetActuals()} disabled={loading || !!busyAction}>{busyAction === "reconcile" && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{busyAction === "reconcile" ? "Reconciling..." : "Reconcile prior issues"}</Button><Button className="min-h-10 shrink-0" variant="outline" size="sm" onClick={() => void refresh()} disabled={loading || !!busyAction}>{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Refresh</Button></div></div>
     <div className="space-y-3 rounded-lg border p-4">
       {draft.map((line, index) => <div key={index} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <div><Label>Material</Label><Select value={line.product_id} onValueChange={(value) => setDraft((all) => all.map((item, i) => i === index ? { ...item, product_id: value } : item))}><SelectTrigger><SelectValue placeholder="Select product" /></SelectTrigger><SelectContent>{products.map((item) => <SelectItem key={item._id || item.id} value={item._id || item.id}>{item.name} {item.sku ? `(${item.sku})` : ""}</SelectItem>)}</SelectContent></Select></div>
