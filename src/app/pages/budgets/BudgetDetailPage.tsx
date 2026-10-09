@@ -1768,60 +1768,64 @@ export default function BudgetDetailPage() {
         </Dialog>
 
       <Dialog open={lineConsumptionOpen} onOpenChange={setLineConsumptionOpen}>
-        <DialogContent className="max-h-[85vh] max-w-6xl overflow-y-auto">
+        <DialogContent className="max-h-[90vh] w-[calc(100vw-2rem)] max-w-[1400px] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Budget line consumption</DialogTitle>
             <DialogDescription>
-              Review commitments and liquidation documents that consumed this budget line.
+              Review this line’s allocation, open commitments, and documents recorded as actual spend.
             </DialogDescription>
           </DialogHeader>
 
           {selectedLine && (
-            <div className="space-y-6">
-              <div className="grid gap-3 md:grid-cols-5">
-                <div className="rounded-lg border p-3">
-                  <div className="text-xs uppercase text-muted-foreground">Account</div>
-                  <div className="mt-1 text-sm font-medium">{getAccountName(selectedLine.account_id)}</div>
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+                <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Account</div>
+                  <div className="mt-2 break-words text-sm font-semibold leading-5 text-slate-900 dark:text-white">{getAccountName(selectedLine.account_id)}</div>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <div className="text-xs uppercase text-muted-foreground">Project / WBS</div>
-                  <div className="mt-1 text-sm font-medium">
+                <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Project / WBS</div>
+                  <div className="mt-2 break-words text-sm font-semibold leading-5 text-slate-900 dark:text-white">
                     {selectedLine.project_id ? getProjectMeta(selectedLine.project_id, selectedLine.wbs_code).label : "Unassigned"}
                   </div>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <div className="text-xs uppercase text-muted-foreground">Budgeted</div>
-                  <div className="mt-1 text-sm font-semibold">{formatCurrency(selectedLine.budgeted_amount)}</div>
+                <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Budgeted</div>
+                  <div className="mt-2 break-words text-base font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(selectedLine.budgeted_amount)}</div>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <div className="text-xs uppercase text-muted-foreground">Committed</div>
-                  <div className="mt-1 text-sm font-semibold">{formatCurrency(selectedLine.encumbered_amount || 0)}</div>
+                <div className="min-w-0 rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-blue-700 dark:text-blue-300">Committed</div>
+                  <div className="mt-2 break-words text-base font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(selectedLine.encumbered_amount || 0)}</div>
                 </div>
-                <div className="rounded-lg border p-3">
-                  <div className="text-xs uppercase text-muted-foreground">Actual / Available</div>
-                  <div className="mt-1 text-sm font-semibold">
-                    {formatCurrency(selectedLine.actual_amount || 0)} / {formatCurrency(getLineAvailable(selectedLine))}
+                <div className="min-w-0 rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/20">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Actual / Available</div>
+                  <div className="mt-2 space-y-1 text-sm font-bold tabular-nums text-slate-900 dark:text-white">
+                    <div>{formatCurrency(selectedLine.actual_amount || 0)} <span className="font-normal text-slate-500 dark:text-slate-400">actual</span></div>
+                    <div>{formatCurrency(getLineAvailable(selectedLine))} <span className="font-normal text-slate-500 dark:text-slate-400">available</span></div>
                   </div>
                 </div>
               </div>
 
-              <div className="grid gap-6 xl:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">Commitments</CardTitle>
-                    <CardDescription>Encumbrances raised against this budget line.</CardDescription>
+              <div className="grid items-start gap-4 lg:grid-cols-2">
+                <Card className="min-w-0 overflow-hidden rounded-xl border-slate-200 shadow-sm dark:border-slate-800">
+                  <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/60">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <FolderTree className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                      Commitments
+                    </CardTitle>
+                    <CardDescription>Purchase orders and other encumbrances raised against this line.</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-5">
                     {lineConsumptionLoading ? (
                       <div className="flex items-center justify-center py-10">
                         <Loader2 className="h-6 w-6 animate-spin" />
                       </div>
                     ) : lineEncumbrances.length === 0 ? (
-                      <div className="py-8 text-sm text-muted-foreground">No encumbrances have been posted to this line.</div>
+                      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center text-sm text-muted-foreground dark:border-slate-800 dark:bg-slate-950/30">No encumbrances have been posted to this line.</div>
                     ) : (
                       <>
-                      <div className="space-y-2 xl:hidden">{lineEncumbrances.map((encumbrance) => <article key={encumbrance._id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-medium">{encumbrance.source_number}</p><p className="mt-1 text-xs text-muted-foreground">{encumbrance.source_type.replaceAll("_", " ")} · {encumbrance.description}</p></div><Badge variant="outline" className="shrink-0">{encumbrance.status.replaceAll("_", " ")}</Badge></div><div className="mt-2 grid grid-cols-2 gap-2 border-t pt-2 text-xs dark:border-slate-800"><span className="text-muted-foreground">Encumbered<b className="mt-1 block text-sm text-foreground">{formatCurrency(encumbrance.encumbered_amount)}</b></span><span className="text-muted-foreground">Remaining<b className="mt-1 block text-sm text-foreground">{formatCurrency(encumbrance.remaining_amount)}</b></span></div></article>)}</div>
-                      <div className="hidden overflow-x-auto xl:block"><Table>
+                      <div className="space-y-3 2xl:hidden">{lineEncumbrances.map((encumbrance) => <article key={encumbrance._id} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{encumbrance.source_number || "Unnumbered source"}</p><p className="mt-1 break-words text-xs leading-5 text-muted-foreground">{encumbrance.source_type.replaceAll("_", " ")}{encumbrance.description ? ` · ${encumbrance.description}` : ""}</p></div><Badge variant="outline" className="shrink-0 capitalize">{encumbrance.status.replaceAll("_", " ")}</Badge></div><div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-xs dark:border-slate-800"><span className="text-muted-foreground">Encumbered<b className="mt-1 block break-words text-sm font-semibold tabular-nums text-foreground">{formatCurrency(encumbrance.encumbered_amount)}</b></span><span className="text-muted-foreground">Remaining<b className="mt-1 block break-words text-sm font-semibold tabular-nums text-foreground">{formatCurrency(encumbrance.remaining_amount)}</b></span></div></article>)}</div>
+                      <div className="hidden overflow-x-auto 2xl:block"><Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Source</TableHead>
@@ -1853,27 +1857,27 @@ export default function BudgetDetailPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
+                <Card className="min-w-0 overflow-hidden rounded-xl border-slate-200 shadow-sm dark:border-slate-800">
+                  <CardHeader className="border-b border-slate-100 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/60">
                     <CardTitle className="flex items-center gap-2 text-base">
                       <Receipt className="h-4 w-4" />
                       Actual consumption
                     </CardTitle>
-                    <CardDescription>Liquidation documents that converted commitments into actual spend.</CardDescription>
+                    <CardDescription>Liquidation and direct-spend documents recorded against this line.</CardDescription>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-5">
                     {lineConsumptionLoading ? (
                       <div className="flex items-center justify-center py-10">
                         <Loader2 className="h-6 w-6 animate-spin" />
                       </div>
                     ) : lineActualConsumptions.length === 0 ? (
-                      <div className="py-8 text-sm text-muted-foreground">
+                      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/50 px-4 py-8 text-center text-sm text-muted-foreground dark:border-slate-800 dark:bg-slate-950/30">
                         No actual consumption documents are linked to this line yet.
                       </div>
                     ) : (
                       <>
-                      <div className="space-y-2 xl:hidden">{lineActualConsumptions.map((consumption) => <article key={consumption._id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-medium">{consumption.document_number}</p><p className="mt-1 text-xs text-muted-foreground">{consumption.document_type.replaceAll("_", " ")}{consumption.source_number ? ` · from ${consumption.source_number}` : ""}</p>{consumption.notes && <p className="mt-1 break-words text-xs text-muted-foreground">{consumption.notes}</p>}</div><p className="shrink-0 text-sm font-semibold">{formatCurrency(consumption.amount)}</p></div><div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t pt-2 text-xs dark:border-slate-800"><span className="text-muted-foreground">{formatDate(consumption.document_date)}</span><Badge variant="outline">{consumption.origin_type === "direct_actual" ? "Direct actual" : "Encumbrance liquidation"}</Badge></div></article>)}</div>
-                      <div className="hidden overflow-x-auto xl:block"><Table>
+                      <div className="space-y-3 2xl:hidden">{lineActualConsumptions.map((consumption) => <article key={consumption._id} className="min-w-0 rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"><div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0 flex-1"><p className="break-words text-sm font-semibold text-slate-900 dark:text-white">{consumption.document_number || "Unnumbered document"}</p><p className="mt-1 break-words text-xs leading-5 text-muted-foreground">{consumption.document_type.replaceAll("_", " ")}{consumption.source_number ? ` · from ${consumption.source_number}` : ""}</p>{consumption.notes && <p className="mt-2 break-words text-xs leading-5 text-muted-foreground">{consumption.notes}</p>}</div><p className="shrink-0 text-sm font-bold tabular-nums text-slate-900 dark:text-white">{formatCurrency(consumption.amount)}</p></div><div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 text-xs dark:border-slate-800"><span className="text-muted-foreground">{formatDate(consumption.document_date)}</span><Badge variant="outline">{consumption.origin_type === "direct_actual" ? "Direct actual" : "Encumbrance liquidation"}</Badge></div></article>)}</div>
+                      <div className="hidden overflow-x-auto 2xl:block"><Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Document</TableHead>
