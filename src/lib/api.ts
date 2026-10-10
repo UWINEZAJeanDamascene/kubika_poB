@@ -11662,6 +11662,7 @@ export interface TimesheetLine {
   notes?: string;
   projectTaskId?: string;
   projectId?: string;
+  internalCode?: "leave" | "administration" | "training" | "other";
   hourlyRate?: number;
   laborCost?: number;
   currencyCode?: string;
@@ -11717,6 +11718,16 @@ export const timesheetsApi = {
   approve: (id: string) =>
     request<{ success: boolean; data: Timesheet }>(`/timesheets/${id}/approve`, {
       method: "PUT",
+    }),
+  correctAllocation: (id: string, payload: {
+    lineIndex: number;
+    projectTaskId?: string;
+    internalCode?: TimesheetLine["internalCode"];
+    reason: string;
+  }) =>
+    request<{ success: boolean; data: Timesheet }>(`/timesheets/${id}/correct-allocation`, {
+      method: "PUT",
+      body: payload,
     }),
   reject: (id: string, reason?: string) =>
     request<{ success: boolean; data: Timesheet }>(`/timesheets/${id}/reject`, {

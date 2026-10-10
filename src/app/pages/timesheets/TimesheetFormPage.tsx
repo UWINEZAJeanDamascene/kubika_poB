@@ -22,6 +22,13 @@ const ACTIVITY_TYPES = [
   { value: "other", label: "Other" },
 ];
 
+const INTERNAL_TIME_CODES = [
+  { value: "leave", label: "Leave" },
+  { value: "administration", label: "Administration" },
+  { value: "training", label: "Training" },
+  { value: "other", label: "Other non-project time" },
+];
+
 export default function TimesheetFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -32,7 +39,7 @@ export default function TimesheetFormPage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   });
-  const [lines, setLines] = useState<any[]>([{ date: "", hoursWorked: "", activityType: "", notes: "" }]);
+  const [lines, setLines] = useState<any[]>([{ date: "", hoursWorked: "", activityType: "", notes: "", projectTaskId: "", internalCode: "" }]);
   const { data: projectTasks } = useQuery({ queryKey: ["project-tasks", "timesheet"], queryFn: async () => (await projectsApi.getAll({ type: "task" })).data || [] });
 
   const { data: employees } = useQuery({
@@ -78,6 +85,7 @@ export default function TimesheetFormPage() {
           activityType: l.activityType,
           notes: l.notes || undefined,
           projectTaskId: l.projectTaskId || undefined,
+          internalCode: l.internalCode || undefined,
         })).filter((l) => l.date && l.hoursWorked > 0 && l.activityType),
       };
       if (isEdit) {
@@ -92,11 +100,13 @@ export default function TimesheetFormPage() {
     onError: (err: any) => toast.error(err.message || "Save failed"),
   });
 
-  const addLine = () => setLines([...lines, { date: "", hoursWorked: "", activityType: "", notes: "" }]);
+  const addLine = () => setLines([...lines, { date: "", hoursWorked: "", activityType: "", notes: "", projectTaskId: "", internalCode: "" }]);
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
   const updateLine = (i: number, field: string, value: string) => {
     const next = [...lines];
     next[i][field] = value;
+    if (field === "projectTaskId" && value) next[i].internalCode = "";
+    if (field === "internalCode" && value) next[i].projectTaskId = "";
     setLines(next);
   };
 
@@ -132,7 +142,7 @@ export default function TimesheetFormPage() {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle className="text-base">Work Entries</CardTitle><p className="mt-1 text-xs text-slate-500">Approved task hours are costed from the employee salary effective on the work date, using 173.33 standard hours per month.</p></div><span className="text-sm text-slate-500">Total: {totalHours.toFixed(1)} hrs</span></CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between"><div><CardTitle className="text-base">Work Entries</CardTitle><p className="mt-1 text-xs text-slate-500">Assign each entry to a project task or use an internal code for leave, administration, training, or other non-project time. Approved task hours are costed from the salary effective on the work date.</p></div><span className="text-sm text-slate-500">Total: {totalHours.toFixed(1)} hrs</span></CardHeader>
           <CardContent className="space-y-3">
             {lines.map((line, i) => (
               <div key={i} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6 items-end border p-3 rounded-md bg-slate-50 dark:bg-slate-900">
@@ -153,7 +163,8 @@ export default function TimesheetFormPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1 sm:col-span-2"><Label className="text-xs">Project task (optional)</Label><Select value={line.projectTaskId || "__none__"} onValueChange={(value) => updateLine(i, "projectTaskId", value === "__none__" ? "" : value)}><SelectTrigger><SelectValue placeholder="No project task" /></SelectTrigger><SelectContent><SelectItem value="__none__">No project task</SelectItem>{(projectTasks || []).map((task) => <SelectItem key={task._id} value={task._id}>{task.wbs_code} · {task.name}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-1 sm:col-span-2"><Label className="text-xs">Project task</Label><Select value={line.projectTaskId || "__none__"} onValueChange={(value) => updateLine(i, "projectTaskId", value === "__none__" ? "" : value)}><SelectTrigger><SelectValue placeholder="Choose a project task" /></SelectTrigger><SelectContent><SelectItem value="__none__">No project task</SelectItem>{(projectTasks || []).map((task) => <SelectItem key={task._id} value={task._id}>{task.wbs_code} · {task.name}</SelectItem>)}</SelectContent></Select></div>
+                <div className="space-y-1 sm:col-span-2"><Label className="text-xs">Internal code (for non-project time)</Label><Select value={line.internalCode || "__none__"} onValueChange={(value) => updateLine(i, "internalCode", value === "__none__" ? "" : value)}><SelectTrigger><SelectValue placeholder="Choose internal code" /></SelectTrigger><SelectContent><SelectItem value="__none__">Not internal time</SelectItem>{INTERNAL_TIME_CODES.map((code) => <SelectItem key={code.value} value={code.value}>{code.label}</SelectItem>)}</SelectContent></Select></div>
                 <div className="flex gap-2 sm:col-span-1">
                   <Button variant="outline" size="sm" className="flex-1" onClick={() => removeLine(i)}><Trash2 className="h-4 w-4" /></Button>
                 </div>

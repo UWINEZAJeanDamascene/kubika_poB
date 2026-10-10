@@ -108,38 +108,44 @@ export default function TimesheetsListPage() {
               </div>
             ) : (
               <div className="divide-y">
-                {timesheets.map((t: any) => (
-                  <div key={t._id} className="flex items-center justify-between py-3 px-4 -mx-4 hover:bg-slate-50 dark:hover:bg-slate-900">
-                    <div className="flex-1 cursor-pointer min-w-0" onClick={() => navigate(`/timesheets/${t._id}`)}>
-                      <p className="font-medium text-slate-900 dark:text-white">{t.employeeName}</p>
-                      <p className="text-xs text-slate-500">{t.period?.monthName} {t.period?.year} • {t.totalHours} hrs total</p>
+                {timesheets.map((t: any) => {
+                  const unallocatedCount = (t.lines || []).filter((line: any) =>
+                    !line.projectTaskId && !line.internalCode,
+                  ).length;
+                  return (
+                    <div key={t._id} className="flex items-center justify-between py-3 px-4 -mx-4 hover:bg-slate-50 dark:hover:bg-slate-900">
+                      <div className="flex-1 cursor-pointer min-w-0" onClick={() => navigate(`/timesheets/${t._id}`)}>
+                        <p className="font-medium text-slate-900 dark:text-white">{t.employeeName}</p>
+                        <p className="text-xs text-slate-500">{t.period?.monthName} {t.period?.year} • {t.totalHours} hrs total</p>
+                        {unallocatedCount > 0 && <p className="text-xs text-amber-700">{unallocatedCount} {unallocatedCount === 1 ? "entry needs" : "entries need"} a project task or internal code</p>}
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        <span className="text-xs text-slate-500 hidden sm:inline">{t.directHours || 0} direct / {t.indirectHours || 0} indirect</span>
+                        <Badge className={statusColors[t.status] || "bg-slate-100"}>{t.status}</Badge>
+                        {t.status === "draft" && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit" onClick={(e) => { e.stopPropagation(); navigate(`/timesheets/${t._id}/edit`); }}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600" title="Submit" onClick={(e) => { e.stopPropagation(); submitMutation.mutate(t._id); }} disabled={submitMutation.isPending || unallocatedCount > 0}>
+                              <Send className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                        {t.status === "submitted" && (
+                          <>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" title="Reject" onClick={(e) => { e.stopPropagation(); rejectMutation.mutate(t._id); }} disabled={rejectMutation.isPending}>
+                              <XCircle className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600" title="Approve" onClick={(e) => { e.stopPropagation(); approveMutation.mutate(t._id); }} disabled={approveMutation.isPending || unallocatedCount > 0}>
+                              <CheckCircle className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 ml-2">
-                      <span className="text-xs text-slate-500 hidden sm:inline">{t.directHours || 0} direct / {t.indirectHours || 0} indirect</span>
-                      <Badge className={statusColors[t.status] || "bg-slate-100"}>{t.status}</Badge>
-                      {t.status === "draft" && (
-                        <>
-                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit" onClick={(e) => { e.stopPropagation(); navigate(`/timesheets/${t._id}/edit`); }}>
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600" title="Submit" onClick={(e) => { e.stopPropagation(); submitMutation.mutate(t._id); }} disabled={submitMutation.isPending}>
-                            <Send className="h-3.5 w-3.5" />
-                          </Button>
-                        </>
-                      )}
-                      {t.status === "submitted" && (
-                        <>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" title="Reject" onClick={(e) => { e.stopPropagation(); rejectMutation.mutate(t._id); }} disabled={rejectMutation.isPending}>
-                            <XCircle className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600" title="Approve" onClick={(e) => { e.stopPropagation(); approveMutation.mutate(t._id); }} disabled={approveMutation.isPending}>
-                            <CheckCircle className="h-3.5 w-3.5" />
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
