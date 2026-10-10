@@ -11687,6 +11687,23 @@ export interface Timesheet {
   updatedAt: string;
 }
 
+export interface TimesheetAllocationAuditEvent {
+  id: string;
+  actorUserId: string | null;
+  actorName?: string | null;
+  action: string;
+  changes: {
+    lineIndex?: number;
+    date?: string;
+    hoursWorked?: number;
+    before?: { projectId?: string | null; projectTaskId?: string | null; internalCode?: string | null };
+    after?: { projectId?: string | null; projectTaskId?: string | null; internalCode?: string | null };
+    reason?: string;
+    correctedAt?: string;
+  };
+  createdAt: string;
+}
+
 // Timesheets API
 export const timesheetsApi = {
   getAll: (params?: { period?: string; status?: string; employeeId?: string }) => {
@@ -11697,6 +11714,8 @@ export const timesheetsApi = {
   },
   getById: (id: string) =>
     request<{ success: boolean; data: Timesheet }>(`/timesheets/${id}`),
+  getAllocationAudit: (id: string) =>
+    request<{ success: boolean; data: TimesheetAllocationAuditEvent[] }>(`/timesheets/${id}/audit`),
   create: (payload: {
     employeeId: string;
     period: { month: number; year: number };

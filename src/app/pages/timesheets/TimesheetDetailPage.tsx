@@ -20,6 +20,16 @@ const INTERNAL_TIME_CODES = [
   { value: "other", label: "Other non-project time" },
 ];
 
+function allocationLabel(allocation: { projectTaskId?: string | null; internalCode?: string | null } | undefined, tasks: any[]) {
+  if (allocation?.projectTaskId) {
+    return tasks.find((task) => task._id === allocation.projectTaskId)?.name || `Task ${allocation.projectTaskId}`;
+  }
+  if (allocation?.internalCode) {
+    return INTERNAL_TIME_CODES.find((code) => code.value === allocation.internalCode)?.label || allocation.internalCode;
+  }
+  return "Unallocated";
+}
+
 export default function TimesheetDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -42,6 +52,12 @@ export default function TimesheetDetailPage() {
   const { data: projectTasks } = useQuery({
     queryKey: ["project-tasks", "timesheet"],
     queryFn: async () => (await projectsApi.getAll({ type: "task" })).data || [],
+  });
+
+  const { data: allocationAudit, refetch: refetchAllocationAudit } = useQuery({
+    queryKey: ["timesheet-allocation-audit", id],
+    queryFn: async () => (await timesheetsApi.getAllocationAudit(id!)).data,
+    enabled: Boolean(id),
   });
 
   const roleNames = [user?.role, ...(user?.roles || [])]
@@ -82,6 +98,7 @@ export default function TimesheetDetailPage() {
       toast.success("Timesheet allocation corrected");
       setCorrection(null);
       refetch();
+      refetchAllocationAudit();
     },
     onError: (err: any) => toast.error(err.message || "Allocation correction failed"),
   });
@@ -128,7 +145,7 @@ export default function TimesheetDetailPage() {
             {data.status === "submitted" && (
               <>
                 <Button size="sm" variant="outline" onClick={() => rejectMutation.mutate()} disabled={rejectMutation.isPending}><XCircle className="mr-1 h-4 w-4" /> Reject</Button>
-                <Button size="sm" onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}><CheckCircle className="mr-1 h-4 w-4" /> Approve</Button>
+                <Button size="sm" onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending || unallocatedCount > 0}><CheckCircle className="mr-1 h-4 w-4" /> Approve</Button>
               </>
             )}
             {data.status === "draft" && (
@@ -172,6 +189,7 @@ export default function TimesheetDetailPage() {
                     correction?.lineIndex === i ? (
                       <div className="space-y-3 rounded-md border bg-slate-50 p-3 dark:bg-slate-900">
                         <p className="text-sm font-medium">Employee, date, and hours are locked. Only this entry's allocation can change.</p>
+                        <p className="text-xs text-slate-500">Task changes must stay within the same project. Corrections are blocked after payroll is finalized or a payroll journal is posted.</p>
                         <div className="grid gap-3 sm:grid-cols-2">
                           <div className="space-y-1">
                             <Label className="text-xs">Project task</Label>
@@ -230,6 +248,32 @@ export default function TimesheetDetailPage() {
             </div>
           </CardContent>
         </Card>
+
+        {(allocationAudit || []).length > 0 && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Allocation correction history</CardTitle></CardHeader>
+            <CardContent>
+              <div className="divide-y">
+                {allocationAudit!.map((event) => (
+                  <div key={event.id} className="space-y-1 py-3 text-sm">
+                    <p className="font-medium">
+                      Entry {Number(event.changes.lineIndex ?? 0) + 1} · {event.changes.date ? new Date(event.changes.date).toLocaleDateString() : "Date unavailable"} · {event.changes.hoursWorked ?? "—"} hrs
+                    </p>
+                    <p className="text-slate-600 dark:text-slate-300">
+                      {allocationLabel(event.changes.before, projectTasks || [])}
+                      {" → "}
+                      {allocationLabel(event.changes.after, projectTasks || [])}
+                    </p>
+                    <p className="text-slate-600 dark:text-slate-300">Reason: {event.changes.reason || "Not recorded"}</p>
+                    <p className="text-xs text-slate-500">
+                      By {event.actorName || event.actorUserId || "Unknown user"} · {new Date(event.changes.correctedAt || event.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </Layout>
   );
