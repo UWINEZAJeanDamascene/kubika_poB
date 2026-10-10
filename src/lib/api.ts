@@ -12985,7 +12985,7 @@ export interface ProjectMilestone {
   _id: string; company_id: string; project_id: string; name: string; description: string;
   assignee_id?: string | null; status: "planned" | "active" | "blocked" | "completed" | "cancelled";
   priority: "low" | "medium" | "high" | "critical"; due_date?: string | null;
-  progress_percent: number; depends_on_ids: string[]; completed_at?: string | null;
+  progress_percent: number; depends_on_ids: string[]; task_ids: string[]; completed_at?: string | null;
 }
 
 export interface ProjectCalendarItem {
