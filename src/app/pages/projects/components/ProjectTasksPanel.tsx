@@ -44,6 +44,10 @@ export default function ProjectTasksPanel({ project }: { project: Project }) {
   const [draft, setDraft] = useState<TaskDraft>(blankTask());
   const [completionTask, setCompletionTask] = useState<Project | null>(null);
   const [hoursDialogMode, setHoursDialogMode] = useState<"complete" | "record">("complete");
+  const hourBasedProgress = draft.estimated_hours > 0 && draft.actual_hours > 0;
+  const displayedProgress = hourBasedProgress
+    ? Math.min(100, Math.round(draft.actual_hours / draft.estimated_hours * 10000) / 100)
+    : draft.progress_percent;
 
   const refresh = async () => {
     try {
@@ -77,6 +81,7 @@ export default function ProjectTasksPanel({ project }: { project: Project }) {
     try {
       const payload = {
         ...draft,
+        progress_percent: displayedProgress,
         manager_id: draft.manager_id || undefined,
         start_date: draft.start_date || undefined,
         end_date: draft.end_date || undefined,
@@ -181,7 +186,8 @@ export default function ProjectTasksPanel({ project }: { project: Project }) {
                   min={0}
                   max={100}
                   step={1}
-                  value={draft.progress_percent}
+                  value={displayedProgress}
+                  disabled={hourBasedProgress}
                   onChange={(e) => setDraft({ ...draft, progress_percent: Number(e.target.value) })}
                   aria-label="Task progress slider"
                   className="px-0"
@@ -191,12 +197,18 @@ export default function ProjectTasksPanel({ project }: { project: Project }) {
                   min={0}
                   max={100}
                   step={1}
-                  value={draft.progress_percent}
+                  value={displayedProgress}
+                  disabled={hourBasedProgress}
                   onChange={(e) => setDraft({ ...draft, progress_percent: Number(e.target.value) })}
                   aria-label="Task progress percentage"
                   className="w-24"
                 />
               </div>
+              <p className="text-xs text-slate-500">
+                {hourBasedProgress
+                  ? "Calculated from actual hours ÷ estimated hours."
+                  : "Enter actual and estimated hours to calculate progress automatically, or set it manually."}
+              </p>
             </div>
             <div className="space-y-2"><Label>Start date</Label><Input type="date" value={draft.start_date} onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} /></div>
             <div className="space-y-2"><Label>Due date</Label><Input type="date" min={draft.start_date || undefined} value={draft.end_date} onChange={(e) => setDraft({ ...draft, end_date: e.target.value })} /></div>
