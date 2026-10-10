@@ -18,10 +18,12 @@ export function ProjectTaskCompletionDialog({ task, saving, mode = "complete", o
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const suggestedHours = task?.actual_hours || task?.estimated_hours || "";
+    const suggestedHours = task?.actual_hours
+      || task?.timesheet_hours
+      || (mode === "complete" ? task?.estimated_hours : "");
     setActualHours(suggestedHours ? String(suggestedHours) : "");
     setError("");
-  }, [task]);
+  }, [task, mode]);
 
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -40,7 +42,7 @@ export function ProjectTaskCompletionDialog({ task, saving, mode = "complete", o
           <DialogTitle>{mode === "record" ? "Record actual hours" : "Complete task"}</DialogTitle>
           <DialogDescription>
             {mode === "record"
-              ? `${task?.name} is completed but has no recorded actual hours. The estimate is suggested below; adjust it to match the hours worked.`
+              ? `Enter the total actual hours worked on ${task?.name} so far. Update this total as work continues.`
               : `${task?.name} has no approved timesheet hours. Record the actual hours worked to complete this task.`}
           </DialogDescription>
         </DialogHeader>
@@ -50,7 +52,7 @@ export function ProjectTaskCompletionDialog({ task, saving, mode = "complete", o
             <Input
               id="task-actual-hours"
               type="number"
-              min="0.01"
+              min="0"
               step="0.25"
               required
               value={actualHours}
@@ -59,7 +61,9 @@ export function ProjectTaskCompletionDialog({ task, saving, mode = "complete", o
             />
             {task && Number(task.estimated_hours || 0) > 0 && !task.actual_hours && (
               <p className="text-xs text-muted-foreground">
-                Estimated hours: {task.estimated_hours}. Confirm or change this to the actual hours worked.
+                {mode === "complete"
+                  ? `Estimated hours: ${task.estimated_hours}. Confirm or change this to the actual hours worked.`
+                  : `Estimated hours: ${task.estimated_hours}. Enter the actual hours worked so far, not the estimate unless it matches.`}
               </p>
             )}
             {error && <p className="text-sm text-destructive">{error}</p>}
@@ -67,7 +71,7 @@ export function ProjectTaskCompletionDialog({ task, saving, mode = "complete", o
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Cancel</Button>
             <Button type="submit" disabled={saving}>
-              {saving ? (mode === "record" ? "Saving…" : "Completing…") : (mode === "record" ? "Save actual hours" : "Complete task")}
+              {saving ? (mode === "record" ? "Saving…" : "Completing…") : (mode === "record" ? "Save hours to date" : "Complete task")}
             </Button>
           </DialogFooter>
         </form>
