@@ -12929,6 +12929,7 @@ export interface ProjectCreateRequest {
   constraints?: string;
   estimated_hours?: number;
   actual_hours?: number;
+  progress_percent?: number;
   acceptance_criteria?: string;
   depends_on_ids?: string[];
   is_template?: boolean;

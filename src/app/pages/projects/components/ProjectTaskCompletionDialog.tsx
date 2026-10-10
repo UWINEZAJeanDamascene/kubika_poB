@@ -8,16 +8,18 @@ import type { Project } from "@/lib/api";
 type Props = {
   task: Project | null;
   saving: boolean;
+  mode?: "complete" | "record";
   onCancel: () => void;
   onConfirm: (actualHours: number) => void;
 };
 
-export function ProjectTaskCompletionDialog({ task, saving, onCancel, onConfirm }: Props) {
+export function ProjectTaskCompletionDialog({ task, saving, mode = "complete", onCancel, onConfirm }: Props) {
   const [actualHours, setActualHours] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setActualHours(task?.actual_hours ? String(task.actual_hours) : "");
+    const suggestedHours = task?.actual_hours || task?.estimated_hours || "";
+    setActualHours(suggestedHours ? String(suggestedHours) : "");
     setError("");
   }, [task]);
 
@@ -35,9 +37,11 @@ export function ProjectTaskCompletionDialog({ task, saving, onCancel, onConfirm 
     <Dialog open={Boolean(task)} onOpenChange={(open) => { if (!open && !saving) onCancel(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Complete task</DialogTitle>
+          <DialogTitle>{mode === "record" ? "Record actual hours" : "Complete task"}</DialogTitle>
           <DialogDescription>
-            {task?.name} has no approved timesheet hours. Record the actual hours worked to complete this task.
+            {mode === "record"
+              ? `${task?.name} is completed but has no recorded actual hours. The estimate is suggested below; adjust it to match the hours worked.`
+              : `${task?.name} has no approved timesheet hours. Record the actual hours worked to complete this task.`}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
@@ -53,11 +57,18 @@ export function ProjectTaskCompletionDialog({ task, saving, onCancel, onConfirm 
               onChange={(event) => { setActualHours(event.target.value); setError(""); }}
               autoFocus
             />
+            {task && Number(task.estimated_hours || 0) > 0 && !task.actual_hours && (
+              <p className="text-xs text-muted-foreground">
+                Estimated hours: {task.estimated_hours}. Confirm or change this to the actual hours worked.
+              </p>
+            )}
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onCancel} disabled={saving}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? "Completing…" : "Complete task"}</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? (mode === "record" ? "Saving…" : "Completing…") : (mode === "record" ? "Save actual hours" : "Complete task")}
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -542,6 +542,9 @@ const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 const TimesheetFormPage = lazy(
   () => import("./pages/timesheets/TimesheetFormPage"),
 );
+const TimesheetsListPage = lazy(
+  () => import("./pages/timesheets/TimesheetsListPage"),
+);
 const TimesheetDetailPage = lazy(
   () => import("./pages/timesheets/TimesheetDetailPage"),
 );
@@ -1543,27 +1546,35 @@ function AppRoutes() {
 
           {/* Timesheet routes */}
           <Route
+            path="/timesheets"
+            element={
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><TimesheetsListPage /></ErrorBoundary>
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/timesheets/new"
             element={
-              <ErrorBoundary>
-                <TimesheetFormPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><TimesheetFormPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/timesheets/:id"
             element={
-              <ErrorBoundary>
-                <TimesheetDetailPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><TimesheetDetailPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/timesheets/:id/edit"
             element={
-              <ErrorBoundary>
-                <TimesheetFormPage />
-              </ErrorBoundary>
+              <ProtectedRoute permission="payroll:read">
+                <ErrorBoundary><TimesheetFormPage /></ErrorBoundary>
+              </ProtectedRoute>
             }
           />
 

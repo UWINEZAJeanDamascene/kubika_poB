@@ -628,6 +628,7 @@ const payrollNav: NavSection = {
     { nameKey: "nav.employees", href: "/employees", icon: Users, permission: "employees:read", legacyRoles: ["admin", "manager"], featureKey: "payroll", moduleNames: ["Employees"] },
     { nameKey: "nav.payroll", href: "/payroll", icon: DollarSign, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
     { nameKey: "payroll.payrollRuns", href: "/payroll-runs", icon: Play, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
+    { nameKey: "Timesheets", href: "/timesheets", icon: ClipboardList, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
     { nameKey: "Payroll exceptions", href: "/payroll-exceptions", icon: AlertTriangle, permission: "payroll:read", featureKey: "payroll", moduleNames: ["Payroll runs"] },
   ],
 };
